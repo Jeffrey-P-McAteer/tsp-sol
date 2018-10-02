@@ -123,6 +123,9 @@ fn main() {
       }
     }
   }
+  // Compute triangle center.
+  // We update this on every point insertion to the ideal path.
+  let center = compute_center(&ordered_visits, &node_coordinates);
   
   while ordered_visits.len() < weights.len() {
     
@@ -147,5 +150,17 @@ fn compute_dist(weights: &Vec<Vec<f32>>, path: &Vec<usize>) -> f32 {
 }
 
 
-
+fn compute_center(path: &Vec<usize>, locations: &Vec<(usize, f32, f32)>) -> (f32, f32) {
+  let mut x_tot: f32 = 0.0;
+  let mut y_tot: f32 = 0.0;
+  
+  for p in path {
+    x_tot += locations[*p].1;
+    y_tot += locations[*p].2;
+  }
+  
+  x_tot /= path.len() as f32;
+  y_tot /= path.len() as f32;
+  return (x_tot, y_tot);
+}
 
