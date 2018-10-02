@@ -6,6 +6,7 @@ use std::path::Path;
 use std::io::{BufReader};
 use std::env;
 use std::io::prelude::*;
+use std::f32;
 
 fn usage() {
   println!(r#"Usage: ./tsp-sol path/to/berlin52.tsp
@@ -58,10 +59,10 @@ fn main() {
   };
   
   // Compute 2x matrix of edge weights (assumes 2d euclidian geometry)
-  let mut weights: Vec<Vec<f32>> = vec![];
+  let mut weights: Vec<Vec<f32>> = Vec::with_capacity(node_coordinates.len());
   {
     for row_r in &node_coordinates {
-      let mut row_weight_v: Vec<f32> = vec![];
+      let mut row_weight_v: Vec<f32> = Vec::with_capacity(node_coordinates.len());
       for col_r in &node_coordinates {
         let weight: f32 = (
           (row_r.1 - col_r.1).powf(2.0) + // x1 + x2 squared
@@ -125,10 +126,28 @@ fn main() {
   }
   // Compute triangle center.
   // We update this on every point insertion to the ideal path.
-  let center = compute_center(&ordered_visits, &node_coordinates);
+  let mut center = compute_center(&ordered_visits, &node_coordinates);
+  // Holds all points not in ordered_visits
+  let mut unordered_visits: Vec<usize> = Vec::with_capacity(weights.len()-3);
+  'outer: for p in 0..weights.len() {
+    for ordered in &ordered_visits {
+      if p == *ordered {
+        continue 'outer;
+      }
+    }
+    // we haven't continued, therefore we are not in odered_visits
+    unordered_visits.push(p);
+  }
   
   while ordered_visits.len() < weights.len() {
+    let (furthest_non_collected_point_i,
+         ordered_idx,
+         unordered_idx) = compute_furthest(&ordered_visits, &unordered_visits, &weights, &node_coordinates, &center);
     
+    unordered_visits.remove(unordered_idx);
+    ordered_visits.insert(ordered_idx, furthest_non_collected_point_i);
+    
+    center = compute_center(&ordered_visits, &node_coordinates);
   }
   
   { // Print solution
@@ -149,7 +168,6 @@ fn compute_dist(weights: &Vec<Vec<f32>>, path: &Vec<usize>) -> f32 {
   return total;
 }
 
-
 fn compute_center(path: &Vec<usize>, locations: &Vec<(usize, f32, f32)>) -> (f32, f32) {
   let mut x_tot: f32 = 0.0;
   let mut y_tot: f32 = 0.0;
@@ -164,3 +182,54 @@ fn compute_center(path: &Vec<usize>, locations: &Vec<(usize, f32, f32)>) -> (f32
   return (x_tot, y_tot);
 }
 
+fn compute_furthest(path: &Vec<usize>, unordered: &Vec<usize>, weights: &Vec<Vec<f32>>, locations: &Vec<(usize, f32, f32)>, center: &(f32, f32))
+  ->
+  (usize /*point i*/, usize /*points idx in path*/, usize /*points idx in unordered*/)
+{
+  let mut furthest_i = 0;
+  let mut unordered_idx = 0;
+  let mut furthest_i_dist_from_center: f32 = 0.0;
+  for i in path {
+    if furthest_i == *i {
+      furthest_i = (furthest_i+1) % locations.len();
+    }
+  }
+  // now furthest_i is not in the path
+  
+  // for every point not in the solution...
+  for i in 0..unordered.len() {
+    let unord_elm = unordered[i];
+    let this_dist_from_center: f32 = (
+      (center.0/*x*/ - locations[unord_elm].1/*x*/).powf(2.0) +
+      (center.1/*y*/ - locations[unord_elm].2/*y*/).powf(2.0)
+    ).sqrt();
+    if this_dist_from_center > furthest_i_dist_from_center {
+      furthest_i = unord_elm;
+      unordered_idx = i;
+      // we don't know where it is GOING yet.
+    }
+  }
+  
+  // Let's re-scope some variables to be immutable now that we've calculated them
+  let furthest_i = furthest_i;
+  let unordered_idx = unordered_idx;
+  
+  // Now determine shortest split & merge, set path_idx=
+  let mut ideal_insert_dist_delta: f32 = f32::INFINITY;
+  let mut path_idx = 0; // 0 indicates a split of the edge that runs between 0 -> 1
+  
+  for from_i in 0..path.len() {
+    let to_i = (from_i+1) % path.len();
+    let this_dist_delta: f32 = 
+      (-weights[from_i][to_i]) +    // removed edge counts negative
+      weights[from_i][furthest_i] + // add edge from -> new
+      weights[furthest_i][to_i];    // add edge new -> end
+    
+    if this_dist_delta < ideal_insert_dist_delta {
+      ideal_insert_dist_delta = this_dist_delta;
+      path_idx = from_i;
+    }
+  }
+  
+  return (furthest_i, path_idx, unordered_idx);
+}
