@@ -1,0 +1,16 @@
+NAME : flower
+COMMENT : An oft-studied graph of mine (n = 0)
+TYPE : TSP
+DIMENSION : 9
+EDGE_WEIGHT_TYPE : EUC_2D
+NODE_COORD_SECTION
+1 0 0
+2 2 0
+3 4 0
+4 0 2
+5 4 2
+6 2 4
+7 0 4
+8 4 4
+9 2 2
+EOF
