@@ -7,4 +7,6 @@ authors = ["Jeffrey McAteer <jeffrey.p.mcateer@gmail.com>"]
 tsplib = "0.1.0"
 image = "*"
 imageproc = "0.16.0"
+rusttype = "*"
+
 

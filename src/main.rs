@@ -7,6 +7,9 @@ use image::{ImageBuffer, Rgb};
 extern crate imageproc;
 use imageproc::drawing::*;
 
+extern crate rusttype;
+use rusttype::{FontCollection, Scale};
+
 use std::fs::File;
 use std::path::Path;
 use std::io::{BufReader};
@@ -14,7 +17,8 @@ use std::env;
 use std::io::prelude::*;
 use std::f32;
 
-const DEBUG: bool = false;
+// when set causes images to be written to views on every step
+const DEBUG: bool = true;
 
 fn usage() {
   println!(r#"Usage: ./tsp-sol path/to/berlin52.tsp
@@ -157,12 +161,15 @@ fn main() {
     save_state_image(format!("./views/{}.png", ordered_visits.len()), &ordered_visits, &node_coordinates, &center);
     println!("ordered_visits = {:?}", ordered_visits);
     println!("unordered_visits = {:?}", unordered_visits);
-    println!(" = = = = ");
     
     unordered_visits.remove(unordered_idx);
+    println!("Inserting {} at urdered[{}]", furthest_non_collected_point_i, ordered_idx);
+    
+    let ordered_idx = (ordered_idx+1) % ordered_visits.len();
     ordered_visits.insert(ordered_idx, furthest_non_collected_point_i);
     
     center = compute_center(&ordered_visits, &node_coordinates);
+    println!(" = = = = ");
   }
   
   { // Print solution
@@ -202,7 +209,7 @@ fn compute_furthest(path: &Vec<usize>, unordered: &Vec<usize>, weights: &Vec<Vec
 {
   let mut unordered_idx = 0;
   let mut furthest_i = unordered[unordered_idx];
-  let mut furthest_i_dist_from_center: f32 = 0.0;
+  let mut furthest_i_dist_from_center: f32 = -100.0;
   
   // for every point not in the solution...
   for i in 0..unordered.len() {
@@ -222,20 +229,24 @@ fn compute_furthest(path: &Vec<usize>, unordered: &Vec<usize>, weights: &Vec<Vec
   // Let's re-scope some variables to be immutable now that we've calculated them
   let furthest_i = furthest_i; // idx to weight matrix
   let unordered_idx = unordered_idx;
-  
+  println!("furthest_i={}", furthest_i);
   // Now determine shortest split & merge, set path_idx=
   let mut ideal_insert_dist_delta: f32 = f32::INFINITY;
   let mut path_idx = 0; // 0 indicates a split of the edge that runs between 0 -> 1
   
   for from_i in 0..path.len() {
     let to_i = (from_i+1) % path.len();
-    let this_dist_delta: f32 = 
-      (-weights[from_i][to_i]) +    // removed edge counts negative
-      weights[from_i][furthest_i] + // add edge from -> new
-      weights[furthest_i][to_i];    // add edge new -> end
+    let from_elm = path[from_i];
+    let to_elm = path[to_i];
     
+    let this_dist_delta: f32 = 
+      (-weights[from_elm][to_elm]) +    // removed edge counts negative
+      weights[from_elm][furthest_i] + // add edge from -> new
+      weights[furthest_i][to_elm];    // add edge new -> end
+    
+    println!("from_elm={} to_elm={} this_dist_delta={} ideal_insert_dist_delta={}", from_elm, to_elm, this_dist_delta, ideal_insert_dist_delta);
     if this_dist_delta < ideal_insert_dist_delta {
-      //println!("We are putting it between positions {} and {}", from_i, to_i);
+      //println!("We are putting it between positions {} and {}", from_elm, to_elm);
       ideal_insert_dist_delta = this_dist_delta;
       path_idx = from_i;
     }
@@ -249,20 +260,29 @@ fn save_state_image<I: Into<String>>(file_path: I, path: &Vec<usize>, locations:
     return;
   }
   let file_path = file_path.into();
-  let (width, height) = (1200, 1200);
+  let (width, height) = (600, 600);
   let mut image = ImageBuffer::<Rgb<u8>, Vec<u8>>::new(width + 5, height + 5); // width, height
   
   let (smallest_x, largest_y, largest_x, smallest_y) = get_point_extents(locations);
   let x_range: f32 = largest_x - smallest_x;
   let y_range: f32 = largest_y - smallest_y;
   
-  for loc in locations {
+  for i in 0..locations.len() {
+    let loc = locations[i];
     let (loc_x,loc_y) = scale_xy(width, height, x_range as u32, y_range as u32, smallest_x, smallest_y, loc.1, loc.2);
     
     // Set all location pixels to be red // r,g,b
     //image.get_pixel_mut(loc_x, loc_y).data = [255, 0, 0];
-    circle_it(&mut image, loc_x, loc_y, [255, 0, 0]);
+    //circle_it(&mut image, loc_x, loc_y, [255, 0, 0]);
+    draw_hollow_circle_mut(&mut image, (loc_x as i32, loc_y as i32), 10 /*radius*/, Rgb([255, 0, 0]));
     
+    // Also draw an index number
+    let font = Vec::from( include_bytes!("/usr/share/fonts/noto/NotoSans-Bold.ttf") as &[u8] );
+    let font = FontCollection::from_bytes(font).unwrap().into_font().unwrap();
+    
+    let font_height = 14.0;
+    let font_scale = Scale { x: font_height, y: font_height };
+    draw_text_mut(&mut image, Rgb([200, 200, 255]), loc_x as u32, loc_y as u32, font_scale, &font, format!("{}", i).as_str());
   }
   
   for i in 0..path.len() {
@@ -280,7 +300,7 @@ fn save_state_image<I: Into<String>>(file_path: I, path: &Vec<usize>, locations:
     draw_line_segment_mut(&mut image,
       (pt_to_x as f32,pt_to_y as f32), // start
       (from_loc_x as f32,from_loc_y as f32), // end
-      Rgb([255, 255, 255])
+      Rgb([200, 200, 200])
     );
   }
   
@@ -307,11 +327,6 @@ fn scale_xy(img_w: u32, img_h: u32, path_w: u32, path_h: u32, path_x_smallest: f
     img_y = (img_h-5) as f32;
   }
   return (img_x as u32, img_y as u32);
-}
-
-// erm they're actually squares. Whoops.
-fn circle_it(image: &mut ImageBuffer<Rgb<u8>, Vec<u8>>, x: u32, y: u32, rgb: [u8; 3]) {
-  draw_hollow_circle_mut(image, (x as i32, y as i32), 10 /*radius*/, Rgb(rgb));
 }
 
 // returns smallestX, largestY, largestX, smallestY
