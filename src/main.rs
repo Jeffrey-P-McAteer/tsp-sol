@@ -169,7 +169,7 @@ fn main() {
     ordered_visits.insert(ordered_idx, furthest_non_collected_point_i);
     
     center = compute_center(&ordered_visits, &node_coordinates);
-    println!(" = = = = ");
+    //println!(" = = = = ");
   }
   
   { // Print solution
