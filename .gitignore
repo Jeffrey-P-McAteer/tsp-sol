@@ -1,2 +1,4 @@
 /target
 **/*.rs.bk
+/views
+out.png
