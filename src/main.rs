@@ -5,7 +5,7 @@ extern crate image;
 use image::{ImageBuffer, Rgb};
 
 extern crate imageproc;
-use imageproc::drawing::draw_line_segment_mut;
+use imageproc::drawing::*;
 
 use std::fs::File;
 use std::path::Path;
@@ -13,6 +13,8 @@ use std::io::{BufReader};
 use std::env;
 use std::io::prelude::*;
 use std::f32;
+
+const DEBUG: bool = false;
 
 fn usage() {
   println!(r#"Usage: ./tsp-sol path/to/berlin52.tsp
@@ -117,6 +119,7 @@ fn main() {
         ordered_visits[2] = (ordered_visits[2]+1) % weights.len();
       }
     }
+    save_state_image(format!("./views/0-1.png"), &ordered_visits, &node_coordinates, &(0.0, 0.0));
     { // Given the longest edge, find 
       // weight(0, 2) + weight(1, 2) (weights of both edges going to "2")
       let mut current_longest_point_len = weights[ordered_visits[0]][ordered_visits[2]] + weights[ordered_visits[1]][ordered_visits[2]];
@@ -150,6 +153,9 @@ fn main() {
          ordered_idx,
          unordered_idx) = compute_furthest(&ordered_visits, &unordered_visits, &weights, &node_coordinates, &center);
     
+    print_path_metadata(&ordered_visits, &weights);
+    save_state_image(format!("./views/{}.png", ordered_visits.len()), &ordered_visits, &node_coordinates, &center);
+    
     unordered_visits.remove(unordered_idx);
     ordered_visits.insert(ordered_idx, furthest_non_collected_point_i);
     
@@ -157,15 +163,9 @@ fn main() {
   }
   
   { // Print solution
-    println!("Solution distance: {}", compute_dist(&weights, &ordered_visits));
-    print!("Solution order: ");
-    for p in &ordered_visits {
-      print!("{} ", *p);
-    }
-    println!("");
+    print_path_metadata(&ordered_visits, &weights);
+    save_state_image("./out.png", &ordered_visits, &node_coordinates, &center);
   }
-  
-  save_state_image("./out.png", &ordered_visits, &node_coordinates, &center);
   
 }
 
@@ -245,9 +245,12 @@ fn compute_furthest(path: &Vec<usize>, unordered: &Vec<usize>, weights: &Vec<Vec
 }
 
 fn save_state_image<I: Into<String>>(file_path: I, path: &Vec<usize>, locations: &Vec<(usize, f32, f32)>, center: &(f32, f32)) {
+  if !DEBUG {
+    return;
+  }
   let file_path = file_path.into();
   let (width, height) = (1200, 1200);
-  let mut image = ImageBuffer::<Rgb<u8>, Vec<u8>>::new(width, height); // width, height
+  let mut image = ImageBuffer::<Rgb<u8>, Vec<u8>>::new(width + 5, height + 5); // width, height
   
   let (smallest_x, largest_y, largest_x, smallest_y) = get_point_extents(locations);
   let x_range: f32 = largest_x - smallest_x;
@@ -262,14 +265,16 @@ fn save_state_image<I: Into<String>>(file_path: I, path: &Vec<usize>, locations:
     
   }
   
-  for pt_from in path {
-    let pt_to = (pt_from+1) % locations.len();
+  for i in 0..path.len() {
+    let pt_from = path[i];
+    let pt_to =   path[(pt_from+1) % path.len()];
     
-    let from_loc = locations[*pt_from];
+    let from_loc = locations[pt_from];
     let (from_loc_x,from_loc_y) = scale_xy(width, height, x_range as u32, y_range as u32, smallest_x, smallest_y, from_loc.1, from_loc.2);
     
     let to_loc = locations[pt_to];
     let (pt_to_x,pt_to_y) = scale_xy(width, height, x_range as u32, y_range as u32, smallest_x, smallest_y, to_loc.1, to_loc.2);
+    //println!("Going from {} to {}", pt_from, pt_to);
     
     draw_line_segment_mut(&mut image,
       (pt_to_x as f32,pt_to_y as f32), // start
@@ -284,23 +289,24 @@ fn save_state_image<I: Into<String>>(file_path: I, path: &Vec<usize>, locations:
 fn scale_xy(img_w: u32, img_h: u32, path_w: u32, path_h: u32, path_x_smallest: f32, path_y_smallest: f32, given_x: f32, given_y: f32) -> (u32, u32) {
   let mut img_x = (given_x - path_x_smallest) * ((img_w as f32 / path_w as f32) as f32);
   let mut img_y = (given_y - path_y_smallest) * ((img_h as f32 / path_h as f32) as f32);
+  if img_x < 5.0 {
+    img_x = 5.0;
+  }
+  if img_x > (img_w-5) as f32 {
+    img_x = (img_w-5) as f32;
+  }
+  if img_y < 5.0 {
+    img_y = 5.0;
+  }
+  if img_y > (img_h-5) as f32 {
+    img_y = (img_h-5) as f32;
+  }
   return (img_x as u32, img_y as u32);
 }
 
 // erm they're actually squares. Whoops.
-fn circle_it(image: &mut ImageBuffer::<Rgb<u8>, Vec<u8>>, x: u32, y: u32, rgb: [u8; 3]) {
-  let r = 10; // radius
-  
-  let x: i32 = x as i32; // UGH
-  let y: i32 = y as i32;
-  
-  for x_off in (x-r)..(x+r) {
-    for y_off in (y-r)..(y+r) {
-      if x_off > 0 && x_off < image.width() as i32 && y_off > 0 && y_off < image.height() as i32 {
-        image.get_pixel_mut(x_off as u32, y_off as u32).data = rgb;
-      }
-    }
-  }
+fn circle_it(image: &mut ImageBuffer<Rgb<u8>, Vec<u8>>, x: u32, y: u32, rgb: [u8; 3]) {
+  draw_hollow_circle_mut(image, (x as i32, y as i32), 10 /*radius*/, Rgb(rgb));
 }
 
 // returns smallestX, largestY, largestX, smallestY
@@ -326,5 +332,14 @@ fn get_point_extents(locations: &Vec<(usize, f32, f32)>) -> (f32, f32, f32, f32)
     }
   }
   return (smallest_x, largest_y, largest_x, smallest_y);
+}
+
+fn print_path_metadata(path: &Vec<usize>, weights: &Vec<Vec<f32>>) {
+  println!("Solution distance: {}", compute_dist(weights, path));
+  print!("Solution order: ");
+  for p in path {
+    print!("{} ", *p);
+  }
+  println!("");
 }
 
