@@ -184,7 +184,9 @@ fn main() {
 fn compute_dist(weights: &Vec<Vec<f32>>, path: &Vec<usize>) -> f32 {
   let mut total: f32 = 0.0;
   for p_i in 0..path.len() {
-    total += weights[p_i][(p_i+1) % path.len()]; // mod lets us wrap at end (p_i == len(), (p_i+1) % len == 0)
+    let p  = path[p_i];
+    let p2 = path[(p_i+1) % path.len()]; // mod lets us wrap at end (p_i == len(), (p_i+1) % len == 0)
+    total += weights[p][p2];
   }
   return total;
 }
