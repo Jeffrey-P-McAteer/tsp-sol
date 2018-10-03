@@ -18,7 +18,7 @@ use std::io::prelude::*;
 use std::f32;
 
 // when set causes images to be written to views on every step
-const DEBUG: bool = true;
+const DEBUG: bool = false;
 
 fn usage() {
   println!(r#"Usage: ./tsp-sol path/to/berlin52.tsp
@@ -157,13 +157,13 @@ fn main() {
          ordered_idx,
          unordered_idx) = compute_furthest(&ordered_visits, &unordered_visits, &weights, &node_coordinates, &center);
     
-    print_path_metadata(&ordered_visits, &weights);
-    save_state_image(format!("./views/{}.png", ordered_visits.len()), &ordered_visits, &node_coordinates, &center);
-    println!("ordered_visits = {:?}", ordered_visits);
-    println!("unordered_visits = {:?}", unordered_visits);
+    //print_path_metadata(&ordered_visits, &weights);
+    //save_state_image(format!("./views/{}.png", ordered_visits.len()), &ordered_visits, &node_coordinates, &center);
+    // println!("ordered_visits = {:?}", ordered_visits);
+    // println!("unordered_visits = {:?}", unordered_visits);
     
     unordered_visits.remove(unordered_idx);
-    println!("Inserting {} at urdered[{}]", furthest_non_collected_point_i, ordered_idx);
+    //println!("Inserting {} at urdered[{}]", furthest_non_collected_point_i, ordered_idx);
     
     let ordered_idx = (ordered_idx+1) % ordered_visits.len();
     ordered_visits.insert(ordered_idx, furthest_non_collected_point_i);
@@ -231,7 +231,7 @@ fn compute_furthest(path: &Vec<usize>, unordered: &Vec<usize>, weights: &Vec<Vec
   // Let's re-scope some variables to be immutable now that we've calculated them
   let furthest_i = furthest_i; // idx to weight matrix
   let unordered_idx = unordered_idx;
-  println!("furthest_i={}", furthest_i);
+  // println!("furthest_i={}", furthest_i);
   // Now determine shortest split & merge, set path_idx=
   let mut ideal_insert_dist_delta: f32 = f32::INFINITY;
   let mut path_idx = 0; // 0 indicates a split of the edge that runs between 0 -> 1
@@ -246,7 +246,7 @@ fn compute_furthest(path: &Vec<usize>, unordered: &Vec<usize>, weights: &Vec<Vec
       weights[from_elm][furthest_i] + // add edge from -> new
       weights[furthest_i][to_elm];    // add edge new -> end
     
-    println!("from_elm={} to_elm={} this_dist_delta={} ideal_insert_dist_delta={}", from_elm, to_elm, this_dist_delta, ideal_insert_dist_delta);
+    //println!("from_elm={} to_elm={} this_dist_delta={} ideal_insert_dist_delta={}", from_elm, to_elm, this_dist_delta, ideal_insert_dist_delta);
     if this_dist_delta < ideal_insert_dist_delta {
       //println!("We are putting it between positions {} and {}", from_elm, to_elm);
       ideal_insert_dist_delta = this_dist_delta;
