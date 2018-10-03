@@ -155,6 +155,9 @@ fn main() {
     
     print_path_metadata(&ordered_visits, &weights);
     save_state_image(format!("./views/{}.png", ordered_visits.len()), &ordered_visits, &node_coordinates, &center);
+    println!("ordered_visits = {:?}", ordered_visits);
+    println!("unordered_visits = {:?}", unordered_visits);
+    println!(" = = = = ");
     
     unordered_visits.remove(unordered_idx);
     ordered_visits.insert(ordered_idx, furthest_non_collected_point_i);
@@ -164,7 +167,9 @@ fn main() {
   
   { // Print solution
     print_path_metadata(&ordered_visits, &weights);
-    save_state_image("./out.png", &ordered_visits, &node_coordinates, &center);
+    save_state_image(format!("./views/{}.png", ordered_visits.len()), &ordered_visits, &node_coordinates, &center);
+    println!("ordered_visits = {:?}", ordered_visits);
+    println!("unordered_visits = {:?}", unordered_visits);
   }
   
 }
@@ -195,15 +200,9 @@ fn compute_furthest(path: &Vec<usize>, unordered: &Vec<usize>, weights: &Vec<Vec
   ->
   (usize /*point i*/, usize /*points idx in path*/, usize /*points idx in unordered*/)
 {
-  let mut furthest_i = 0;
   let mut unordered_idx = 0;
+  let mut furthest_i = unordered[unordered_idx];
   let mut furthest_i_dist_from_center: f32 = 0.0;
-  for i in path {
-    if furthest_i == *i {
-      furthest_i = (furthest_i+1) % locations.len();
-    }
-  }
-  // now furthest_i is not in the path
   
   // for every point not in the solution...
   for i in 0..unordered.len() {
@@ -221,7 +220,7 @@ fn compute_furthest(path: &Vec<usize>, unordered: &Vec<usize>, weights: &Vec<Vec
   }
   
   // Let's re-scope some variables to be immutable now that we've calculated them
-  let furthest_i = furthest_i;
+  let furthest_i = furthest_i; // idx to weight matrix
   let unordered_idx = unordered_idx;
   
   // Now determine shortest split & merge, set path_idx=
@@ -236,12 +235,13 @@ fn compute_furthest(path: &Vec<usize>, unordered: &Vec<usize>, weights: &Vec<Vec
       weights[furthest_i][to_i];    // add edge new -> end
     
     if this_dist_delta < ideal_insert_dist_delta {
+      //println!("We are putting it between positions {} and {}", from_i, to_i);
       ideal_insert_dist_delta = this_dist_delta;
       path_idx = from_i;
     }
   }
   
-  return (furthest_i, path_idx, unordered_idx);
+  return (furthest_i/*idx to weight matrix*/, path_idx, unordered_idx);
 }
 
 fn save_state_image<I: Into<String>>(file_path: I, path: &Vec<usize>, locations: &Vec<(usize, f32, f32)>, center: &(f32, f32)) {
@@ -267,7 +267,8 @@ fn save_state_image<I: Into<String>>(file_path: I, path: &Vec<usize>, locations:
   
   for i in 0..path.len() {
     let pt_from = path[i];
-    let pt_to =   path[(pt_from+1) % path.len()];
+    let pt_to =   path[(i+1) % path.len()];
+    //println!("pt_from = {}, pt_to = {}", pt_from, pt_to);
     
     let from_loc = locations[pt_from];
     let (from_loc_x,from_loc_y) = scale_xy(width, height, x_range as u32, y_range as u32, smallest_x, smallest_y, from_loc.1, from_loc.2);
@@ -282,6 +283,10 @@ fn save_state_image<I: Into<String>>(file_path: I, path: &Vec<usize>, locations:
       Rgb([255, 255, 255])
     );
   }
+  
+  // center is green cross
+  let (center_img_x, center_img_y) = scale_xy(width, height, x_range as u32, y_range as u32, smallest_x, smallest_y, center.0, center.1);
+  draw_cross_mut(&mut image, Rgb([0, 255, 0]), center_img_x as i32, center_img_y as i32);
   
   image.save(file_path).unwrap();
 }
