@@ -5,4 +5,6 @@ authors = ["Jeffrey McAteer <jeffrey.p.mcateer@gmail.com>"]
 
 [dependencies]
 tsplib = "0.1.0"
+image = "*"
+imageproc = "0.16.0"
 
