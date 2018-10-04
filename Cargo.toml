@@ -8,5 +8,7 @@ tsplib = "0.1.0"
 image = "*"
 imageproc = "0.16.0"
 rusttype = "*"
+rand = "0.5.5"
+
 
 
