@@ -154,5 +154,9 @@ rl11849 : 923,288  1,198,670.090  5,485ms
 
 ```
 
+Quadratic regression for those numbers (x=size of city, y=time in ms) gives the function: `y = 128.1553 - 0.2493989*x + 0.00005912996*x^2`
 
+Quartic regression gives: `y = 3.81755 + 0.003054128*x + 0.000008696739*x^2 + 8.445805e-10*x^3 + 1.430081e-13*x^4`
+
+Given the miniature size of the `x^3` and `x^4` coefficients I can feel confident my `O(N^2)` complexity is real.
 
