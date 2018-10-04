@@ -381,11 +381,14 @@ fn selective() {
       println!("We have broken jeff_algo at {} points!", city_num);
       // we have added a city which breaks things!
       node_coordinates.pop();
+      let city_weights = compute_weight_coords(&node_coordinates);
+      
       // Now we have a city right before our failure.
       
+      // Save the correct solution
+      brute_algo::solve(&node_coordinates, &city_weights, Some("./views/selective/".to_string()));
       // compute a 2d matrix of points and plot blue if they result in correct, red if they do not.
-      
-      
+      perform_matrix_image_gen("./views/selective-map.png", node_coordinates, city_weights, );
       
       
       return;
@@ -394,6 +397,12 @@ fn selective() {
   
   println!("Failed to break after 10, resetting...");
   selective();
+  
+}
+
+fn perform_matrix_image_gen<S: Into<String>>(img_path: S, node_coordinates: Vec<(usize, f32, f32)>, city_weights: Vec<Vec<f32>>) {
+  
+  
   
 }
 
