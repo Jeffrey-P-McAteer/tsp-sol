@@ -162,3 +162,11 @@ Quartic regression gives: `y = 3.81755 + 0.003054128*x + 0.000008696739*x^2 + 8.
 
 Given the miniature size of the `x^3` and `x^4` coefficients I can feel confident my `O(N^2)` complexity is real.
 
+# Misc
+
+
+Good one-liner:
+
+```
+rm -rf views/* ; cargo run --release delta && ( ls -l1 views | wc -l )
+```
