@@ -61,9 +61,9 @@ fn main() {
   println!("====== jeff_algo::solve ======");
   print_path_metadata(&solution_p, &weights);
   
-  let solution_p = brute_algo::solve(&node_coordinates, &weights, None);
-  println!("====== brute_algo::solve ======");
-  print_path_metadata(&solution_p, &weights);
+  //let solution_p = brute_algo::solve(&node_coordinates, &weights, None);
+  //println!("====== brute_algo::solve ======");
+  //print_path_metadata(&solution_p, &weights);
 }
 
 fn delta(num_tests: usize, lower_city_size: usize, upper_city_size: usize) {
