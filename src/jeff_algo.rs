@@ -88,6 +88,20 @@ pub fn solve(node_coordinates: &Vec<(usize, f32, f32)>, weights: &Vec<Vec<f32>>,
     let ordered_idx = (ordered_idx+1) % ordered_visits.len();
     ordered_visits.insert(ordered_idx, furthest_non_collected_point_i);
     
+    { // Now attempt to swap positions for all N, keeping the swap if it reduces total path distance.
+      for i in 0..ordered_visits.len() {
+        let j = (i+1) % ordered_visits.len();
+        let before_dist = compute_dist(weights, &ordered_visits);
+        // do swap
+        ordered_visits.swap(i, j);
+        let after_dist = compute_dist(weights, &ordered_visits);
+        if after_dist > before_dist {
+          // if we screwed up (likely) swap back
+          ordered_visits.swap(j, i);
+        }
+      }
+    }
+    
     center = compute_center(&ordered_visits, &node_coordinates);
     //println!(" = = = = ");
   }
