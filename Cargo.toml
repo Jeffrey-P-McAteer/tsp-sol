@@ -9,6 +9,7 @@ image = "*"
 imageproc = "0.16.0"
 rusttype = "*"
 rand = "0.5.5"
+permutohedron = "0.2.4"
 
 
 

@@ -13,6 +13,8 @@ use rusttype::{FontCollection, Scale};
 extern crate rand;
 use rand::prelude::*;
 
+extern crate permutohedron;
+
 use std::fs;
 use std::fs::{File,create_dir};
 use std::path::Path;
@@ -55,8 +57,12 @@ fn main() {
     }
   };
   
-  let solution_p = jeff_algo::solve(&node_coordinates, &weights, Some("./views/examplerun/".to_string()));
+  let solution_p = jeff_algo::solve(&node_coordinates, &weights, None);
   println!("====== jeff_algo::solve ======");
+  print_path_metadata(&solution_p, &weights);
+  
+  let solution_p = brute_algo::solve(&node_coordinates, &weights, None);
+  println!("====== brute_algo::solve ======");
   print_path_metadata(&solution_p, &weights);
 }
 
@@ -150,5 +156,119 @@ fn open_tsp_problem(file_arg: String) -> Option<(Vec<(usize, f32, f32)>, Vec<Vec
   // remember weights is 2d square matrix (could be triangle, meh.)
   
   return Some( (node_coordinates, weights) );
+}
+
+// Meh used in imagery
+
+fn compute_center(path: &Vec<usize>, locations: &Vec<(usize, f32, f32)>) -> (f32, f32) {
+  let mut x_tot: f32 = 0.0;
+  let mut y_tot: f32 = 0.0;
+  
+  for p in path {
+    x_tot += locations[*p].1;
+    y_tot += locations[*p].2;
+  }
+  
+  x_tot /= path.len() as f32;
+  y_tot /= path.len() as f32;
+  return (x_tot, y_tot);
+}
+
+// Shared imagery functions
+
+fn save_state_image<I: Into<String>>(file_path: I, path: &Vec<usize>, locations: &Vec<(usize, f32, f32)>, center: &(f32, f32)) {
+  let file_path = file_path.into();
+  let (width, height) = (600, 600);
+  let mut image = ImageBuffer::<Rgb<u8>, Vec<u8>>::new(width + 5, height + 5); // width, height
+  
+  let (smallest_x, largest_y, largest_x, smallest_y) = get_point_extents(locations);
+  let x_range: f32 = largest_x - smallest_x;
+  let y_range: f32 = largest_y - smallest_y;
+  
+  for i in 0..locations.len() {
+    let loc = locations[i];
+    let (loc_x,loc_y) = scale_xy(width, height, x_range as u32, y_range as u32, smallest_x, smallest_y, loc.1, loc.2);
+    
+    // Set all location pixels to be red // r,g,b
+    //image.get_pixel_mut(loc_x, loc_y).data = [255, 0, 0];
+    //circle_it(&mut image, loc_x, loc_y, [255, 0, 0]);
+    draw_hollow_circle_mut(&mut image, (loc_x as i32, loc_y as i32), 10 /*radius*/, Rgb([255, 0, 0]));
+    
+    // Also draw an index number
+    let font = Vec::from( include_bytes!("/usr/share/fonts/noto/NotoSans-Bold.ttf") as &[u8] );
+    let font = FontCollection::from_bytes(font).unwrap().into_font().unwrap();
+    
+    let font_height = 14.0;
+    let font_scale = Scale { x: font_height, y: font_height };
+    draw_text_mut(&mut image, Rgb([200, 200, 255]), loc_x as u32, loc_y as u32, font_scale, &font, format!("{}", i).as_str());
+  }
+  
+  for i in 0..path.len() {
+    let pt_from = path[i];
+    let pt_to =   path[(i+1) % path.len()];
+    //println!("pt_from = {}, pt_to = {}", pt_from, pt_to);
+    
+    let from_loc = locations[pt_from];
+    let (from_loc_x,from_loc_y) = scale_xy(width, height, x_range as u32, y_range as u32, smallest_x, smallest_y, from_loc.1, from_loc.2);
+    
+    let to_loc = locations[pt_to];
+    let (pt_to_x,pt_to_y) = scale_xy(width, height, x_range as u32, y_range as u32, smallest_x, smallest_y, to_loc.1, to_loc.2);
+    //println!("Going from {} to {}", pt_from, pt_to);
+    
+    draw_line_segment_mut(&mut image,
+      (pt_to_x as f32,pt_to_y as f32), // start
+      (from_loc_x as f32,from_loc_y as f32), // end
+      Rgb([200, 200, 200])
+    );
+  }
+  
+  // center is green cross
+  let (center_img_x, center_img_y) = scale_xy(width, height, x_range as u32, y_range as u32, smallest_x, smallest_y, center.0, center.1);
+  draw_cross_mut(&mut image, Rgb([0, 255, 0]), center_img_x as i32, center_img_y as i32);
+  
+  image.save(file_path).unwrap();
+}
+
+fn scale_xy(img_w: u32, img_h: u32, path_w: u32, path_h: u32, path_x_smallest: f32, path_y_smallest: f32, given_x: f32, given_y: f32) -> (u32, u32) {
+  let mut img_x = (given_x - path_x_smallest) * ((img_w as f32 / path_w as f32) as f32);
+  let mut img_y = (given_y - path_y_smallest) * ((img_h as f32 / path_h as f32) as f32);
+  if img_x < 5.0 {
+    img_x = 5.0;
+  }
+  if img_x > (img_w-5) as f32 {
+    img_x = (img_w-5) as f32;
+  }
+  if img_y < 5.0 {
+    img_y = 5.0;
+  }
+  if img_y > (img_h-5) as f32 {
+    img_y = (img_h-5) as f32;
+  }
+  return (img_x as u32, img_y as u32);
+}
+
+// returns smallestX, largestY, largestX, smallestY
+fn get_point_extents(locations: &Vec<(usize, f32, f32)>) -> (f32, f32, f32, f32) {
+  let mut smallest_x = f32::INFINITY;
+  let mut largest_y = f32::NEG_INFINITY;
+  let mut largest_x = f32::NEG_INFINITY;
+  let mut smallest_y = f32::INFINITY;
+  for loc in locations {
+    let x = loc.1;
+    let y = loc.2;
+    if x < smallest_x {
+      smallest_x = x;
+    }
+    if x > largest_x {
+      largest_x = x;
+    }
+    if y < smallest_y {
+      smallest_y = y;
+    }
+    if y > largest_y {
+      largest_y = y;
+    }
+  }
+  return (smallest_x, largest_y, largest_x, smallest_y);
 }
 
