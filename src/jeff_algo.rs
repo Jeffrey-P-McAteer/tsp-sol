@@ -18,14 +18,14 @@ pub fn solve(node_coordinates: &Vec<(usize, f32, f32)>, weights: &Vec<Vec<f32>>,
     return ordered_visits;
   }
   
-  { // Find largest triangle
+  { // Find smallest triangle
     { // Make the first 2 points the furthest away in the entire graph
       for r in 0..weights.len() {
         for c in 0..weights.len() {
           if r == c { continue; }
-          let best_largest_w = weights[ordered_visits[0]][ordered_visits[1]];
+          let best_smallest_w = weights[ordered_visits[0]][ordered_visits[1]];
           let this_largest_w    = weights[r][c];
-          if this_largest_w > best_largest_w {
+          if this_largest_w < best_smallest_w {
             ordered_visits[0] = r;
             ordered_visits[1] = c;
           }
@@ -40,13 +40,13 @@ pub fn solve(node_coordinates: &Vec<(usize, f32, f32)>, weights: &Vec<Vec<f32>>,
     //save_state_image(format!("./views/0-1.png"), &ordered_visits, &node_coordinates, &(0.0, 0.0));
     { // Given the longest edge, find 
       // weight(0, 2) + weight(1, 2) (weights of both edges going to "2")
-      let mut current_longest_point_len = weights[ordered_visits[0]][ordered_visits[2]] + weights[ordered_visits[1]][ordered_visits[2]];
+      let mut current_closest_point_len = weights[ordered_visits[0]][ordered_visits[2]] + weights[ordered_visits[1]][ordered_visits[2]];
       for r in 0..weights.len() {
         if r == ordered_visits[0] || r == ordered_visits[1] { continue; }
         let this_len = weights[ordered_visits[0]][r] + weights[ordered_visits[1]][r];
-        if this_len > current_longest_point_len {
+        if this_len < current_closest_point_len {
           ordered_visits[2] = r;
-          current_longest_point_len = this_len;
+          current_closest_point_len = this_len;
         }
       }
     }
