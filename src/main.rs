@@ -76,7 +76,23 @@ fn delta(num_tests: usize, lower_city_size: usize, upper_city_size: usize) {
 }
 
 fn delta_test(city_size: usize) {
+  let (node_coordinates, weights) = gen_tsp_problem(city_size, 0.0, 10.0, 0.0, 10.0);
   
+  let jeff_sol = jeff_algo::solve(&node_coordinates, &weights, None);
+  let brute_sol = brute_algo::solve(&node_coordinates, &weights, None);
+  
+  let jeff_sol_len = compute_dist(&weights, &jeff_sol);
+  let brute_sol_len = compute_dist(&weights, &brute_sol);
+  
+  if jeff_sol_len != brute_sol_len {
+    // re-do test, saving results
+    let r_test_num: usize = rand::thread_rng().gen_range(0, 1000000);
+    
+    let prefix_dir = format!("./views/{}/", r_test_num);
+    jeff_algo::solve(&node_coordinates, &weights, Some(prefix_dir.clone()));
+    brute_algo::solve(&node_coordinates, &weights, Some(prefix_dir.clone()));
+    
+  }
 }
 
 fn print_path_metadata(path: &Vec<usize>, weights: &Vec<Vec<f32>>) {
@@ -96,6 +112,36 @@ fn compute_dist(weights: &Vec<Vec<f32>>, path: &Vec<usize>) -> f32 {
     total += weights[p][p2];
   }
   return total;
+}
+
+fn gen_tsp_problem(num_points: usize, min_x: f32, max_x: f32, min_y: f32, max_y: f32) -> (Vec<(usize, f32, f32)>, Vec<Vec<f32>>) {
+  let mut rng = rand::thread_rng();
+  let mut node_coordinates: Vec<(usize, f32, f32)> = vec![];
+  
+  for i in 0..num_points {
+    node_coordinates.push(
+      (i, rng.gen_range(min_x, max_x), rng.gen_range(min_y, max_y))
+    );
+  }
+  
+  // Compute 2x matrix of edge weights (assumes 2d euclidian geometry)
+  let mut weights: Vec<Vec<f32>> = Vec::with_capacity(node_coordinates.len());
+  {
+    for row_r in &node_coordinates {
+      let mut row_weight_v: Vec<f32> = Vec::with_capacity(node_coordinates.len());
+      for col_r in &node_coordinates {
+        let weight: f32 = (
+          (row_r.1 - col_r.1).powf(2.0) + // x1 + x2 squared
+          (row_r.2 - col_r.2).powf(2.0)   // y1 + y2 squared
+        ).sqrt();
+        
+        row_weight_v.push(weight);
+      }
+      weights.push(row_weight_v);
+    }
+  }
+  
+  return (node_coordinates, weights);
 }
 
 fn open_tsp_problem(file_arg: String) -> Option<(Vec<(usize, f32, f32)>, Vec<Vec<f32>>)> {
