@@ -27,7 +27,7 @@ mod brute_algo;
 mod jeff_algo;
 
 fn usage() {
-  println!(r#"Usage: ./tsp-sol path/to/berlin52.tsp|delta
+  println!(r#"Usage: ./tsp-sol path/to/berlin52.tsp|delta|selective
 "#);
 }
 
@@ -47,6 +47,11 @@ fn main() {
   
   if file_arg == "delta" {
     delta(1000, 4, 8); // test the algorithm on a thousand generated cities, between 4-8 points each.
+    return;
+  }
+  
+  if file_arg == "selective" {
+    selective(); // generate increasing city size until failure (jeff() != brute()), then go back and map a large range of points
     return;
   }
 
@@ -184,21 +189,7 @@ fn open_tsp_problem(file_arg: String) -> Option<(Vec<(usize, f32, f32)>, Vec<Vec
   };
   
   // Compute 2x matrix of edge weights (assumes 2d euclidian geometry)
-  let mut weights: Vec<Vec<f32>> = Vec::with_capacity(node_coordinates.len());
-  {
-    for row_r in &node_coordinates {
-      let mut row_weight_v: Vec<f32> = Vec::with_capacity(node_coordinates.len());
-      for col_r in &node_coordinates {
-        let weight: f32 = (
-          (row_r.1 - col_r.1).powf(2.0) + // x1 + x2 squared
-          (row_r.2 - col_r.2).powf(2.0)   // y1 + y2 squared
-        ).sqrt();
-        
-        row_weight_v.push(weight);
-      }
-      weights.push(row_weight_v);
-    }
-  }
+  let weights = compute_weight_coords(&node_coordinates);
   
   println!("City has {} points", weights.len());
   // remember weights is 2d square matrix (could be triangle, meh.)
@@ -319,4 +310,91 @@ fn get_point_extents(locations: &Vec<(usize, f32, f32)>) -> (f32, f32, f32, f32)
   }
   return (smallest_x, largest_y, largest_x, smallest_y);
 }
+
+fn compute_weight_coords(node_coordinates: &Vec<(usize, f32, f32)>) -> Vec<Vec<f32>> {
+  // Compute 2x matrix of edge weights (assumes 2d euclidian geometry)
+  let mut weights: Vec<Vec<f32>> = Vec::with_capacity(node_coordinates.len());
+  {
+    for row_r in node_coordinates {
+      let mut row_weight_v: Vec<f32> = Vec::with_capacity(node_coordinates.len());
+      for col_r in node_coordinates {
+        let weight: f32 = (
+          (row_r.1 - col_r.1).powf(2.0) + // x1 + x2 squared
+          (row_r.2 - col_r.2).powf(2.0)   // y1 + y2 squared
+        ).sqrt();
+        
+        row_weight_v.push(weight);
+      }
+      weights.push(row_weight_v);
+    }
+  }
+  return weights;
+}
+
+fn selective() {
+  println!("Performing selective failure...");
+  // Bounding box for all points
+  let x_min_bound: f32 = 0.0;
+  let x_max_bound: f32 = 15.0;
+  let y_min_bound: f32 = 0.0;
+  let y_max_bound: f32 = 15.0;
+  
+  let bound_granularity = 0.25; // step size with which to make grid points after failure
+  
+  let x_min: f32 = 5.0;
+  let x_max: f32 = 10.0;
+  let y_min: f32 = 5.0;
+  let y_max: f32 = 10.0;
+  
+  let mut rng = rand::thread_rng();
+  let mut node_coordinates: Vec<(usize, f32, f32)> = vec![];
+  
+  // Just add 3 to begin with
+  for i in 0..3 {
+    let new_r_city = (
+      i,
+      rng.gen_range(x_min, x_max),
+      rng.gen_range(y_min, y_max),
+    );
+    node_coordinates.push(new_r_city);
+  }
+  
+  // If we hit 11 cities without a failure we'll recurse and start from 3 again.
+  for city_num in 3..11 {
+    let new_r_city = (
+      city_num,
+      rng.gen_range(x_min, x_max),
+      rng.gen_range(y_min, y_max),
+    );
+    node_coordinates.push(new_r_city); // we can pop() if we fail
+    
+    let city_weights = compute_weight_coords(&node_coordinates);
+    
+    let jeff_sol = jeff_algo::solve(&node_coordinates, &city_weights, None);
+    let brute_sol = brute_algo::solve(&node_coordinates, &city_weights, None);
+    
+    let jeff_sol_len = compute_dist(&city_weights, &jeff_sol);
+    let brute_sol_len = compute_dist(&city_weights, &brute_sol);
+    let distance_diff = jeff_sol_len - brute_sol_len;
+    
+    if distance_diff.abs() > 0.01 { // account for floating point errors
+      println!("We have broken jeff_algo at {} points!", city_num);
+      // we have added a city which breaks things!
+      node_coordinates.pop();
+      // Now we have a city right before our failure.
+      
+      // compute a 2d matrix of points and plot blue if they result in correct, red if they do not.
+      
+      
+      
+      
+      return;
+    }
+  }
+  
+  println!("Failed to break after 10, resetting...");
+  selective();
+  
+}
+
 
