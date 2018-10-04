@@ -46,7 +46,7 @@ fn main() {
   let file_arg = args.get(1).unwrap();
   
   if file_arg == "delta" {
-    delta(1000, 4, 8); // test the algorithm on a thousand generated cities, between 4-8 points each.
+    delta(1000, 5, 11); // test the algorithm on a thousand generated cities, between 5-11 points each.
     return;
   }
 
