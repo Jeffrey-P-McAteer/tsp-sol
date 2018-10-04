@@ -32,6 +32,10 @@ pub fn solve(node_coordinates: &Vec<(usize, f32, f32)>, weights: &Vec<Vec<f32>>,
         format!("{}/brute-path.txt", prefix),
         format!("{:?}\nDistance:{}", best_path, compute_dist(weights, &best_path))
       ).expect("Unable to write file");
+      fs::write(
+        format!("{}/node-coordinates.txt", prefix),
+        format!("{:?}", node_coordinates)
+      ).expect("Unable to write file");
     }
     None => { }
   }
