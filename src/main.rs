@@ -13,7 +13,8 @@ use rusttype::{FontCollection, Scale};
 extern crate rand;
 use rand::prelude::*;
 
-use std::fs::File;
+use std::fs;
+use std::fs::{File,create_dir};
 use std::path::Path;
 use std::io::{BufReader};
 use std::env;
@@ -31,7 +32,7 @@ fn usage() {
 /// We will read in a problem & compute a weights matrix, the solver must return
 /// a vector of the path to take from city index to index.
 /// Solver function header:
-///   fn solve(problem: &tsplib::Instance, weights: &Vec<Vec<f32>>) -> Vec<usize>
+///   pub fn solve(node_coordinates: Vec<(usize, f32, f32)>, weights: &Vec<Vec<f32>>) -> Vec<usize>
 
 fn main() {
   let args: Vec<_> = env::args().collect();
@@ -54,7 +55,7 @@ fn main() {
     }
   };
   
-  let solution_p = jeff_algo::solve(&node_coordinates, &weights);
+  let solution_p = jeff_algo::solve(&node_coordinates, &weights, Some("./views/examplerun/".to_string()));
   println!("====== jeff_algo::solve ======");
   print_path_metadata(&solution_p, &weights);
 }

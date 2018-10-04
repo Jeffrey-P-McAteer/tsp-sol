@@ -1,11 +1,17 @@
 
 use super::*;
 
-pub fn solve(node_coordinates: &Vec<(usize, f32, f32)>, weights: &Vec<Vec<f32>>) -> Vec<usize> {
+pub fn solve(node_coordinates: &Vec<(usize, f32, f32)>, weights: &Vec<Vec<f32>>, save_run_prefix: Option<String>) -> Vec<usize> {
   // We begin with points 0, 1, and 2.
   // These will be overwritten in the largest-triangle-fining process
   let mut ordered_visits: Vec<usize> = vec![0, 1, 2]; // holds the path as a vector of indexes relating to the city number beginning at 0
   
+  match &save_run_prefix {
+    Some(prefix) => {
+      create_dir(prefix);
+    }
+    None => { }
+  }
   
   // If we have 3 or fewer points, we're done. min bound is O(1), good job folks.
   if weights.len() <= 3 {
@@ -65,6 +71,12 @@ pub fn solve(node_coordinates: &Vec<(usize, f32, f32)>, weights: &Vec<Vec<f32>>)
          ordered_idx,
          unordered_idx) = compute_furthest(&ordered_visits, &unordered_visits, &weights, &node_coordinates, &center);
     
+    match &save_run_prefix {
+      Some(prefix) => {
+        save_state_image(format!("{}/jalgo-{:03}.png", prefix, ordered_visits.len()), &ordered_visits, &node_coordinates, &center);
+      }
+      None => { }
+    }
     //print_path_metadata(&ordered_visits, &weights);
     //save_state_image(format!("./views/{}.png", ordered_visits.len()), &ordered_visits, &node_coordinates, &center);
     // println!("ordered_visits = {:?}", ordered_visits);
@@ -80,11 +92,16 @@ pub fn solve(node_coordinates: &Vec<(usize, f32, f32)>, weights: &Vec<Vec<f32>>)
     //println!(" = = = = ");
   }
   
-  { // Print solution
-    //print_path_metadata(&ordered_visits, &weights);
-    //save_state_image(format!("./views/{}.png", ordered_visits.len()), &ordered_visits, &node_coordinates, &center);
-    //println!("ordered_visits = {:?}", ordered_visits);
-    //println!("unordered_visits = {:?}", unordered_visits);
+  // Store solution
+  match &save_run_prefix {
+    Some(prefix) => {
+      save_state_image(format!("{}/jalgo-{:03}.png", prefix, ordered_visits.len()), &ordered_visits, &node_coordinates, &center);
+      fs::write(
+        format!("{}/jalgo-path.txt", prefix),
+        format!("{:?}\nDistance:{}", ordered_visits, compute_dist(weights, &ordered_visits))
+      ).expect("Unable to write file");
+    }
+    None => { }
   }
   
   return ordered_visits;
