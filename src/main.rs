@@ -84,11 +84,13 @@ fn delta_test(city_size: usize) {
   let jeff_sol_len = compute_dist(&weights, &jeff_sol);
   let brute_sol_len = compute_dist(&weights, &brute_sol);
   
-  if jeff_sol_len != brute_sol_len {
+  let distance_diff = jeff_sol_len - brute_sol_len;
+  
+  if distance_diff.abs() > 0.01 { // account for floating point errors
     // re-do test, saving results
-    let r_test_num: usize = rand::thread_rng().gen_range(0, 1000000);
+    let r_test_num: usize = rand::thread_rng().gen_range(0, 10000);
     
-    let prefix_dir = format!("./views/{}/", r_test_num);
+    let prefix_dir = format!("./views/{:02}-{}/", weights.len(), r_test_num);
     jeff_algo::solve(&node_coordinates, &weights, Some(prefix_dir.clone()));
     brute_algo::solve(&node_coordinates, &weights, Some(prefix_dir.clone()));
     
