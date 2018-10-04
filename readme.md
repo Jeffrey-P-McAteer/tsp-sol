@@ -3,6 +3,8 @@
 
 A novel Traveling Salesman algorithm in `O(N^2)` time, which aims to be a proper deterministic solution to all euclidian symmetric TS problems.
 
+**Edit** This algorithm it not so novel as the author originally thought, and falls into a class of TSP heuristic algorithms known as "Insertion Methods". The author maintains the mindset that this algorithm can go beyond a heuristic to provide a proper solution.
+
 # Theory
 
 This approach decomposes finding an ideal hamiltonian cycle into:
