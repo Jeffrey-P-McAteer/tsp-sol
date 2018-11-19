@@ -378,7 +378,7 @@ fn selective() {
     let distance_diff = jeff_sol_len - brute_sol_len;
     
     if distance_diff.abs() > 0.01 { // account for floating point errors
-      println!("We have broken jeff_algo at {} points!", city_num);
+      println!("We have broken jeff_algo at {} points!", city_num+1);
       // we have added a city which breaks things!
       node_coordinates.pop();
       let city_weights = compute_weight_coords(&node_coordinates);
@@ -387,6 +387,8 @@ fn selective() {
       
       // Save the correct solution
       brute_algo::solve(&node_coordinates, &city_weights, Some("./views/selective/".to_string()));
+      jeff_algo::solve(&node_coordinates, &city_weights, Some("./views/selective/".to_string()));
+      
       // compute a 2d matrix of points and plot blue if they result in correct, red if they do not.
       perform_matrix_image_gen("./views/selective-map.png", node_coordinates, city_weights, );
       
