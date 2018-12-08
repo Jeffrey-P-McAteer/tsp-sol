@@ -28,6 +28,13 @@ mod jeff_algo;
 
 fn usage() {
   println!(r#"Usage: ./tsp-sol path/to/berlin52.tsp|delta|selective
+
+Passing a single file (tsp/berlin52.tsp) will run JeffAlgo on it and pring the size and solution path.
+
+delta will cause 1000 runs using both JeffAlgo and BruteAlgo, incorrect JeffAlgo runs will be dumped to the ./views directory.
+
+selective loops throuh increasingly large cities and exits when JeffAlgo does not match BruteAlgo.
+
 "#);
 }
 
