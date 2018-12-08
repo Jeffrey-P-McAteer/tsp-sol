@@ -53,7 +53,9 @@ fn main() {
   let file_arg = args.get(1).unwrap();
   
   if file_arg == "delta" {
-    delta(1000, 4, 8); // test the algorithm on a thousand generated cities, between 4-8 points each.
+    let num = 1000;
+    let num_failed = delta(num, 4, 8); // test the algorithm on a thousand generated cities, between 4-8 points each.
+    println!("Failed {} out of {}", num_failed, num);
     return;
   }
   
@@ -78,16 +80,20 @@ fn main() {
   //print_path_metadata(&solution_p, &weights);
 }
 
-fn delta(num_tests: usize, lower_city_size: usize, upper_city_size: usize) {
+fn delta(num_tests: usize, lower_city_size: usize, upper_city_size: usize) -> usize {
   let mut rng = thread_rng();
+  let mut total_failed: usize = 0;
   for i in 0..num_tests {
     let city_size = rng.gen_range(lower_city_size, upper_city_size);
     println!("Delta testing {}/{}", i, num_tests);
-    delta_test(city_size);
+    if ! delta_test(city_size) {
+      total_failed += 1;
+    }
   }
+  return total_failed;
 }
 
-fn delta_test(city_size: usize) {
+fn delta_test(city_size: usize) -> bool {
   let (node_coordinates, weights) = gen_tsp_problem(city_size, 0.0, 10.0, 0.0, 10.0);
   
   let jeff_sol = jeff_algo::solve(&node_coordinates, &weights, None);
@@ -105,8 +111,9 @@ fn delta_test(city_size: usize) {
     let prefix_dir = format!("./views/{:02}-{}/", weights.len(), r_test_num);
     jeff_algo::solve(&node_coordinates, &weights, Some(prefix_dir.clone()));
     brute_algo::solve(&node_coordinates, &weights, Some(prefix_dir.clone()));
-    
+    return false;
   }
+  return true;
 }
 
 fn print_path_metadata(path: &Vec<usize>, weights: &Vec<Vec<f32>>) {
