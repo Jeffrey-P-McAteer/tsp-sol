@@ -162,6 +162,21 @@ Quartic regression gives: `y = 3.81755 + 0.003054128*x + 0.000008696739*x^2 + 8.
 
 Given the miniature size of the `x^3` and `x^4` coefficients I can feel confident my `O(N^2)` complexity is real.
 
+# Ideal changes
+
+After the `switchback` filtering:
+
+```
+berlin52:   7,542      8,315.512
+rat783  :   8,806     10,789.581
+pcb1173 :  56,892     71,130.970
+rl5915  : 565,530    718,118.900
+rl11849 : 923,288  1,168,551.100
+```
+
+Which shows improvements of about 2.5%, moving us about 26% within optimum for most tours
+
+
 # Misc
 
 
