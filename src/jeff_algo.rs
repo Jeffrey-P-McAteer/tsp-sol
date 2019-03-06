@@ -92,6 +92,26 @@ pub fn solve(node_coordinates: &Vec<(usize, f32, f32)>, weights: &Vec<Vec<f32>>,
     
     center = compute_center(&ordered_visits, &node_coordinates);
     //println!(" = = = = ");
+    
+    // We may have made a mistake around edge-case corners
+    let p_tot_len = path_total_len(&ordered_visits, weights);
+    for idx in (ordered_idx+ordered_visits.len()-4)..(ordered_idx+ordered_visits.len()+4) {
+      let idx = idx % ordered_visits.len();
+      if compute_switchback_len(idx, 1, &ordered_visits, weights) < p_tot_len {
+        println!("Switchback is improving our distance!");
+        apply_switchback(idx, 1, &mut ordered_visits);
+      }
+    }
+    // Check the same thing in the opposite directon
+    // We may have made a mistake around edge-case corners
+    let p_tot_len = path_total_len(&ordered_visits, weights);
+    for idx in (ordered_idx+ordered_visits.len()-4)..(ordered_idx+ordered_visits.len()+4) {
+      let idx = idx % ordered_visits.len();
+      if compute_switchback_len(idx, -1, &ordered_visits, weights) < p_tot_len {
+        println!("Switchback is improving our distance!");
+        apply_switchback(idx, -1, &mut ordered_visits);
+      }
+    }
   }
   
   // Store solution
@@ -161,6 +181,39 @@ fn compute_furthest(path: &Vec<usize>, unordered: &Vec<usize>, weights: &Vec<Vec
   return (furthest_i/*idx to weight matrix*/, path_idx, unordered_idx);
 }
 
+fn compute_switchback_len(idx: usize, direction: isize, path: &Vec<usize>, weights: &Vec<Vec<f32>>) -> f32 {
+  let mut path_clone = path.clone();
+  apply_switchback(idx as usize, direction, &mut path_clone);
+  return path_total_len(&path_clone, weights);
+}
 
+// Mutates path according to switchback algo
+fn apply_switchback(idx: usize, direction: isize, path: &mut Vec<usize>) {
+  if direction > 0 {
+    // N+2 and N+1 swap positions
+    let n_p_1 = (idx + 1) % path.len();
+    let n_p_2 = (idx + 2) % path.len();
+    path.swap(n_p_1, n_p_2);
+  }
+  else {
+    // N-2 and N-1 swap positions
+    let n_p_1 = ((idx + path.len()) - 1) % path.len();
+    let n_p_2 = ((idx + path.len()) - 2) % path.len();
+    path.swap(n_p_1, n_p_2);
+  }
+}
 
+// A and B are values of path elements
+fn edge_len(a:isize, b:isize, weights: &Vec<Vec<f32>>) -> f32 {
+  let a: usize = ((a + weights.len() as isize) as usize % weights.len()) as usize;
+  let b: usize = ((b + weights.len() as isize) as usize % weights.len()) as usize;
+  return weights[a][b];
+}
 
+fn path_total_len(path: &Vec<usize>, weights: &Vec<Vec<f32>>) -> f32 {
+  let mut total = 0.0;
+  for i in 1..(path.len()+1) {
+    total += edge_len(path[(i+path.len()-1) % path.len()] as isize, path[i % path.len()] as isize, weights);
+  }
+  return total;
+}
