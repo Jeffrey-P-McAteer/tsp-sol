@@ -95,23 +95,55 @@ pub fn solve(node_coordinates: &Vec<(usize, f32, f32)>, weights: &Vec<Vec<f32>>,
     
     // We may have made a mistake around edge-case corners
     let p_tot_len = path_total_len(&ordered_visits, weights);
+    
+    let mut positive_ideal_ordered_visits = ordered_visits.clone();
+    let mut positive_applied: isize = -1;
     for idx in (ordered_idx+ordered_visits.len()-4)..(ordered_idx+ordered_visits.len()+4) {
       let idx = idx % ordered_visits.len();
       if compute_switchback_len(idx, 1, &ordered_visits, weights) < p_tot_len {
         println!("Switchback is improving our distance!");
-        apply_switchback(idx, 1, &mut ordered_visits);
+        apply_switchback(idx, 1, &mut positive_ideal_ordered_visits);
+        positive_applied = idx as isize;
       }
     }
+    
     // Check the same thing in the opposite directon
     // We may have made a mistake around edge-case corners
-    let p_tot_len = path_total_len(&ordered_visits, weights);
+    let mut negative_ideal_ordered_visits = ordered_visits.clone();
+    let mut negative_applied: isize = -1;
     for idx in (ordered_idx+ordered_visits.len()-4)..(ordered_idx+ordered_visits.len()+4) {
       let idx = idx % ordered_visits.len();
       if compute_switchback_len(idx, -1, &ordered_visits, weights) < p_tot_len {
         println!("Switchback is improving our distance!");
-        apply_switchback(idx, -1, &mut ordered_visits);
+        apply_switchback(idx, -1, &mut negative_ideal_ordered_visits);
+        negative_applied = idx as isize;
       }
     }
+    
+    if positive_applied>=0 && !(negative_applied>=0) {
+      ordered_visits = positive_ideal_ordered_visits;
+    }
+    else if !(positive_applied>=0) && (negative_applied>=0) {
+      ordered_visits = negative_ideal_ordered_visits;
+    }
+    else if !(positive_applied>=0) && !(negative_applied>=0) {
+      // do nothing
+    }
+    else {
+      // both are true, what to do??
+      let positive_sw_len = path_total_len(&positive_ideal_ordered_visits, weights);
+      let negative_sw_len = path_total_len(&negative_ideal_ordered_visits, weights);
+      if positive_sw_len < negative_sw_len {
+        // use positive
+        apply_switchback(positive_applied as usize, 1, &mut ordered_visits);
+      }
+      else {
+        apply_switchback(negative_applied as usize, -1, &mut ordered_visits);
+      }
+    }
+    
+    
+    
   }
   
   // Store solution
