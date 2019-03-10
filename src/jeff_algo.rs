@@ -53,9 +53,6 @@ pub fn solve(node_coordinates: &Vec<(usize, f32, f32)>, weights: &Vec<Vec<f32>>,
       }
     }
   }
-  // Compute triangle center.
-  // We update this on every point insertion to the ideal path.
-  let mut center = compute_center(&ordered_visits, &node_coordinates);
   // Holds all points not in ordered_visits
   let mut unordered_visits: Vec<usize> = Vec::with_capacity(weights.len()-3);
   'outer: for p in 0..weights.len() {
@@ -70,14 +67,17 @@ pub fn solve(node_coordinates: &Vec<(usize, f32, f32)>, weights: &Vec<Vec<f32>>,
   
   // duplicate starting data N times to make our racers;
   // every step we will compare their lengths and if one is smaller we keep that one
-  let racers = 12;
+  let racers = 1024 * 10;
   // if a racer does worse then the others for this many consecurive turns,
   // we overwrite with the best one.
-  let losses_before_overwritten = 5;
+  let soft_losses_before_overwritten = 18;
+  let hard_losses_before_overwritten = 36;
   
   let mut race_ordered_visits: Vec<Vec<usize>> = vec![];
   let mut race_unordered_visits: Vec<Vec<usize>> = vec![];
   let mut race_loss_counters: Vec<usize> = vec![];
+  let mut race_hashes: Vec<usize> = vec![];
+  let mut race_center: Vec<(f32, f32)> = vec![];
   
   for _ in 0..racers {
     race_ordered_visits.push(
@@ -86,8 +86,10 @@ pub fn solve(node_coordinates: &Vec<(usize, f32, f32)>, weights: &Vec<Vec<f32>>,
     race_unordered_visits.push(
       unordered_visits.clone()
     );
-    race_loss_counters.push(
-      0
+    race_loss_counters.push(0);
+    race_hashes.push(0);
+    race_center.push(
+      compute_center(&ordered_visits, &node_coordinates)
     );
   }
   
@@ -96,6 +98,8 @@ pub fn solve(node_coordinates: &Vec<(usize, f32, f32)>, weights: &Vec<Vec<f32>>,
   let ordered_visits: isize = 5;
   #[allow(unused_variables)]
   let unordered_visits: isize = 5;
+  #[allow(unused_variables)]
+  let center: isize = 5;
   
   // Used when we return
   let mut best_racer_i = 0;
@@ -106,11 +110,11 @@ pub fn solve(node_coordinates: &Vec<(usize, f32, f32)>, weights: &Vec<Vec<f32>>,
       
       let (furthest_non_collected_point_i,
            ordered_idx,
-           unordered_idx) = compute_furthest_min_x(&race_ordered_visits[i], &race_unordered_visits[i], &weights, &node_coordinates, &center, i);
+           unordered_idx) = compute_furthest_min_x(&race_ordered_visits[i], &race_unordered_visits[i], &weights, &node_coordinates, &race_center[i], i);
 
       match &save_run_prefix {
         Some(prefix) => {
-          save_state_image(format!("{}/jalgo-r{}-{:03}.png", prefix, i, race_ordered_visits[i].len()), &race_ordered_visits[i], &node_coordinates, &center);
+          save_state_image(format!("{}/jalgo-r{}-{:03}.png", prefix, i, race_ordered_visits[i].len()), &race_ordered_visits[i], &node_coordinates, &race_center[i]);
         }
         None => { }
       }
@@ -130,8 +134,9 @@ pub fn solve(node_coordinates: &Vec<(usize, f32, f32)>, weights: &Vec<Vec<f32>>,
       let ordered_idx = (ordered_idx+1) % race_ordered_visits[i].len();
       race_ordered_visits[i].insert(ordered_idx, furthest_non_collected_point_i);
       
-      center = compute_center(&race_ordered_visits[i], &node_coordinates);
+      race_center[i] = compute_center(&race_ordered_visits[i], &node_coordinates);
       
+      race_hashes[i] = compute_racer_hash(&race_ordered_visits[i]);
     }
     
     // Compare racer total
@@ -152,9 +157,19 @@ pub fn solve(node_coordinates: &Vec<(usize, f32, f32)>, weights: &Vec<Vec<f32>>,
       else {
         // We lost, increase loss counter
         race_loss_counters[i] += 1;
-        if race_loss_counters[i] > losses_before_overwritten {
-          // Queue overwriting this racer with whatever is determined to be best at end of loop
+        if race_loss_counters[i] > hard_losses_before_overwritten {
           overwrite_queue.push(i);
+        }
+        if race_loss_counters[i] > soft_losses_before_overwritten {
+          // ONLY consider overwriting if this is a non-unique breed
+          let number_matching = number_duplicates(&race_hashes, race_hashes[i]);
+          if number_matching > 1 {
+            // Queue overwriting this racer with whatever is determined to be best at end of loop
+            overwrite_queue.push(i);
+            // Also remove this racer's hash so the duplicate doesn't perform the
+            // same thing we just did
+            race_hashes[i] = 0;
+          }
         }
       }
     }
@@ -176,7 +191,7 @@ pub fn solve(node_coordinates: &Vec<(usize, f32, f32)>, weights: &Vec<Vec<f32>>,
   for i in 0..racers {
     match &save_run_prefix {
       Some(prefix) => {
-        save_state_image(format!("{}/jalgo-r{}-{:03}.png", prefix, i, race_ordered_visits[i].len()), &race_ordered_visits[i], &node_coordinates, &center);
+        save_state_image(format!("{}/jalgo-r{}-{:03}.png", prefix, i, race_ordered_visits[i].len()), &race_ordered_visits[i], &node_coordinates, &race_center[i]);
         fs::write(
           format!("{}/jalgo-r{}-path.txt", prefix, i),
           format!("Best:{}\n{:?}\nDistance:{}", if i == best_racer_i { "true" } else { "false" }, race_ordered_visits[i], compute_dist(weights, &race_ordered_visits[i]))
@@ -262,4 +277,22 @@ fn compute_furthest_min_x(path: &Vec<usize>, unordered: &Vec<usize>, weights: &V
     
     return compute_furthest_min_x(path, &unordered_clone, weights, locations, center, x-1);
   }
+}
+
+fn compute_racer_hash(path: &Vec<usize>) -> usize {
+  let mut hash = 0;
+  for i in 0..path.len() {
+    hash += i * path[i];
+  }
+  return hash;
+}
+
+fn number_duplicates(path: &Vec<usize>, elm: usize) -> usize {
+  let mut count = 0;
+  for p in path.iter() {
+    if p == &elm {
+      count += 1;
+    }
+  }
+  return count;
 }
