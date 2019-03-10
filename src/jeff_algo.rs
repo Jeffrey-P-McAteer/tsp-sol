@@ -144,7 +144,7 @@ pub fn solve(node_coordinates: &Vec<(usize, f32, f32)>, weights: &Vec<Vec<f32>>,
     
     for i in 0..racers {
       if race_ordered_visits[i].len() != common_racer_points {
-        println!("BIG PROBLEM: i and common_racer_points lengths do not match!");
+        panic!("BIG PROBLEM: i and common_racer_points lengths do not match!");
       }
       let racer_len = compute_dist(weights, &race_ordered_visits[i]);
       if racer_len < best_racer_len {
@@ -167,9 +167,10 @@ pub fn solve(node_coordinates: &Vec<(usize, f32, f32)>, weights: &Vec<Vec<f32>>,
       race_loss_counters[i] = 0;
       // never happens
       if race_ordered_visits[i].len() != race_ordered_visits[best_racer_i].len() {
-        println!("BIG PROBLEM: failing i and best_racer_i lengths do not match!");
+        panic!("BIG PROBLEM: failing i and best_racer_i lengths do not match!");
       }
       race_ordered_visits[i] = race_ordered_visits[best_racer_i].clone();
+      race_unordered_visits[i] = race_unordered_visits[best_racer_i].clone();
     }
     
   }
@@ -277,16 +278,16 @@ fn compute_furthest_min_2(path: &Vec<usize>, unordered: &Vec<usize>, weights: &V
            ordered_idx,
            unordered_idx) = compute_furthest(path, unordered, weights, locations, center);
   
-  // if unordered.len() < 3 {
+  if unordered.len() < 3 {
     return (furthest_non_collected_point_i,
            ordered_idx,
            unordered_idx);
-  // }
-  // else {
-  //   let mut unordered_clone = unordered.clone();
-  //   // Remove the best one
-  //   unordered_clone.remove(unordered_idx);
+  }
+  else {
+    let mut unordered_clone = unordered.clone();
+    // Remove the best one
+    unordered_clone.remove(unordered_idx);
     
-  //   return compute_furthest_min_1(path, &unordered_clone, weights, locations, center);
-  // }
+    return compute_furthest_min_1(path, &unordered_clone, weights, locations, center);
+  }
 }
