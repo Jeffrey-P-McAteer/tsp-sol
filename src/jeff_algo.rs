@@ -70,7 +70,7 @@ pub fn solve(node_coordinates: &Vec<(usize, f32, f32)>, weights: &Vec<Vec<f32>>,
   
   // duplicate starting data N times to make our racers;
   // every step we will compare their lengths and if one is smaller we keep that one
-  let racers = 3;
+  let racers = 12;
   // if a racer does worse then the others for this many consecurive turns,
   // we overwrite with the best one.
   let losses_before_overwritten = 5;
@@ -106,11 +106,8 @@ pub fn solve(node_coordinates: &Vec<(usize, f32, f32)>, weights: &Vec<Vec<f32>>,
       
       let (furthest_non_collected_point_i,
            ordered_idx,
-           unordered_idx) =
-        if i < 1      { compute_furthest(&race_ordered_visits[i], &race_unordered_visits[i], &weights, &node_coordinates, &center) }
-        else if i < 2 { compute_furthest_min_1(&race_ordered_visits[i], &race_unordered_visits[i], &weights, &node_coordinates, &center) }
-        else          { compute_furthest_min_2(&race_ordered_visits[i], &race_unordered_visits[i], &weights, &node_coordinates, &center) };
-      
+           unordered_idx) = compute_furthest_min_x(&race_ordered_visits[i], &race_unordered_visits[i], &weights, &node_coordinates, &center, i);
+
       match &save_run_prefix {
         Some(prefix) => {
           save_state_image(format!("{}/jalgo-r{}-{:03}.png", prefix, i, race_ordered_visits[i].len()), &race_ordered_visits[i], &node_coordinates, &center);
@@ -244,19 +241,16 @@ fn compute_furthest(path: &Vec<usize>, unordered: &Vec<usize>, weights: &Vec<Vec
   return (furthest_i/*idx to weight matrix*/, path_idx, unordered_idx);
 }
 
-
-fn compute_furthest_min_1(path: &Vec<usize>, unordered: &Vec<usize>, weights: &Vec<Vec<f32>>, locations: &Vec<(usize, f32, f32)>, center: &(f32, f32))
+fn compute_furthest_min_x(path: &Vec<usize>, unordered: &Vec<usize>, weights: &Vec<Vec<f32>>, locations: &Vec<(usize, f32, f32)>, center: &(f32, f32), x: usize)
   ->
   (usize /*point i*/, usize /*points idx in path*/, usize /*points idx in unordered*/)
 {
-  //println!("path = {:?}", path);
-  //println!("unordered = {:?}", unordered);
-  //println!("!!weights.len() = {}", weights.len());
   let (furthest_non_collected_point_i,
            ordered_idx,
            unordered_idx) = compute_furthest(path, unordered, weights, locations, center);
-  //println!("furthest_non_collected_point_i={}", furthest_non_collected_point_i);
-  if unordered.len() <= 1 { // removing 1 element gives us 0
+
+  if x < 1 || unordered.len() <= 1 {
+    // We'll run out if we continue
     return (furthest_non_collected_point_i,
            ordered_idx,
            unordered_idx);
@@ -266,28 +260,6 @@ fn compute_furthest_min_1(path: &Vec<usize>, unordered: &Vec<usize>, weights: &V
     // Remove the best one from consideration
     unordered_clone.remove(unordered_idx);
     
-    return compute_furthest(path, &unordered_clone, weights, locations, center);
-  }
-}
-
-fn compute_furthest_min_2(path: &Vec<usize>, unordered: &Vec<usize>, weights: &Vec<Vec<f32>>, locations: &Vec<(usize, f32, f32)>, center: &(f32, f32))
-  ->
-  (usize /*point i*/, usize /*points idx in path*/, usize /*points idx in unordered*/)
-{
-  let (furthest_non_collected_point_i,
-           ordered_idx,
-           unordered_idx) = compute_furthest(path, unordered, weights, locations, center);
-  
-  if unordered.len() < 3 {
-    return (furthest_non_collected_point_i,
-           ordered_idx,
-           unordered_idx);
-  }
-  else {
-    let mut unordered_clone = unordered.clone();
-    // Remove the best one
-    unordered_clone.remove(unordered_idx);
-    
-    return compute_furthest_min_1(path, &unordered_clone, weights, locations, center);
+    return compute_furthest_min_x(path, &unordered_clone, weights, locations, center, x-1);
   }
 }
