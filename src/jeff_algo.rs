@@ -1,6 +1,34 @@
 
 use super::*;
 
+use std::cmp::Ordering;
+
+#[derive(Clone)]
+struct SolutionTracker {
+  pub ordered_visits: Vec<usize>,
+  pub unordered_visits: Vec<usize>,
+  pub center: (f32, f32),
+}
+
+impl SolutionTracker {
+  // Mutates object
+  fn step_forward_self(&mut self, ideal_point_to_select_offset: usize, ideal_insertion_idx_offset: usize) {
+    
+    std::unimplemented!()
+    
+  }
+  // Performs a step, then clones split_n copies of the stepped forward
+  pub fn step_forward(&mut self, split_n: usize, ideal_point_to_select_offset: usize, ideal_insertion_idx_offset: usize) -> Vec<SolutionTracker> {
+    self.step_forward_self(ideal_point_to_select_offset, ideal_insertion_idx_offset);
+    let v = vec![];
+    for _ in 0..split_n {
+      v.push(self.clone());
+    }
+    return v;
+  }
+  
+}
+
 pub fn solve(node_coordinates: &Vec<(usize, f32, f32)>, weights: &Vec<Vec<f32>>, save_run_prefix: Option<String>) -> Vec<usize> {
   // We begin with points 0, 1, and 2.
   // These will be overwritten in the largest-triangle-fining process
@@ -65,33 +93,23 @@ pub fn solve(node_coordinates: &Vec<(usize, f32, f32)>, weights: &Vec<Vec<f32>>,
     unordered_visits.push(p);
   }
   
-  // duplicate starting data N times to make our racers;
-  // every step we will compare their lengths and if one is smaller we keep that one
-  let racers = 1024 * 10;
-  // if a racer does worse then the others for this many consecurive turns,
-  // we overwrite with the best one.
-  let soft_losses_before_overwritten = 18;
-  let hard_losses_before_overwritten = 36;
+  // How many times do we split on each node going down?
+  let SPLIT_N = 2;
+  // How many iterations before a cull operation?
+  let DEPTH_N = 3;
+  // How many ideal do we keep during a cull?
+  let KEPT_N = 2;
   
-  let mut race_ordered_visits: Vec<Vec<usize>> = vec![];
-  let mut race_unordered_visits: Vec<Vec<usize>> = vec![];
-  let mut race_loss_counters: Vec<usize> = vec![];
-  let mut race_hashes: Vec<usize> = vec![];
-  let mut race_center: Vec<(f32, f32)> = vec![];
+  let mut sol_set: Vec<SolutionTracker> = vec![];
   
-  for _ in 0..racers {
-    race_ordered_visits.push(
-      ordered_visits.clone()
-    );
-    race_unordered_visits.push(
-      unordered_visits.clone()
-    );
-    race_loss_counters.push(0);
-    race_hashes.push(0);
-    race_center.push(
-      compute_center(&ordered_visits, &node_coordinates)
-    );
-  }
+  // Insert beginning SolutionTracker
+  sol_set.push(
+    SolutionTracker {
+      ordered_visits: ordered_visits,
+      unordered_visits: unordered_visits,
+      center: compute_center(&ordered_visits, &node_coordinates),
+    }
+  );
   
   // re-bind to prevent using these later
   #[allow(unused_variables)]
@@ -104,104 +122,62 @@ pub fn solve(node_coordinates: &Vec<(usize, f32, f32)>, weights: &Vec<Vec<f32>>,
   // Used when we return
   let mut best_racer_i = 0;
   
-  while race_ordered_visits[best_racer_i].len() < weights.len() {
-    // Tick each racer forward, with some difference `i`
-    for i in 0..racers {
-      
-      let (furthest_non_collected_point_i,
-           ordered_idx,
-           unordered_idx) = compute_furthest_min_x(&race_ordered_visits[i], &race_unordered_visits[i], &weights, &node_coordinates, &race_center[i], i);
-
-      match &save_run_prefix {
-        Some(prefix) => {
-          save_state_image(format!("{}/jalgo-r{}-{:03}.png", prefix, i, race_ordered_visits[i].len()), &race_ordered_visits[i], &node_coordinates, &race_center[i]);
-        }
-        None => { }
-      }
-      
-      if race_ordered_visits[i].contains(&furthest_non_collected_point_i) {
-        panic!("furthest_non_collected_point_i has been collected in race_ordered_visits[i] already!")
-      }
-      
-      if race_unordered_visits[i][unordered_idx] == furthest_non_collected_point_i {
-        race_unordered_visits[i].remove(unordered_idx);
-      }
-      else {
-        // Look for correct index
-        race_unordered_visits[i].retain(|&x| x != furthest_non_collected_point_i);
-      }
-      
-      let ordered_idx = (ordered_idx+1) % race_ordered_visits[i].len();
-      race_ordered_visits[i].insert(ordered_idx, furthest_non_collected_point_i);
-      
-      race_center[i] = compute_center(&race_ordered_visits[i], &node_coordinates);
-      
-      race_hashes[i] = compute_racer_hash(&race_ordered_visits[i]);
+  let mut outer_i = 1; // used to cull every DEPTH_N iterations
+  
+  while sol_set[0].ordered_visits.len() < weights.len() {
+    let mut new_sol_set = vec![];
+    for i in 0..sol_set.len() {
+      new_sol_set.extend(
+        sol_set[i].step_forward()
+      );
     }
     
-    // Compare racer total
-    let mut best_racer_len = f32::MAX;
-    let mut overwrite_queue: Vec<usize> = vec![];
-    let common_racer_points = race_ordered_visits[0].len();
+    // Write new row into sol_set, replacing contents
+    sol_set.clear();
+    sol_set.extend(new_sol_set);
     
-    for i in 0..racers {
-      if race_ordered_visits[i].len() != common_racer_points {
-        panic!("BIG PROBLEM: i and common_racer_points lengths do not match!");
-      }
-      let racer_len = compute_dist(weights, &race_ordered_visits[i]);
-      if racer_len < best_racer_len {
-        race_loss_counters[i] = 0;
-        best_racer_i = i;
-        best_racer_len = racer_len;
-      }
-      else {
-        // We lost, increase loss counter
-        race_loss_counters[i] += 1;
-        if race_loss_counters[i] > hard_losses_before_overwritten {
-          overwrite_queue.push(i);
-        }
-        if race_loss_counters[i] > soft_losses_before_overwritten {
-          // ONLY consider overwriting if this is a non-unique breed
-          let number_matching = number_duplicates(&race_hashes, race_hashes[i]);
-          if number_matching > 1 {
-            // Queue overwriting this racer with whatever is determined to be best at end of loop
-            overwrite_queue.push(i);
-            // Also remove this racer's hash so the duplicate doesn't perform the
-            // same thing we just did
-            race_hashes[i] = 0;
-          }
-        }
-      }
-    }
-    
-    // Overwrite underperforming racers
-    for i in 0..overwrite_queue.len() {
-      race_loss_counters[i] = 0;
-      // never happens
-      if race_ordered_visits[i].len() != race_ordered_visits[best_racer_i].len() {
-        panic!("BIG PROBLEM: failing i and best_racer_i lengths do not match!");
-      }
-      race_ordered_visits[i] = race_ordered_visits[best_racer_i].clone();
-      race_unordered_visits[i] = race_unordered_visits[best_racer_i].clone();
+    if outer_i % DEPTH_N == 0 {
+      // Perform cull to remove all except the best KEPT_N
+      
+      sol_set.sort_by(|a, b| {
+        let a_d: f32 = compute_dist(weights, &a.ordered_visits);
+        let b_d: f32 = compute_dist(weights, &b.ordered_visits);
+        if a_d < b_d { Ordering::Less }
+        else if a_d > b_d { Ordering::Greater }
+        else { Ordering::Equal }
+      });
+      // Best are at [0], [1], etc...
+      sol_set.truncate(KEPT_N);
+      
     }
     
   }
   
   // Store solution(s)
-  for i in 0..racers {
+  for i in 0..sol_set.len() {
     match &save_run_prefix {
       Some(prefix) => {
-        save_state_image(format!("{}/jalgo-r{}-{:03}.png", prefix, i, race_ordered_visits[i].len()), &race_ordered_visits[i], &node_coordinates, &race_center[i]);
+        save_state_image(format!("{}/jalgo-r{}-{:03}.png", prefix, i, sol_set[i].ordered_visits.len()), &sol_set[i].ordered_visits, &node_coordinates, &sol_set[i].center);
         fs::write(
           format!("{}/jalgo-r{}-path.txt", prefix, i),
-          format!("Best:{}\n{:?}\nDistance:{}", if i == best_racer_i { "true" } else { "false" }, race_ordered_visits[i], compute_dist(weights, &race_ordered_visits[i]))
+          format!("Best:{}\n{:?}\nDistance:{}", if i == best_racer_i { "true" } else { "false" }, sol_set[i].ordered_visits, compute_dist(weights, &sol_set[i].ordered_visits))
         ).expect("Unable to write file");
       }
       None => { }
     }
   }
   
-  return race_ordered_visits[best_racer_i].clone();
+  // Last sort
+  sol_set.sort_by(|a, b| {
+    let a_d: f32 = compute_dist(weights, &a.ordered_visits);
+    let b_d: f32 = compute_dist(weights, &b.ordered_visits);
+    if a_d < b_d { Ordering::Less }
+    else if a_d > b_d { Ordering::Greater }
+    else { Ordering::Equal }
+  });
+  
+  // Return shortest
+  return sol_set[0].ordered_visits.clone();
 }
 
 fn compute_furthest(path: &Vec<usize>, unordered: &Vec<usize>, weights: &Vec<Vec<f32>>, locations: &Vec<(usize, f32, f32)>, center: &(f32, f32))
@@ -277,14 +253,6 @@ fn compute_furthest_min_x(path: &Vec<usize>, unordered: &Vec<usize>, weights: &V
     
     return compute_furthest_min_x(path, &unordered_clone, weights, locations, center, x-1);
   }
-}
-
-fn compute_racer_hash(path: &Vec<usize>) -> usize {
-  let mut hash = 0;
-  for i in 0..path.len() {
-    hash += i * path[i];
-  }
-  return hash;
 }
 
 fn number_duplicates(path: &Vec<usize>, elm: usize) -> usize {
