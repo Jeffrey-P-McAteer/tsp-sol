@@ -20,7 +20,7 @@ impl SolutionTracker {
   // Performs a step, then clones split_n copies of the stepped forward
   pub fn step_forward(&mut self, split_n: usize, ideal_point_to_select_offset: usize, ideal_insertion_idx_offset: usize) -> Vec<SolutionTracker> {
     self.step_forward_self(ideal_point_to_select_offset, ideal_insertion_idx_offset);
-    let v = vec![];
+    let mut v = vec![];
     for _ in 0..split_n {
       v.push(self.clone());
     }
@@ -103,11 +103,12 @@ pub fn solve(node_coordinates: &Vec<(usize, f32, f32)>, weights: &Vec<Vec<f32>>,
   let mut sol_set: Vec<SolutionTracker> = vec![];
   
   // Insert beginning SolutionTracker
+  let initial_center = compute_center(&ordered_visits, &node_coordinates);
   sol_set.push(
     SolutionTracker {
       ordered_visits: ordered_visits,
       unordered_visits: unordered_visits,
-      center: compute_center(&ordered_visits, &node_coordinates),
+      center: initial_center,
     }
   );
   
@@ -122,20 +123,30 @@ pub fn solve(node_coordinates: &Vec<(usize, f32, f32)>, weights: &Vec<Vec<f32>>,
   // Used when we return
   let mut best_racer_i = 0;
   
-  let mut outer_i = 1; // used to cull every DEPTH_N iterations
+  let mut outer_i = 0; // used to cull every DEPTH_N iterations
   
   while sol_set[0].ordered_visits.len() < weights.len() {
     let mut new_sol_set = vec![];
+    
+    let half_total = if sol_set.len() >= 2 { sol_set.len() / 2 } else { 1 };
+    
     for i in 0..sol_set.len() {
+      // Like A B A B
+      let position_mutation = i % half_total;
+      // Like A A B B
+      let selection_mutation = i / half_total;
+      
       new_sol_set.extend(
-        sol_set[i].step_forward()
+        sol_set[i].step_forward(SPLIT_N, position_mutation, selection_mutation)
       );
+      // new_sol_set is extended with SPLIT_N duplicates modified accordign to the mutation parameters
     }
     
     // Write new row into sol_set, replacing contents
     sol_set.clear();
     sol_set.extend(new_sol_set);
     
+    outer_i += 1;
     if outer_i % DEPTH_N == 0 {
       // Perform cull to remove all except the best KEPT_N
       
