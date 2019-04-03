@@ -12,14 +12,22 @@ struct SolutionTracker {
 
 impl SolutionTracker {
   // Mutates object
-  fn step_forward_self(&mut self, ideal_point_to_select_offset: usize, ideal_insertion_idx_offset: usize) {
+  fn step_forward_self(&mut self, ideal_point_to_select_offset: usize, ideal_insertion_idx_offset: usize, weights: &Vec<Vec<f32>>, locations: &Vec<(usize, f32, f32)>) {
     
-    std::unimplemented!()
+    let (furthest_non_collected_point_i,
+         ordered_idx,
+         unordered_idx) = compute_furthest_min_x(&self.ordered_visits, &self.unordered_visits, weights, locations, &self.center, ideal_point_to_select_offset);
+    
+    self.unordered_visits.remove(unordered_idx);
+    
+    let ordered_idx = (ordered_idx+1) % self.ordered_visits.len();
+    self.ordered_visits.insert(ordered_idx, furthest_non_collected_point_i);
+    self.center = compute_center(&self.ordered_visits, locations);
     
   }
   // Performs a step, then clones split_n copies of the stepped forward
-  pub fn step_forward(&mut self, split_n: usize, ideal_point_to_select_offset: usize, ideal_insertion_idx_offset: usize) -> Vec<SolutionTracker> {
-    self.step_forward_self(ideal_point_to_select_offset, ideal_insertion_idx_offset);
+  pub fn step_forward(&mut self, split_n: usize, ideal_point_to_select_offset: usize, ideal_insertion_idx_offset: usize, weights: &Vec<Vec<f32>>, locations: &Vec<(usize, f32, f32)>) -> Vec<SolutionTracker> {
+    self.step_forward_self(ideal_point_to_select_offset, ideal_insertion_idx_offset, weights, locations);
     let mut v = vec![];
     for _ in 0..split_n {
       v.push(self.clone());
@@ -29,6 +37,7 @@ impl SolutionTracker {
   
 }
 
+#[allow(non_snake_case)]
 pub fn solve(node_coordinates: &Vec<(usize, f32, f32)>, weights: &Vec<Vec<f32>>, save_run_prefix: Option<String>) -> Vec<usize> {
   // We begin with points 0, 1, and 2.
   // These will be overwritten in the largest-triangle-fining process
@@ -120,9 +129,6 @@ pub fn solve(node_coordinates: &Vec<(usize, f32, f32)>, weights: &Vec<Vec<f32>>,
   #[allow(unused_variables)]
   let center: isize = 5;
   
-  // Used when we return
-  let mut best_racer_i = 0;
-  
   let mut outer_i = 0; // used to cull every DEPTH_N iterations
   
   while sol_set[0].ordered_visits.len() < weights.len() {
@@ -137,7 +143,7 @@ pub fn solve(node_coordinates: &Vec<(usize, f32, f32)>, weights: &Vec<Vec<f32>>,
       let selection_mutation = i / half_total;
       
       new_sol_set.extend(
-        sol_set[i].step_forward(SPLIT_N, position_mutation, selection_mutation)
+        sol_set[i].step_forward(SPLIT_N, position_mutation, selection_mutation, &weights, node_coordinates)
       );
       // new_sol_set is extended with SPLIT_N duplicates modified accordign to the mutation parameters
     }
@@ -164,21 +170,7 @@ pub fn solve(node_coordinates: &Vec<(usize, f32, f32)>, weights: &Vec<Vec<f32>>,
     
   }
   
-  // Store solution(s)
-  for i in 0..sol_set.len() {
-    match &save_run_prefix {
-      Some(prefix) => {
-        save_state_image(format!("{}/jalgo-r{}-{:03}.png", prefix, i, sol_set[i].ordered_visits.len()), &sol_set[i].ordered_visits, &node_coordinates, &sol_set[i].center);
-        fs::write(
-          format!("{}/jalgo-r{}-path.txt", prefix, i),
-          format!("Best:{}\n{:?}\nDistance:{}", if i == best_racer_i { "true" } else { "false" }, sol_set[i].ordered_visits, compute_dist(weights, &sol_set[i].ordered_visits))
-        ).expect("Unable to write file");
-      }
-      None => { }
-    }
-  }
-  
-  // Last sort
+  // Last sort ([0] is shortest dist)
   sol_set.sort_by(|a, b| {
     let a_d: f32 = compute_dist(weights, &a.ordered_visits);
     let b_d: f32 = compute_dist(weights, &b.ordered_visits);
@@ -186,6 +178,20 @@ pub fn solve(node_coordinates: &Vec<(usize, f32, f32)>, weights: &Vec<Vec<f32>>,
     else if a_d > b_d { Ordering::Greater }
     else { Ordering::Equal }
   });
+  
+  // Store solution(s)
+  for i in 0..sol_set.len() {
+    match &save_run_prefix {
+      Some(prefix) => {
+        save_state_image(format!("{}/jalgo-r{}-{:03}.png", prefix, i, sol_set[i].ordered_visits.len()), &sol_set[i].ordered_visits, &node_coordinates, &sol_set[i].center);
+        fs::write(
+          format!("{}/jalgo-r{}-path.txt", prefix, i),
+          format!("Best:{}\n{:?}\nDistance:{}", if i == 0 { "true" } else { "false" }, sol_set[i].ordered_visits, compute_dist(weights, &sol_set[i].ordered_visits))
+        ).expect("Unable to write file");
+      }
+      None => { }
+    }
+  }
   
   // Return shortest
   return sol_set[0].ordered_visits.clone();
@@ -264,14 +270,4 @@ fn compute_furthest_min_x(path: &Vec<usize>, unordered: &Vec<usize>, weights: &V
     
     return compute_furthest_min_x(path, &unordered_clone, weights, locations, center, x-1);
   }
-}
-
-fn number_duplicates(path: &Vec<usize>, elm: usize) -> usize {
-  let mut count = 0;
-  for p in path.iter() {
-    if p == &elm {
-      count += 1;
-    }
-  }
-  return count;
 }
