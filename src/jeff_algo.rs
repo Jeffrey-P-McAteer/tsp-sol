@@ -20,11 +20,12 @@ impl SolutionTracker {
     
     self.unordered_visits.remove(unordered_idx);
     
-    let ordered_idx = (ordered_idx+1) % self.ordered_visits.len();
+    let ordered_idx = (ordered_idx+1+ideal_insertion_idx_offset) % self.ordered_visits.len();
     self.ordered_visits.insert(ordered_idx, furthest_non_collected_point_i);
     self.center = compute_center(&self.ordered_visits, locations);
     
   }
+  
   // Performs a step, then clones split_n copies of the stepped forward
   pub fn step_forward(&mut self, split_n: usize, ideal_point_to_select_offset: usize, ideal_insertion_idx_offset: usize, weights: &Vec<Vec<f32>>, locations: &Vec<(usize, f32, f32)>) -> Vec<SolutionTracker> {
     self.step_forward_self(ideal_point_to_select_offset, ideal_insertion_idx_offset, weights, locations);
@@ -105,7 +106,7 @@ pub fn solve(node_coordinates: &Vec<(usize, f32, f32)>, weights: &Vec<Vec<f32>>,
   // How many times do we split on each node going down?
   let SPLIT_N = 2;
   // How many iterations before a cull operation?
-  let DEPTH_N = 3;
+  let DEPTH_N = 4;
   // How many ideal do we keep during a cull?
   let KEPT_N = 2;
   
