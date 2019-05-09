@@ -27,7 +27,14 @@ mod brute_algo;
 mod jeff_algo;
 
 fn usage() {
-  println!(r#"Usage: ./tsp-sol path/to/berlin52.tsp|delta
+  println!(r#"Usage: ./tsp-sol path/to/berlin52.tsp|delta|selective
+
+Passing a single file (tsp/berlin52.tsp) will run JeffAlgo on it and pring the size and solution path.
+
+delta will cause 1000 runs using both JeffAlgo and BruteAlgo, incorrect JeffAlgo runs will be dumped to the ./views directory.
+
+selective loops throuh increasingly large cities and exits when JeffAlgo does not match BruteAlgo.
+
 "#);
 }
 
@@ -46,7 +53,14 @@ fn main() {
   let file_arg = args.get(1).unwrap();
   
   if file_arg == "delta" {
-    delta(1000, 4, 8); // test the algorithm on a thousand generated cities, between 4-8 points each.
+    let num = 1000;
+    let num_failed = delta(num, 4, 8); // test the algorithm on a thousand generated cities, between 4-8 points each.
+    println!("Failed {} out of {}", num_failed, num);
+    return;
+  }
+  
+  if file_arg == "selective" {
+    selective(); // generate increasing city size until failure (jeff() != brute()), then go back and map a large range of points
     return;
   }
 
@@ -66,16 +80,20 @@ fn main() {
   //print_path_metadata(&solution_p, &weights);
 }
 
-fn delta(num_tests: usize, lower_city_size: usize, upper_city_size: usize) {
+fn delta(num_tests: usize, lower_city_size: usize, upper_city_size: usize) -> usize {
   let mut rng = thread_rng();
+  let mut total_failed: usize = 0;
   for i in 0..num_tests {
     let city_size = rng.gen_range(lower_city_size, upper_city_size);
     println!("Delta testing {}/{}", i, num_tests);
-    delta_test(city_size);
+    if ! delta_test(city_size) {
+      total_failed += 1;
+    }
   }
+  return total_failed;
 }
 
-fn delta_test(city_size: usize) {
+fn delta_test(city_size: usize) -> bool {
   let (node_coordinates, weights) = gen_tsp_problem(city_size, 0.0, 10.0, 0.0, 10.0);
   
   let jeff_sol = jeff_algo::solve(&node_coordinates, &weights, None);
@@ -93,8 +111,9 @@ fn delta_test(city_size: usize) {
     let prefix_dir = format!("./views/{:02}-{}/", weights.len(), r_test_num);
     jeff_algo::solve(&node_coordinates, &weights, Some(prefix_dir.clone()));
     brute_algo::solve(&node_coordinates, &weights, Some(prefix_dir.clone()));
-    
+    return false;
   }
+  return true;
 }
 
 fn print_path_metadata(path: &Vec<usize>, weights: &Vec<Vec<f32>>) {
@@ -184,21 +203,7 @@ fn open_tsp_problem(file_arg: String) -> Option<(Vec<(usize, f32, f32)>, Vec<Vec
   };
   
   // Compute 2x matrix of edge weights (assumes 2d euclidian geometry)
-  let mut weights: Vec<Vec<f32>> = Vec::with_capacity(node_coordinates.len());
-  {
-    for row_r in &node_coordinates {
-      let mut row_weight_v: Vec<f32> = Vec::with_capacity(node_coordinates.len());
-      for col_r in &node_coordinates {
-        let weight: f32 = (
-          (row_r.1 - col_r.1).powf(2.0) + // x1 + x2 squared
-          (row_r.2 - col_r.2).powf(2.0)   // y1 + y2 squared
-        ).sqrt();
-        
-        row_weight_v.push(weight);
-      }
-      weights.push(row_weight_v);
-    }
-  }
+  let weights = compute_weight_coords(&node_coordinates);
   
   println!("City has {} points", weights.len());
   // remember weights is 2d square matrix (could be triangle, meh.)
@@ -319,4 +324,102 @@ fn get_point_extents(locations: &Vec<(usize, f32, f32)>) -> (f32, f32, f32, f32)
   }
   return (smallest_x, largest_y, largest_x, smallest_y);
 }
+
+fn compute_weight_coords(node_coordinates: &Vec<(usize, f32, f32)>) -> Vec<Vec<f32>> {
+  // Compute 2x matrix of edge weights (assumes 2d euclidian geometry)
+  let mut weights: Vec<Vec<f32>> = Vec::with_capacity(node_coordinates.len());
+  {
+    for row_r in node_coordinates {
+      let mut row_weight_v: Vec<f32> = Vec::with_capacity(node_coordinates.len());
+      for col_r in node_coordinates {
+        let weight: f32 = (
+          (row_r.1 - col_r.1).powf(2.0) + // x1 + x2 squared
+          (row_r.2 - col_r.2).powf(2.0)   // y1 + y2 squared
+        ).sqrt();
+        
+        row_weight_v.push(weight);
+      }
+      weights.push(row_weight_v);
+    }
+  }
+  return weights;
+}
+
+fn selective() {
+  println!("Performing selective failure...");
+  // Bounding box for all points
+  let x_min_bound: f32 = 0.0;
+  let x_max_bound: f32 = 15.0;
+  let y_min_bound: f32 = 0.0;
+  let y_max_bound: f32 = 15.0;
+  
+  let bound_granularity = 0.25; // step size with which to make grid points after failure
+  
+  let x_min: f32 = 5.0;
+  let x_max: f32 = 10.0;
+  let y_min: f32 = 5.0;
+  let y_max: f32 = 10.0;
+  
+  let mut rng = rand::thread_rng();
+  let mut node_coordinates: Vec<(usize, f32, f32)> = vec![];
+  
+  // Just add 3 to begin with
+  for i in 0..3 {
+    let new_r_city = (
+      i,
+      rng.gen_range(x_min, x_max),
+      rng.gen_range(y_min, y_max),
+    );
+    node_coordinates.push(new_r_city);
+  }
+  
+  // If we hit 11 cities without a failure we'll recurse and start from 3 again.
+  for city_num in 3..11 {
+    let new_r_city = (
+      city_num,
+      rng.gen_range(x_min, x_max),
+      rng.gen_range(y_min, y_max),
+    );
+    node_coordinates.push(new_r_city); // we can pop() if we fail
+    
+    let city_weights = compute_weight_coords(&node_coordinates);
+    
+    let jeff_sol = jeff_algo::solve(&node_coordinates, &city_weights, None);
+    let brute_sol = brute_algo::solve(&node_coordinates, &city_weights, None);
+    
+    let jeff_sol_len = compute_dist(&city_weights, &jeff_sol);
+    let brute_sol_len = compute_dist(&city_weights, &brute_sol);
+    let distance_diff = jeff_sol_len - brute_sol_len;
+    
+    if distance_diff.abs() > 0.01 { // account for floating point errors
+      println!("We have broken jeff_algo at {} points!", city_num+1);
+      // we have added a city which breaks things!
+      node_coordinates.pop();
+      let city_weights = compute_weight_coords(&node_coordinates);
+      
+      // Now we have a city right before our failure.
+      
+      // Save the correct solution
+      brute_algo::solve(&node_coordinates, &city_weights, Some("./views/selective/".to_string()));
+      jeff_algo::solve(&node_coordinates, &city_weights, Some("./views/selective/".to_string()));
+      
+      // compute a 2d matrix of points and plot blue if they result in correct, red if they do not.
+      perform_matrix_image_gen("./views/selective-map.png", node_coordinates, city_weights, );
+      
+      
+      return;
+    }
+  }
+  
+  println!("Failed to break after 10, resetting...");
+  selective();
+  
+}
+
+fn perform_matrix_image_gen<S: Into<String>>(img_path: S, node_coordinates: Vec<(usize, f32, f32)>, city_weights: Vec<Vec<f32>>) {
+  
+  
+  
+}
+
 
