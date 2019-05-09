@@ -92,14 +92,23 @@ pub fn solve(node_coordinates: &Vec<(usize, f32, f32)>, weights: &Vec<Vec<f32>>,
     //println!(" = = = = ");
     
     // Attempt to swap every node to see if there is a shorter path
+    // let swap_idx: Option<usize> = compute_first_better_swap(&ordered_visits, &weights, 1);
+    // if let Some(begin_idx) = swap_idx {
+    //     //println!("Swapping at begin_idx={}", begin_idx);
+    //     cswap(&mut ordered_visits, begin_idx, begin_idx+1);
+    // }
+    
     let swap_idx: Option<usize> = compute_first_better_swap(&ordered_visits, &weights);
     if let Some(begin_idx) = swap_idx {
-        //println!("Swapping at begin_idx={}", begin_idx);
-        // perform swap
-        let end_idx = (begin_idx+1) % ordered_visits.len();
-        let tmp = ordered_visits[end_idx];
-        ordered_visits[end_idx] = ordered_visits[begin_idx];
-        ordered_visits[begin_idx] = tmp;
+        println!("Swapping at begin_idx={}", begin_idx);
+        cswap(&mut ordered_visits, begin_idx, begin_idx+1);
+    }
+    
+    let swap_indexes: Option<(usize,usize)> = compute_two_first_better_swap(&ordered_visits, &weights);
+    if let Some((begin_1, begin_2)) = swap_indexes {
+        println!("Swapping at begin_1={}  begin_2={}", begin_1, begin_2);
+        cswap(&mut ordered_visits, begin_1, begin_1+1);
+        cswap(&mut ordered_visits, begin_2, begin_2+1);
     }
     
   }
@@ -171,28 +180,57 @@ fn compute_furthest(path: &Vec<usize>, unordered: &Vec<usize>, weights: &Vec<Vec
   return (furthest_i/*idx to weight matrix*/, path_idx, unordered_idx);
 }
 
-fn compute_first_better_swap(path: &Vec<usize>, weights: &Vec<Vec<f32>>,) -> Option<usize> {
+fn compute_first_better_swap(path: &Vec<usize>, weights: &Vec<Vec<f32>>) -> Option<usize> {
   let mut our_path = path.clone();
   let orig_dist = compute_dist(weights, path);
   for i in 0..path.len() {
+    
     // try swap
-    let j = (i+1) % path.len();
-    let tmp = our_path[j];
-    our_path[j] = our_path[i];
-    our_path[i] = tmp;
+    cswap(&mut our_path, i, i+1);
     // is better?
     if compute_dist(weights, &our_path) < orig_dist {
       return Some(i);
     }
     else {
       // Undo
-      let tmp = our_path[j];
-      our_path[j] = our_path[i];
-      our_path[i] = tmp;
+      cswap(&mut our_path, i, i+1);
     }
   }
   return None;
 }
 
+// like compute_first_better_swap but for each swap compare with another one first
+fn compute_two_first_better_swap(path: &Vec<usize>, weights: &Vec<Vec<f32>>) -> Option<(usize, usize)> {
+  let mut our_path = path.clone();
+  let orig_dist = compute_dist(weights, path);
+  for i in 0..path.len() {
+    for j in 0..path.len() {
+      if j == i || ((i+1) % path.len()) == j || ((j+1) % path.len()) == i {
+        continue;
+      }
+      // try swap
+      cswap(&mut our_path, i, i+1);
+      cswap(&mut our_path, j, j+1);
+      // is better?
+      if compute_dist(weights, &our_path) < orig_dist {
+        return Some((i, j));
+      }
+      else {
+        // Undo
+        cswap(&mut our_path, i, i+1);
+        cswap(&mut our_path, j, j+1);
+      }
+    }
+  }
+  return None;
+}
 
+// Performs a cyclic swap of the values at indexes i1 and i2
+// i1 MUST be within 0..path.len, i2 may be anything (will be bounded)
+fn cswap(path: &mut Vec<usize>, i1: usize, i2: usize) {
+    let i2 = i2 % path.len();
+    let tmp = path[i1];
+    path[i1] = path[i2];
+    path[i2] = tmp;
+}
 
