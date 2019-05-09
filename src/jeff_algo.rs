@@ -90,6 +90,18 @@ pub fn solve(node_coordinates: &Vec<(usize, f32, f32)>, weights: &Vec<Vec<f32>>,
     
     center = compute_center(&ordered_visits, &node_coordinates);
     //println!(" = = = = ");
+    
+    // Attempt to swap every node to see if there is a shorter path
+    let swap_idx: Option<usize> = compute_first_better_swap(&ordered_visits, &weights);
+    if let Some(begin_idx) = swap_idx {
+        //println!("Swapping at begin_idx={}", begin_idx);
+        // perform swap
+        let end_idx = (begin_idx+1) % ordered_visits.len();
+        let tmp = ordered_visits[end_idx];
+        ordered_visits[end_idx] = ordered_visits[begin_idx];
+        ordered_visits[begin_idx] = tmp;
+    }
+    
   }
   
   // Store solution
@@ -159,6 +171,28 @@ fn compute_furthest(path: &Vec<usize>, unordered: &Vec<usize>, weights: &Vec<Vec
   return (furthest_i/*idx to weight matrix*/, path_idx, unordered_idx);
 }
 
+fn compute_first_better_swap(path: &Vec<usize>, weights: &Vec<Vec<f32>>,) -> Option<usize> {
+  let mut our_path = path.clone();
+  let orig_dist = compute_dist(weights, path);
+  for i in 0..path.len() {
+    // try swap
+    let j = (i+1) % path.len();
+    let tmp = our_path[j];
+    our_path[j] = our_path[i];
+    our_path[i] = tmp;
+    // is better?
+    if compute_dist(weights, &our_path) < orig_dist {
+      return Some(i);
+    }
+    else {
+      // Undo
+      let tmp = our_path[j];
+      our_path[j] = our_path[i];
+      our_path[i] = tmp;
+    }
+  }
+  return None;
+}
 
 
 

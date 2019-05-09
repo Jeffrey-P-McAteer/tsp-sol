@@ -106,7 +106,7 @@ fn delta_test(city_size: usize) -> bool {
   
   if distance_diff.abs() > 0.01 { // account for floating point errors
     // re-do test, saving results
-    let r_test_num: usize = rand::thread_rng().gen_range(0, 10000);
+    let r_test_num: usize = rand::thread_rng().gen_range(0, 10000000);
     
     let prefix_dir = format!("./views/{:02}-{}/", weights.len(), r_test_num);
     jeff_algo::solve(&node_coordinates, &weights, Some(prefix_dir.clone()));
