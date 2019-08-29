@@ -33,7 +33,7 @@ pub fn solve(node_coordinates: &Vec<(usize, f32, f32)>, weights: &Vec<Vec<f32>>,
   
   // If we have 3 or fewer points, we're done. min bound is O(1), good job folks.
   if weights.len() <= 3 {
-    return ordered_visits;
+    return (&ordered_visits[0..weights.len()]).to_vec();
   }
   
   { // Find largest triangle
