@@ -458,10 +458,10 @@ fn spray(n: usize, bound_granularity: f32) {
   let y_min_bound: f32 = 0.0;
   let y_max_bound: f32 = 15.0;
   
-  let x_min: f32 = 5.0;
-  let x_max: f32 = 10.0;
-  let y_min: f32 = 5.0;
-  let y_max: f32 = 10.0;
+  let x_min: f32 = 4.0;
+  let x_max: f32 = 11.0;
+  let y_min: f32 = 4.0;
+  let y_max: f32 = 11.0;
   
   let mut rng = rand::thread_rng();
   let mut node_coordinates: Vec<(usize, f32, f32)> = vec![];
@@ -477,6 +477,31 @@ fn spray(n: usize, bound_granularity: f32) {
   }
   
   // Generate partial image
+  let file_path = "views/spray.png";
+  let (width, height) = (600, 600);
+  let mut image = ImageBuffer::<Rgb<u8>, Vec<u8>>::new(width + 5, height + 5); // width, height
+  
+  let (smallest_x, largest_y, largest_x, smallest_y) = (x_min_bound, y_max_bound, x_max_bound, y_min_bound);
+  let x_range: f32 = largest_x - smallest_x;
+  let y_range: f32 = largest_y - smallest_y;
+  
+  for i in 0..node_coordinates.len() {
+    let loc = node_coordinates[i];
+    let (loc_x,loc_y) = scale_xy(width, height, x_range as u32, y_range as u32, smallest_x, smallest_y, loc.1, loc.2);
+    
+    // Set all location pixels to be red // r,g,b
+    //image.get_pixel_mut(loc_x, loc_y).data = [255, 0, 0];
+    //circle_it(&mut image, loc_x, loc_y, [255, 0, 0]);
+    draw_hollow_circle_mut(&mut image, (loc_x as i32, loc_y as i32), 10 /*radius*/, Rgb([255, 0, 0]));
+    
+    // Also draw an index number
+    let font = Vec::from( include_bytes!("/usr/share/fonts/noto/NotoSans-Bold.ttf") as &[u8] );
+    let font = FontCollection::from_bytes(font).unwrap().into_font().unwrap();
+    
+    let font_height = 14.0;
+    let font_scale = Scale { x: font_height, y: font_height };
+    draw_text_mut(&mut image, Rgb([200, 200, 255]), loc_x as u32, loc_y as u32, font_scale, &font, format!("{}", i).as_str());
+  }
   
   
   // Now test a grid of points every bound_granularity units,
@@ -510,12 +535,16 @@ fn spray(n: usize, bound_granularity: f32) {
       let brute_sol_len = compute_dist(&city_weights, &brute_sol);
       let distance_diff = jeff_sol_len - brute_sol_len;
       
+      let loc = (point_x, point_y);
+      let (loc_x,loc_y) = scale_xy(width, height, x_range as u32, y_range as u32, smallest_x, smallest_y, loc.0, loc.1);
+      
       if distance_diff.abs() > 0.01 {
         // jalgo broke, paint red pixel
-        println!("Broke!");
+        image.get_pixel_mut(loc_x, loc_y).data = [255, 0, 0];
       }
       else {
-        
+        // jalgo got it correct, paint green
+        image.get_pixel_mut(loc_x, loc_y).data = [0, 255, 0];
       }
       
       point_x += bound_granularity;
@@ -525,10 +554,6 @@ fn spray(n: usize, bound_granularity: f32) {
   }
   
   // Finally write image to views/spray.png
-  
-  
-  
-  // Now add 
-  
+  image.save(file_path).unwrap();
   
 }
