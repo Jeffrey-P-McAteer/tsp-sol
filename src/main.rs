@@ -544,6 +544,8 @@ fn spray(n: usize, bound_granularity: f32) {
         // jalgo broke, paint red pixel
         image.get_pixel_mut(loc_x, loc_y).data = [255, 0, 0];
         num_failures += 1;
+        // Also save a copy of the state in views/spray-jalgo*
+        jeff_algo::solve(&node_coordinates, &city_weights, Some(format!("./views/spray-jalgo-f{:03}", num_failures)));
       }
       else {
         // jalgo got it correct, paint green
