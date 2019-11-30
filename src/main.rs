@@ -82,6 +82,16 @@ fn main() {
     selective(); // generate increasing city size until failure (jeff() != brute()), then go back and map a large range of points
     return;
   }
+  
+  if file_arg == "spray" {
+    // Generate random N points then add a grid of points and track where insertion
+    // results in a non-optimal path.
+    spray(
+      args.get(2).unwrap_or(&"5".to_string()).parse().unwrap(), // given number OR 5
+      args.get(3).unwrap_or(&"0.25".to_string()).parse().unwrap() // given number OR 0.25
+    );
+    return;
+  }
 
   let (node_coordinates, weights) = match open_tsp_problem(file_arg.to_string()) {
     Some(stuff) => stuff,
@@ -436,9 +446,89 @@ fn selective() {
 }
 
 fn perform_matrix_image_gen<S: Into<String>>(img_path: S, node_coordinates: Vec<(usize, f32, f32)>, city_weights: Vec<Vec<f32>>) {
+  // Great idea; never finished, see spray(1)
+}
+
+fn spray(n: usize, bound_granularity: f32) {
+  println!("Spraying {} cities...", n);
   
+  // Bounding box for all points
+  let x_min_bound: f32 = 0.0;
+  let x_max_bound: f32 = 15.0;
+  let y_min_bound: f32 = 0.0;
+  let y_max_bound: f32 = 15.0;
+  
+  let x_min: f32 = 5.0;
+  let x_max: f32 = 10.0;
+  let y_min: f32 = 5.0;
+  let y_max: f32 = 10.0;
+  
+  let mut rng = rand::thread_rng();
+  let mut node_coordinates: Vec<(usize, f32, f32)> = vec![];
+  
+  // Create random set of points
+  for i in 0..n {
+    let new_r_city = (
+      i,
+      rng.gen_range(x_min, x_max),
+      rng.gen_range(y_min, y_max),
+    );
+    node_coordinates.push(new_r_city);
+  }
+  
+  // Generate partial image
+  
+  
+  // Now test a grid of points every bound_granularity units,
+  // computing the ideal and jalgo. When the two do not match, make a dot on
+  // the spray image we generate.
+  
+  let mut point_y = y_min_bound;
+  loop {
+    if point_y > y_max_bound {
+      break;
+    }
+    
+    let mut point_x = x_min_bound;
+    loop {
+      if point_x > x_max_bound {
+        break;
+      }
+      
+      let mut node_coordinates = node_coordinates.clone(); // Prevent us from mutating the initial set of points
+      node_coordinates.push(
+        (node_coordinates.len(), point_x, point_y)
+      );
+      // Now add (point_x, point_y) and see if it breaks jalgo
+      
+      let city_weights = compute_weight_coords(&node_coordinates);
+      
+      let jeff_sol = jeff_algo::solve(&node_coordinates, &city_weights, None);
+      let brute_sol = brute_algo::solve(&node_coordinates, &city_weights, None);
+      
+      let jeff_sol_len = compute_dist(&city_weights, &jeff_sol);
+      let brute_sol_len = compute_dist(&city_weights, &brute_sol);
+      let distance_diff = jeff_sol_len - brute_sol_len;
+      
+      if distance_diff.abs() > 0.01 {
+        // jalgo broke, paint red pixel
+        println!("Broke!");
+      }
+      else {
+        
+      }
+      
+      point_x += bound_granularity;
+    }
+    
+    point_y += bound_granularity;
+  }
+  
+  // Finally write image to views/spray.png
+  
+  
+  
+  // Now add 
   
   
 }
-
-
