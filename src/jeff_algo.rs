@@ -26,7 +26,9 @@ pub fn solve(node_coordinates: &Vec<(usize, f32, f32)>, weights: &Vec<Vec<f32>>,
   
   match &save_run_prefix {
     Some(prefix) => {
-      create_dir(prefix).expect("Could not create directory");
+      if let Err(_e) = create_dir(prefix) {
+        // We don't care
+      }
     }
     None => { }
   }

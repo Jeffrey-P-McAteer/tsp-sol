@@ -393,7 +393,7 @@ fn selective() {
   }
   
   // If we hit 11 cities without a failure we'll recurse and start from 3 again.
-  for city_num in 3..11 {
+  for city_num in 3..9 {
     let new_r_city = (
       city_num,
       rng.gen_range(x_min, x_max),
