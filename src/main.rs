@@ -508,6 +508,8 @@ fn spray(n: usize, bound_granularity: f32) {
   // computing the ideal and jalgo. When the two do not match, make a dot on
   // the spray image we generate.
   
+  let mut num_failures = 0;
+  
   let mut point_y = y_min_bound;
   loop {
     if point_y > y_max_bound {
@@ -541,6 +543,7 @@ fn spray(n: usize, bound_granularity: f32) {
       if distance_diff.abs() > 0.01 {
         // jalgo broke, paint red pixel
         image.get_pixel_mut(loc_x, loc_y).data = [255, 0, 0];
+        num_failures += 1;
       }
       else {
         // jalgo got it correct, paint green
@@ -555,5 +558,7 @@ fn spray(n: usize, bound_granularity: f32) {
   
   // Finally write image to views/spray.png
   image.save(file_path).unwrap();
+  
+  println!("{} failures", num_failures);
   
 }
