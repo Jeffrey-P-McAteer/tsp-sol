@@ -170,3 +170,10 @@ Good one-liner:
 ```
 rm -rf views/* ; cargo run --release delta && ( ls -l1 views | wc -l )
 ```
+
+
+# License
+
+The code in this repository is under the GPLv2 license, see `LICENSE.txt` for details.
+The auto-upgrade clause has been removed because your legal rights shouldn't have that sort of volatility.
+

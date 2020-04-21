@@ -4,8 +4,7 @@
  *  
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2 of the License, or
- *  (at your option) any later version.
+ *  the Free Software Foundation; version 2 of the License ONLY.
  * 
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -485,25 +484,6 @@ fn spray(n: usize, bound_granularity: f32) {
   let x_range: f32 = largest_x - smallest_x;
   let y_range: f32 = largest_y - smallest_y;
   
-  for i in 0..node_coordinates.len() {
-    let loc = node_coordinates[i];
-    let (loc_x,loc_y) = scale_xy(width, height, x_range as u32, y_range as u32, smallest_x, smallest_y, loc.1, loc.2);
-    
-    // Set all location pixels to be red // r,g,b
-    //image.get_pixel_mut(loc_x, loc_y).data = [255, 0, 0];
-    //circle_it(&mut image, loc_x, loc_y, [255, 0, 0]);
-    draw_hollow_circle_mut(&mut image, (loc_x as i32, loc_y as i32), 10 /*radius*/, Rgb([255, 0, 0]));
-    
-    // Also draw an index number
-    let font = Vec::from( include_bytes!("/usr/share/fonts/noto/NotoSans-Bold.ttf") as &[u8] );
-    let font = FontCollection::from_bytes(font).unwrap().into_font().unwrap();
-    
-    let font_height = 14.0;
-    let font_scale = Scale { x: font_height, y: font_height };
-    draw_text_mut(&mut image, Rgb([200, 200, 255]), loc_x as u32, loc_y as u32, font_scale, &font, format!("{}", i).as_str());
-  }
-  
-  
   // Now test a grid of points every bound_granularity units,
   // computing the ideal and jalgo. When the two do not match, make a dot on
   // the spray image we generate.
@@ -545,9 +525,12 @@ fn spray(n: usize, bound_granularity: f32) {
         image.get_pixel_mut(loc_x, loc_y).data = [255, 0, 0];
         num_failures += 1;
         // Also save a copy of the state in views/spray-jalgo*
-        let prefix_dir = format!("./views/spray-jalgo-f{:03}", num_failures);
-        jeff_algo::solve(&node_coordinates, &city_weights, Some(prefix_dir.clone()));
-        brute_algo::solve(&node_coordinates, &city_weights, Some(prefix_dir.clone()));
+        // BUT only if bound_granularity > 0.1 as a performance improvement to high-res sprays
+        if bound_granularity >= 0.1 {
+          let prefix_dir = format!("./views/spray-jalgo-f{:03}", num_failures);
+          jeff_algo::solve(&node_coordinates, &city_weights, Some(prefix_dir.clone()));
+          brute_algo::solve(&node_coordinates, &city_weights, Some(prefix_dir.clone()));
+        }
       }
       else {
         // jalgo got it correct, paint green
@@ -559,7 +542,26 @@ fn spray(n: usize, bound_granularity: f32) {
     
     point_y += bound_granularity;
   }
+
+  let font = Vec::from( include_bytes!("/usr/share/fonts/noto/NotoSans-Bold.ttf") as &[u8] );
+  let font = FontCollection::from_bytes(font).unwrap().into_font().unwrap();  
   
+  for i in 0..node_coordinates.len() {
+    let loc = node_coordinates[i];
+    let (loc_x,loc_y) = scale_xy(width, height, x_range as u32, y_range as u32, smallest_x, smallest_y, loc.1, loc.2);
+    
+    // Set all location pixels to be red // r,g,b
+    //image.get_pixel_mut(loc_x, loc_y).data = [255, 0, 0];
+    //circle_it(&mut image, loc_x, loc_y, [255, 0, 0]);
+    draw_hollow_circle_mut(&mut image, (loc_x as i32, loc_y as i32), 10 /*radius*/, Rgb([255, 0, 0]));
+    
+    // Also draw an index number
+    
+    let font_height = 14.0;
+    let font_scale = Scale { x: font_height, y: font_height };
+    draw_text_mut(&mut image, Rgb([200, 200, 255]), loc_x as u32, loc_y as u32, font_scale, &font, format!("{}", i).as_str());
+  }
+
   // Finally write image to views/spray.png
   image.save(file_path).unwrap();
   
