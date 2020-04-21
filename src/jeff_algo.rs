@@ -113,18 +113,18 @@ pub fn solve(node_coordinates: &Vec<(usize, f32, f32)>, weights: &Vec<Vec<f32>>,
     //     cswap(&mut ordered_visits, begin_idx, begin_idx+1);
     // }
     
-    let swap_idx: Option<usize> = compute_first_better_swap(&ordered_visits, &weights);
-    if let Some(begin_idx) = swap_idx {
-        //println!("Swapping at begin_idx={}", begin_idx);
-        cswap(&mut ordered_visits, begin_idx, begin_idx+1);
-    }
+    // let swap_idx: Option<usize> = compute_first_better_swap(&ordered_visits, &weights);
+    // if let Some(begin_idx) = swap_idx {
+    //     //println!("Swapping at begin_idx={}", begin_idx);
+    //     cswap(&mut ordered_visits, begin_idx, begin_idx+1);
+    // }
     
-    let swap_indexes: Option<(usize,usize)> = compute_two_first_better_swap(&ordered_visits, &weights);
-    if let Some((begin_1, begin_2)) = swap_indexes {
-        //println!("Swapping at begin_1={}  begin_2={}", begin_1, begin_2);
-        cswap(&mut ordered_visits, begin_1, begin_1+1);
-        cswap(&mut ordered_visits, begin_2, begin_2+1);
-    }
+    // let swap_indexes: Option<(usize,usize)> = compute_two_first_better_swap(&ordered_visits, &weights);
+    // if let Some((begin_1, begin_2)) = swap_indexes {
+    //     //println!("Swapping at begin_1={}  begin_2={}", begin_1, begin_2);
+    //     cswap(&mut ordered_visits, begin_1, begin_1+1);
+    //     cswap(&mut ordered_visits, begin_2, begin_2+1);
+    // }
     
   }
   
