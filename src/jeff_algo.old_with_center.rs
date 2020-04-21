@@ -70,6 +70,9 @@ pub fn solve(node_coordinates: &Vec<(usize, f32, f32)>, weights: &Vec<Vec<f32>>,
       }
     }
   }
+  // Compute triangle center.
+  // We update this on every point insertion to the ideal path.
+  let mut center = compute_center(&ordered_visits, &node_coordinates);
   // Holds all points not in ordered_visits
   let mut unordered_visits: Vec<usize> = Vec::with_capacity(weights.len()-3);
   'outer: for p in 0..weights.len() {
@@ -85,16 +88,16 @@ pub fn solve(node_coordinates: &Vec<(usize, f32, f32)>, weights: &Vec<Vec<f32>>,
   while ordered_visits.len() < weights.len() {
     let (furthest_non_collected_point_i,
          ordered_idx,
-         unordered_idx) = compute_furthest(&ordered_visits, &unordered_visits, &weights, &node_coordinates);
+         unordered_idx) = compute_furthest(&ordered_visits, &unordered_visits, &weights, &node_coordinates, &center);
     
     match &save_run_prefix {
       Some(prefix) => {
-        save_state_image(format!("{}/jalgo-{:03}.png", prefix, ordered_visits.len()), &ordered_visits, &node_coordinates);
+        save_state_image(format!("{}/jalgo-{:03}.png", prefix, ordered_visits.len()), &ordered_visits, &node_coordinates, &center);
       }
       None => { }
     }
     //print_path_metadata(&ordered_visits, &weights);
-    //save_state_image(format!("./views/{}.png", ordered_visits.len()), &ordered_visits, &node_coordinates);
+    //save_state_image(format!("./views/{}.png", ordered_visits.len()), &ordered_visits, &node_coordinates, &center);
     // println!("ordered_visits = {:?}", ordered_visits);
     // println!("unordered_visits = {:?}", unordered_visits);
     
@@ -104,6 +107,7 @@ pub fn solve(node_coordinates: &Vec<(usize, f32, f32)>, weights: &Vec<Vec<f32>>,
     let ordered_idx = (ordered_idx+1) % ordered_visits.len();
     ordered_visits.insert(ordered_idx, furthest_non_collected_point_i);
     
+    center = compute_center(&ordered_visits, &node_coordinates);
     //println!(" = = = = ");
     
     // Attempt to swap every node to see if there is a shorter path
@@ -131,7 +135,7 @@ pub fn solve(node_coordinates: &Vec<(usize, f32, f32)>, weights: &Vec<Vec<f32>>,
   // Store solution
   match &save_run_prefix {
     Some(prefix) => {
-      save_state_image(format!("{}/jalgo-{:03}.png", prefix, ordered_visits.len()), &ordered_visits, &node_coordinates);
+      save_state_image(format!("{}/jalgo-{:03}.png", prefix, ordered_visits.len()), &ordered_visits, &node_coordinates, &center);
       fs::write(
         format!("{}/jalgo-path.txt", prefix),
         format!("{:?}\nDistance:{}", ordered_visits, compute_dist(weights, &ordered_visits))
@@ -143,12 +147,28 @@ pub fn solve(node_coordinates: &Vec<(usize, f32, f32)>, weights: &Vec<Vec<f32>>,
   return ordered_visits;
 }
 
-fn compute_furthest(path: &Vec<usize>, unordered: &Vec<usize>, weights: &Vec<Vec<f32>>, locations: &Vec<(usize, f32, f32)>)
+fn compute_furthest(path: &Vec<usize>, unordered: &Vec<usize>, weights: &Vec<Vec<f32>>, locations: &Vec<(usize, f32, f32)>, center: &(f32, f32))
   ->
   (usize /*point i*/, usize /*points idx in path*/, usize /*points idx in unordered*/)
 {
   let mut unordered_idx = 0;
   let mut furthest_i = unordered[unordered_idx];
+  let mut furthest_i_dist_from_center: f32 = -100.0;
+  
+  // for every point not in the solution...
+  for i in 0..unordered.len() {
+    let unord_elm = unordered[i];
+    let this_dist_from_center: f32 = (
+      (center.0/*x*/ - locations[unord_elm].1/*x*/).powf(2.0) +
+      (center.1/*y*/ - locations[unord_elm].2/*y*/).powf(2.0)
+    ).sqrt();
+    if this_dist_from_center > furthest_i_dist_from_center {
+      furthest_i_dist_from_center = this_dist_from_center;
+      furthest_i = unord_elm;
+      unordered_idx = i;
+      // we don't know where it is GOING yet.
+    }
+  }
   
   // Let's re-scope some variables to be immutable now that we've calculated them
   let furthest_i = furthest_i; // idx to weight matrix

@@ -44,7 +44,7 @@ pub fn solve(node_coordinates: &Vec<(usize, f32, f32)>, weights: &Vec<Vec<f32>>,
   // Store solution
   match &save_run_prefix {
     Some(prefix) => {
-      save_state_image(format!("{}/brute-{:03}.png", prefix, best_path.len()), &best_path, &node_coordinates, &compute_center(&best_path, &node_coordinates));
+      save_state_image_center(format!("{}/brute-{:03}.png", prefix, best_path.len()), &best_path, &node_coordinates, &compute_center(&best_path, &node_coordinates));
       fs::write(
         format!("{}/brute-path.txt", prefix),
         format!("{:?}\nDistance:{}", best_path, compute_dist(weights, &best_path))

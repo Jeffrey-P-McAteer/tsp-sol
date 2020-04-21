@@ -257,7 +257,56 @@ fn compute_center(path: &Vec<usize>, locations: &Vec<(usize, f32, f32)>) -> (f32
 
 // Shared imagery functions
 
-fn save_state_image<I: Into<String>>(file_path: I, path: &Vec<usize>, locations: &Vec<(usize, f32, f32)>, center: &(f32, f32)) {
+fn save_state_image<I: Into<String>>(file_path: I, path: &Vec<usize>, locations: &Vec<(usize, f32, f32)>) {
+  let file_path = file_path.into();
+  let (width, height) = (600, 600);
+  let mut image = ImageBuffer::<Rgb<u8>, Vec<u8>>::new(width + 5, height + 5); // width, height
+  
+  let (smallest_x, largest_y, largest_x, smallest_y) = get_point_extents(locations);
+  let x_range: f32 = largest_x - smallest_x;
+  let y_range: f32 = largest_y - smallest_y;
+  
+  for i in 0..locations.len() {
+    let loc = locations[i];
+    let (loc_x,loc_y) = scale_xy(width, height, x_range as u32, y_range as u32, smallest_x, smallest_y, loc.1, loc.2);
+    
+    // Set all location pixels to be red // r,g,b
+    //image.get_pixel_mut(loc_x, loc_y).data = [255, 0, 0];
+    //circle_it(&mut image, loc_x, loc_y, [255, 0, 0]);
+    draw_hollow_circle_mut(&mut image, (loc_x as i32, loc_y as i32), 10 /*radius*/, Rgb([255, 0, 0]));
+    
+    // Also draw an index number
+    let font = Vec::from( include_bytes!("/usr/share/fonts/noto/NotoSans-Bold.ttf") as &[u8] );
+    let font = FontCollection::from_bytes(font).unwrap().into_font().unwrap();
+    
+    let font_height = 14.0;
+    let font_scale = Scale { x: font_height, y: font_height };
+    draw_text_mut(&mut image, Rgb([200, 200, 255]), loc_x as u32, loc_y as u32, font_scale, &font, format!("{}", i).as_str());
+  }
+  
+  for i in 0..path.len() {
+    let pt_from = path[i];
+    let pt_to =   path[(i+1) % path.len()];
+    //println!("pt_from = {}, pt_to = {}", pt_from, pt_to);
+    
+    let from_loc = locations[pt_from];
+    let (from_loc_x,from_loc_y) = scale_xy(width, height, x_range as u32, y_range as u32, smallest_x, smallest_y, from_loc.1, from_loc.2);
+    
+    let to_loc = locations[pt_to];
+    let (pt_to_x,pt_to_y) = scale_xy(width, height, x_range as u32, y_range as u32, smallest_x, smallest_y, to_loc.1, to_loc.2);
+    //println!("Going from {} to {}", pt_from, pt_to);
+    
+    draw_line_segment_mut(&mut image,
+      (pt_to_x as f32,pt_to_y as f32), // start
+      (from_loc_x as f32,from_loc_y as f32), // end
+      Rgb([200, 200, 200])
+    );
+  }
+  
+  image.save(file_path).unwrap();
+}
+
+fn save_state_image_center<I: Into<String>>(file_path: I, path: &Vec<usize>, locations: &Vec<(usize, f32, f32)>, center: &(f32, f32)) {
   let file_path = file_path.into();
   let (width, height) = (600, 600);
   let mut image = ImageBuffer::<Rgb<u8>, Vec<u8>>::new(width + 5, height + 5); // width, height
