@@ -593,7 +593,7 @@ fn spray(n: usize, bound_granularity: f32) {
       let loc = (point_x, point_y);
       let (loc_x,loc_y) = scale_xy(width, height, x_range as u32, y_range as u32, smallest_x, smallest_y, loc.0, loc.1);
       
-      if distance_diff.abs() > 0.1 {
+      if distance_diff.abs() > 0.0001 {
         // jalgo broke, paint red pixel
         image.get_pixel_mut(loc_x, loc_y).data = [255, 0, 0];
         num_failures += 1;
