@@ -497,23 +497,9 @@ fn perform_matrix_image_gen<S: Into<String>>(_img_path: S, _node_coordinates: Ve
   // Great idea; never finished, see spray(1)
 }
 
-fn spray(n: usize, bound_granularity: f32) {
-  println!("Spraying {} cities...", n);
-  
-  // Bounding box for all points
-  let x_min_bound: f32 = 0.0;
-  let x_max_bound: f32 = 15.0;
-  let y_min_bound: f32 = 0.0;
-  let y_max_bound: f32 = 15.0;
-  
-  let x_min: f32 = 4.0;
-  let x_max: f32 = 11.0;
-  let y_min: f32 = 4.0;
-  let y_max: f32 = 11.0;
-  
+fn get_env_or_random_node_coordinates(n: usize, x_min: f32, x_max: f32, y_min: f32, y_max: f32) -> Vec<(usize, f32, f32)> {
   let mut rng = rand::thread_rng();
   let mut node_coordinates: Vec<(usize, f32, f32)> = vec![];
-  
   // Create random set of points OR parse from env var
   match env::var("TSP_INITIAL_COORDS") {
     Ok(initial_coords_s) => {
@@ -540,7 +526,24 @@ fn spray(n: usize, bound_granularity: f32) {
       }
     }
   }
+  return node_coordinates;
+}
 
+fn spray(n: usize, bound_granularity: f32) {
+  println!("Spraying {} cities...", n);
+  
+  // Bounding box for all points
+  let x_min_bound: f32 = 0.0;
+  let x_max_bound: f32 = 15.0;
+  let y_min_bound: f32 = 0.0;
+  let y_max_bound: f32 = 15.0;
+  
+  let x_min: f32 = 4.0;
+  let x_max: f32 = 11.0;
+  let y_min: f32 = 4.0;
+  let y_max: f32 = 11.0;
+  
+  let node_coordinates: Vec<(usize, f32, f32)> = get_env_or_random_node_coordinates(n, x_min, x_max, y_min, y_max);
   println!("Initial node_coordinates={:?}", &node_coordinates);
   
   // Generate partial image
