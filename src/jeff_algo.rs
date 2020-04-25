@@ -147,6 +147,15 @@ pub fn solve(node_coordinates: &Vec<(usize, f32, f32)>, weights: &Vec<Vec<f32>>,
 pub fn next_step(ordered_visits: &Vec<usize>, node_coordinates: &Vec<(usize, f32, f32)>, weights: &Vec<Vec<f32>>, save_run_prefix: Option<String>) -> Vec<usize> {
   let mut ordered_visits: Vec<usize> = ordered_visits.clone();
 
+  match &save_run_prefix {
+    Some(prefix) => {
+      if let Err(_e) = create_dir(prefix) {
+        // We don't care
+      }
+    }
+    None => { }
+  }
+
   // Holds all points not in ordered_visits
   let mut unordered_visits: Vec<usize> = Vec::with_capacity(weights.len()-3);
   'outer: for p in 0..weights.len() {
