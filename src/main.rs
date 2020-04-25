@@ -533,6 +533,10 @@ fn spray(n: usize, bound_granularity: f32) {
   let x_range: f32 = largest_x - smallest_x;
   let y_range: f32 = largest_y - smallest_y;
   
+  // Use jalgo to compute the first N-1 insertions...
+  let city_weights = compute_weight_coords(&node_coordinates);
+  let first_ordered_visits = jeff_algo::solve(&node_coordinates, &city_weights, None);
+
   // Now test a grid of points every bound_granularity units,
   // computing the ideal and jalgo. When the two do not match, make a dot on
   // the spray image we generate.
@@ -559,7 +563,8 @@ fn spray(n: usize, bound_granularity: f32) {
       
       let city_weights = compute_weight_coords(&node_coordinates);
       
-      let jeff_sol = jeff_algo::solve(&node_coordinates, &city_weights, None);
+      //let jeff_sol = jeff_algo::solve(&node_coordinates, &city_weights, None);
+      let jeff_sol = jeff_algo::next_step(&first_ordered_visits, &node_coordinates, &city_weights, None);
       let brute_sol = brute_algo::solve(&node_coordinates, &city_weights, None);
       
       let jeff_sol_len = compute_dist(&city_weights, &jeff_sol);

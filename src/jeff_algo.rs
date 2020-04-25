@@ -143,6 +143,52 @@ pub fn solve(node_coordinates: &Vec<(usize, f32, f32)>, weights: &Vec<Vec<f32>>,
   return ordered_visits;
 }
 
+// diagnostic which assumes a hamiltonian cycle of 3+ elements passed in, picks next from node_coordinates and inserts it
+pub fn next_step(ordered_visits: &Vec<usize>, node_coordinates: &Vec<(usize, f32, f32)>, weights: &Vec<Vec<f32>>, save_run_prefix: Option<String>) -> Vec<usize> {
+  let mut ordered_visits: Vec<usize> = ordered_visits.clone();
+
+  // Holds all points not in ordered_visits
+  let mut unordered_visits: Vec<usize> = Vec::with_capacity(weights.len()-3);
+  'outer: for p in 0..weights.len() {
+    for ordered in &ordered_visits {
+      if p == *ordered {
+        continue 'outer;
+      }
+    }
+    // we haven't continued, therefore we are not in odered_visits
+    unordered_visits.push(p);
+  }
+
+  let (furthest_non_collected_point_i,
+       ordered_idx,
+       unordered_idx) = compute_furthest(&ordered_visits, &unordered_visits, &weights, &node_coordinates);
+  
+  match &save_run_prefix {
+    Some(prefix) => {
+      save_state_image(format!("{}/jalgo-{:03}.png", prefix, ordered_visits.len()), &ordered_visits, &node_coordinates);
+    }
+    None => { }
+  }
+  unordered_visits.remove(unordered_idx);
+  
+  let ordered_idx = (ordered_idx+1) % ordered_visits.len();
+  ordered_visits.insert(ordered_idx, furthest_non_collected_point_i);
+
+  // Store solution
+  match &save_run_prefix {
+    Some(prefix) => {
+      save_state_image(format!("{}/jalgo-{:03}.png", prefix, ordered_visits.len()), &ordered_visits, &node_coordinates);
+      fs::write(
+        format!("{}/jalgo-path.txt", prefix),
+        format!("{:?}\nDistance:{}", ordered_visits, compute_dist(weights, &ordered_visits))
+      ).expect("Unable to write file");
+    }
+    None => { }
+  }
+  
+  return ordered_visits;
+}
+
 fn compute_furthest(path: &Vec<usize>, unordered: &Vec<usize>, weights: &Vec<Vec<f32>>, locations: &Vec<(usize, f32, f32)>)
   ->
   (usize /*point i*/, usize /*points idx in path*/, usize /*points idx in unordered*/)
