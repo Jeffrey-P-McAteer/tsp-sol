@@ -574,7 +574,7 @@ fn spray(n: usize, bound_granularity: f32) {
       let loc = (point_x, point_y);
       let (loc_x,loc_y) = scale_xy(width, height, x_range as u32, y_range as u32, smallest_x, smallest_y, loc.0, loc.1);
       
-      if distance_diff.abs() > 0.01 {
+      if distance_diff.abs() > 0.1 {
         // jalgo broke, paint red pixel
         image.get_pixel_mut(loc_x, loc_y).data = [255, 0, 0];
         num_failures += 1;
@@ -582,7 +582,7 @@ fn spray(n: usize, bound_granularity: f32) {
         // BUT only if bound_granularity > 0.1 as a performance improvement to high-res sprays
         if bound_granularity >= 0.1 {
           let prefix_dir = format!("./views/spray-jalgo-f{:03}", num_failures);
-          jeff_algo::solve(&node_coordinates, &city_weights, Some(prefix_dir.clone()));
+          jeff_algo::next_step(&first_ordered_visits, &node_coordinates, &city_weights, Some(prefix_dir.clone()));
           brute_algo::solve(&node_coordinates, &city_weights, Some(prefix_dir.clone()));
         }
       }
