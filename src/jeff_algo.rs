@@ -198,12 +198,12 @@ pub fn next_step(ordered_visits: &Vec<usize>, node_coordinates: &Vec<(usize, f32
   return ordered_visits;
 }
 
-fn compute_furthest(path: &Vec<usize>, unordered: &Vec<usize>, weights: &Vec<Vec<f32>>, locations: &Vec<(usize, f32, f32)>)
+fn compute_furthest(path: &Vec<usize>, unordered: &Vec<usize>, weights: &Vec<Vec<f32>>, _locations: &Vec<(usize, f32, f32)>)
   ->
   (usize /*point i*/, usize /*points idx in path*/, usize /*points idx in unordered*/)
 {
-  let mut unordered_idx = 0;
-  let mut furthest_i = unordered[unordered_idx];
+  let unordered_idx = 0;
+  let furthest_i = unordered[unordered_idx];
   
   // Let's re-scope some variables to be immutable now that we've calculated them
   let furthest_i = furthest_i; // idx to weight matrix
@@ -233,58 +233,3 @@ fn compute_furthest(path: &Vec<usize>, unordered: &Vec<usize>, weights: &Vec<Vec
   
   return (furthest_i/*idx to weight matrix*/, path_idx, unordered_idx);
 }
-
-fn compute_first_better_swap(path: &Vec<usize>, weights: &Vec<Vec<f32>>) -> Option<usize> {
-  let mut our_path = path.clone();
-  let orig_dist = compute_dist(weights, path);
-  for i in 0..path.len() {
-    
-    // try swap
-    cswap(&mut our_path, i, i+1);
-    // is better?
-    if compute_dist(weights, &our_path) < orig_dist {
-      return Some(i);
-    }
-    else {
-      // Undo
-      cswap(&mut our_path, i, i+1);
-    }
-  }
-  return None;
-}
-
-// like compute_first_better_swap but for each swap compare with another one first
-fn compute_two_first_better_swap(path: &Vec<usize>, weights: &Vec<Vec<f32>>) -> Option<(usize, usize)> {
-  let mut our_path = path.clone();
-  let orig_dist = compute_dist(weights, path);
-  for i in 0..path.len() {
-    for j in 0..path.len() {
-      if j == i || ((i+1) % path.len()) == j || ((j+1) % path.len()) == i {
-        continue;
-      }
-      // try swap
-      cswap(&mut our_path, i, i+1);
-      cswap(&mut our_path, j, j+1);
-      // is better?
-      if compute_dist(weights, &our_path) < orig_dist {
-        return Some((i, j));
-      }
-      else {
-        // Undo
-        cswap(&mut our_path, j, j+1);
-        cswap(&mut our_path, i, i+1);
-      }
-    }
-  }
-  return None;
-}
-
-// Performs a cyclic swap of the values at indexes i1 and i2
-// i1 MUST be within 0..path.len, i2 may be anything (will be bounded)
-fn cswap(path: &mut Vec<usize>, i1: usize, i2: usize) {
-    let i2 = i2 % path.len();
-    let tmp = path[i1];
-    path[i1] = path[i2];
-    path[i2] = tmp;
-}
-

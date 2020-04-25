@@ -17,7 +17,7 @@
  */
 
 extern crate tsplib;
-use tsplib::{EdgeWeightType, NodeCoord, Type};
+use tsplib::{NodeCoord};
 
 extern crate image;
 use image::{ImageBuffer, Rgb};
@@ -38,7 +38,7 @@ use std::fs::{File,create_dir};
 use std::path::Path;
 use std::io::{BufReader};
 use std::env;
-use std::io::prelude::*;
+//use std::io::prelude::*;
 use std::f32;
 
 mod brute_algo;
@@ -425,12 +425,12 @@ fn compute_weight_coords(node_coordinates: &Vec<(usize, f32, f32)>) -> Vec<Vec<f
 fn selective() {
   println!("Performing selective failure...");
   // Bounding box for all points
-  let x_min_bound: f32 = 0.0;
-  let x_max_bound: f32 = 15.0;
-  let y_min_bound: f32 = 0.0;
-  let y_max_bound: f32 = 15.0;
+  //let x_min_bound: f32 = 0.0;
+  //let x_max_bound: f32 = 15.0;
+  //let y_min_bound: f32 = 0.0;
+  //let y_max_bound: f32 = 15.0;
   
-  let bound_granularity = 0.25; // step size with which to make grid points after failure
+  //let bound_granularity = 0.25; // step size with which to make grid points after failure
   
   let x_min: f32 = 5.0;
   let x_max: f32 = 10.0;
@@ -493,7 +493,7 @@ fn selective() {
   
 }
 
-fn perform_matrix_image_gen<S: Into<String>>(img_path: S, node_coordinates: Vec<(usize, f32, f32)>, city_weights: Vec<Vec<f32>>) {
+fn perform_matrix_image_gen<S: Into<String>>(_img_path: S, _node_coordinates: Vec<(usize, f32, f32)>, _city_weights: Vec<Vec<f32>>) {
   // Great idea; never finished, see spray(1)
 }
 
