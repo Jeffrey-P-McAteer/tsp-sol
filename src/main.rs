@@ -514,15 +514,34 @@ fn spray(n: usize, bound_granularity: f32) {
   let mut rng = rand::thread_rng();
   let mut node_coordinates: Vec<(usize, f32, f32)> = vec![];
   
-  // Create random set of points
-  for i in 0..n {
-    let new_r_city = (
-      i,
-      rng.gen_range(x_min, x_max),
-      rng.gen_range(y_min, y_max),
-    );
-    node_coordinates.push(new_r_city);
+  // Create random set of points OR parse from env var
+  match env::var("TSP_INITIAL_COORDS") {
+    Ok(initial_coords_s) => {
+      // initial_coords_s == "5.12,6.8 4.8,4.9, 1.2,1.3"
+      let pairs: Vec<&str> = initial_coords_s.split(" ").collect();
+      for i in 0..n {
+        let x_and_y_s: Vec<&str> = pairs[i].split(",").collect();
+        let x: f32 = x_and_y_s[0].parse().expect("TSP_INITIAL_COORDS did not contain a number");
+        let y: f32 = x_and_y_s[1].parse().expect("TSP_INITIAL_COORDS did not contain a number");
+        let new_r_city = (
+          i, x, y
+        );
+        node_coordinates.push(new_r_city);
+      }
+    }
+    Err(_) => {
+      for i in 0..n {
+        let new_r_city = (
+          i,
+          rng.gen_range(x_min, x_max),
+          rng.gen_range(y_min, y_max),
+        );
+        node_coordinates.push(new_r_city);
+      }
+    }
   }
+
+  println!("Initial node_coordinates={:?}", &node_coordinates);
   
   // Generate partial image
   let file_path = "views/spray.png";
