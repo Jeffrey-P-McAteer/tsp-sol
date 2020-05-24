@@ -46,6 +46,11 @@ cargo run --release delta
 # ./views will be populated with images of steps whenever the two algorithm solutions differ
 ```
 
+Setup a pre-defined city + spray it (add a point at each image pixel + print if insertion produced a hamiltonian cycle)
+```
+TSP_INITIAL_COORDS='6.5,8.5 7.5,8.5 8.5,8.5 7.5,8.51' cargo run --release -- spray 4 0.01
+```
+
 # Issues
 
 For some reason local optimizations hurt the final solution. Because of this a technique must be
