@@ -602,7 +602,7 @@ fn spray(n: usize, bound_granularity: f32) {
         num_failures += 1;
         // Also save a copy of the state in views/spray-jalgo*
         // BUT only if bound_granularity > 0.1 as a performance improvement to high-res sprays
-        if bound_granularity >= 0.6 {
+        if bound_granularity >= 0.2 {
           let prefix_dir = format!("./views/spray-jalgo-f{:03}", num_failures);
           jeff_algo::next_step(&first_ordered_visits, &node_coordinates, &city_weights, Some(prefix_dir.clone()));
           brute_algo::solve(&node_coordinates, &city_weights, Some(prefix_dir.clone()));
