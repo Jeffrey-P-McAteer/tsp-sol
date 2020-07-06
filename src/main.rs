@@ -586,7 +586,7 @@ fn spray(n: usize, bound_granularity: f32) {
       let city_weights = compute_weight_coords(&node_coordinates);
       
       //let jeff_sol = jeff_algo::solve(&node_coordinates, &city_weights, None);
-      let jeff_sol = jeff_algo::next_step(&first_ordered_visits, &node_coordinates, &city_weights, None);
+      let jeff_sol = jeff_algo::next_step(&first_ordered_visits, &node_coordinates, &city_weights, &None);
       let brute_sol = brute_algo::solve(&node_coordinates, &city_weights, None);
       
       let jeff_sol_len = compute_dist(&city_weights, &jeff_sol);
@@ -604,7 +604,7 @@ fn spray(n: usize, bound_granularity: f32) {
         // BUT only if bound_granularity > 0.1 as a performance improvement to high-res sprays
         if bound_granularity >= 0.2 {
           let prefix_dir = format!("./views/spray-jalgo-f{:03}", num_failures);
-          jeff_algo::next_step(&first_ordered_visits, &node_coordinates, &city_weights, Some(prefix_dir.clone()));
+          jeff_algo::next_step(&first_ordered_visits, &node_coordinates, &city_weights, &Some(prefix_dir.clone()));
           brute_algo::solve(&node_coordinates, &city_weights, Some(prefix_dir.clone()));
         }
       }

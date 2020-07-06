@@ -24,7 +24,11 @@ pub fn solve(node_coordinates: &Vec<(usize, f32, f32)>, weights: &Vec<Vec<f32>>,
   let mut ordered_visits: Vec<usize> = vec![0, 1, 2]; // holds the path as a vector of indexes relating to the city number beginning at 0
   
   match &save_run_prefix {
-    Some(prefix) => { if let Err(_e) = create_dir(prefix) { } }
+    Some(prefix) => {
+      if let Err(_e) = create_dir(prefix) {
+        // We don't care
+      }
+    }
     None => { }
   }
   
@@ -79,22 +83,48 @@ pub fn solve(node_coordinates: &Vec<(usize, f32, f32)>, weights: &Vec<Vec<f32>>,
   }
   
   while ordered_visits.len() < weights.len() {
-
-    ordered_visits = next_step(&ordered_visits, &node_coordinates, &weights, &save_run_prefix);
-
-    // let (furthest_non_collected_point_i,
-    //      ordered_idx,
-    //      unordered_idx) = compute_furthest(&ordered_visits, &unordered_visits, &weights, &node_coordinates);
+    let (furthest_non_collected_point_i,
+         ordered_idx,
+         unordered_idx) = compute_furthest(&ordered_visits, &unordered_visits, &weights, &node_coordinates);
     
-    // match &save_run_prefix {
-    //   Some(prefix) => { save_state_image(format!("{}/jalgo-{:03}.png", prefix, ordered_visits.len()), &ordered_visits, &node_coordinates); }
-    //   None => { }
+    match &save_run_prefix {
+      Some(prefix) => {
+        save_state_image(format!("{}/jalgo-{:03}.png", prefix, ordered_visits.len()), &ordered_visits, &node_coordinates);
+      }
+      None => { }
+    }
+    //print_path_metadata(&ordered_visits, &weights);
+    //save_state_image(format!("./views/{}.png", ordered_visits.len()), &ordered_visits, &node_coordinates);
+    // println!("ordered_visits = {:?}", ordered_visits);
+    // println!("unordered_visits = {:?}", unordered_visits);
+    
+    unordered_visits.remove(unordered_idx);
+    //println!("Inserting {} at urdered[{}]", furthest_non_collected_point_i, ordered_idx);
+    
+    let ordered_idx = (ordered_idx+1) % ordered_visits.len();
+    ordered_visits.insert(ordered_idx, furthest_non_collected_point_i);
+    
+    //println!(" = = = = ");
+    
+    // Attempt to swap every node to see if there is a shorter path
+    // let swap_idx: Option<usize> = compute_first_better_swap(&ordered_visits, &weights, 1);
+    // if let Some(begin_idx) = swap_idx {
+    //     //println!("Swapping at begin_idx={}", begin_idx);
+    //     cswap(&mut ordered_visits, begin_idx, begin_idx+1);
     // }
-
-    // unordered_visits.remove(unordered_idx);
     
-    // let ordered_idx = (ordered_idx+1) % ordered_visits.len();
-    // ordered_visits.insert(ordered_idx, furthest_non_collected_point_i);
+    // let swap_idx: Option<usize> = compute_first_better_swap(&ordered_visits, &weights);
+    // if let Some(begin_idx) = swap_idx {
+    //     //println!("Swapping at begin_idx={}", begin_idx);
+    //     cswap(&mut ordered_visits, begin_idx, begin_idx+1);
+    // }
+    
+    // let swap_indexes: Option<(usize,usize)> = compute_two_first_better_swap(&ordered_visits, &weights);
+    // if let Some((begin_1, begin_2)) = swap_indexes {
+    //     //println!("Swapping at begin_1={}  begin_2={}", begin_1, begin_2);
+    //     cswap(&mut ordered_visits, begin_1, begin_1+1);
+    //     cswap(&mut ordered_visits, begin_2, begin_2+1);
+    // }
     
   }
   
@@ -114,12 +144,15 @@ pub fn solve(node_coordinates: &Vec<(usize, f32, f32)>, weights: &Vec<Vec<f32>>,
 }
 
 // diagnostic which assumes a hamiltonian cycle of 3+ elements passed in, picks next from node_coordinates and inserts it
-pub fn next_step(ordered_visits: &Vec<usize>, node_coordinates: &Vec<(usize, f32, f32)>, weights: &Vec<Vec<f32>>, save_run_prefix: &Option<String>) -> Vec<usize> {
-
+pub fn next_step(ordered_visits: &Vec<usize>, node_coordinates: &Vec<(usize, f32, f32)>, weights: &Vec<Vec<f32>>, save_run_prefix: Option<String>) -> Vec<usize> {
   let mut ordered_visits: Vec<usize> = ordered_visits.clone();
 
   match &save_run_prefix {
-    Some(prefix) => { if let Err(_e) = create_dir(prefix) { } }
+    Some(prefix) => {
+      if let Err(_e) = create_dir(prefix) {
+        // We don't care
+      }
+    }
     None => { }
   }
 
@@ -135,82 +168,20 @@ pub fn next_step(ordered_visits: &Vec<usize>, node_coordinates: &Vec<(usize, f32
     unordered_visits.push(p);
   }
 
-  // let (furthest_non_collected_point_i,
-  //      ordered_idx,
-  //      unordered_idx) = compute_furthest(&ordered_visits, &unordered_visits, &weights, &node_coordinates);
+  let (furthest_non_collected_point_i,
+       ordered_idx,
+       unordered_idx) = compute_furthest(&ordered_visits, &unordered_visits, &weights, &node_coordinates);
   
-
-  let unordered_idx = 0;
-  let furthest_i = unordered_visits[unordered_idx];
-  
-  // Let's re-scope some variables to be immutable now that we've calculated them
-  let furthest_i = furthest_i; // idx to weight matrix
-  let unordered_idx = unordered_idx;
-  // println!("furthest_i={}", furthest_i);
-  // Now determine shortest split & merge, set path_idx=
-  let mut ideal_insert_dist_delta: f32 = f32::INFINITY;
-  let mut path_idx = 0; // 0 indicates a split of the edge that runs between 0 -> 1
-  
-  for from_i in 0..ordered_visits.len() {
-    let to_i = (from_i+1) % ordered_visits.len();
-    let from_elm = ordered_visits[from_i];
-    let to_elm = ordered_visits[to_i];
-    
-    let this_dist_delta: f32 = 
-      (-weights[from_elm][to_elm]) +    // removed edge counts negative
-      weights[from_elm][furthest_i] + // add edge from -> new
-      weights[furthest_i][to_elm];    // add edge new -> end
-    
-    //println!("from_elm={} to_elm={} this_dist_delta={} ideal_insert_dist_delta={}", from_elm, to_elm, this_dist_delta, ideal_insert_dist_delta);
-    if this_dist_delta < ideal_insert_dist_delta {
-      //println!("We are putting it between positions {} and {}", from_elm, to_elm);
-      ideal_insert_dist_delta = this_dist_delta;
-      path_idx = from_i;
-    }
-  }
-  
-  let furthest_non_collected_point_i = furthest_i/*idx to weight matrix*/;
-  let ordered_idx = path_idx;
-  let unordered_idx = unordered_idx;
-
   match &save_run_prefix {
-    Some(prefix) => { save_state_image(format!("{}/jalgo-{:03}.png", prefix, ordered_visits.len()), &ordered_visits, &node_coordinates); }
+    Some(prefix) => {
+      save_state_image(format!("{}/jalgo-{:03}.png", prefix, ordered_visits.len()), &ordered_visits, &node_coordinates);
+    }
     None => { }
   }
-
   unordered_visits.remove(unordered_idx);
-
-  // If the current ordered_visits is even (2, 4, 6 etc length)
-  // we select the edge opposite ordered_idx -> (ordered_idx+1) % ordered_visits.len()
-  // and remove it as well.
-  if ordered_visits.len() % 2 == 0 {
-    let opposite_edge_i0 = (ordered_idx + (ordered_visits.len()/2)) % ordered_visits.len();
-    let opposite_edge_i1 = (ordered_idx + 1 + (ordered_visits.len()/2)) % ordered_visits.len();
-
-    // Now we check both combos to catch a one-off case 
-    let mut len_pt1 = 0.0;
-    for i in 0..(ordered_idx-1) {
-      len_pt1 += weights[ordered_visits[i]][ordered_visits[i+1]];
-    }
-
-    let mut len_pt2 = 0.0;
-    for i in ordered_idx.. {
-      len_pt2 += weights[ordered_visits[i]][ordered_visits[i+1]];
-    }
-
-    std::unimplemented!();
-
-    // check PT1..ordered_idx -> furthest_non_collected_point_i -> (ordered_idx+1)..PT2
-
-    // check opposite_edge_i0..ordered_idx -> furthest_non_collected_point_i -> (ordered_idx+1)..opposite_edge_i1
-
-
-  }
-  else {
-    // Simplest insertion when len() == odd
-    let ordered_idx = (ordered_idx+1) % ordered_visits.len();
-    ordered_visits.insert(ordered_idx, furthest_non_collected_point_i);
-  }
+  
+  let ordered_idx = (ordered_idx+1) % ordered_visits.len();
+  ordered_visits.insert(ordered_idx, furthest_non_collected_point_i);
 
   // Store solution
   match &save_run_prefix {
