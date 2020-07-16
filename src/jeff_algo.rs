@@ -180,36 +180,58 @@ pub fn next_step(ordered_visits: &Vec<usize>, node_coordinates: &Vec<(usize, f32
 
   unordered_visits.remove(unordered_idx);
 
+  let ordered_idx_plus1 = (ordered_idx+1) % ordered_visits.len();
+
   // If the current ordered_visits is even (2, 4, 6 etc length)
   // we select the edge opposite ordered_idx -> (ordered_idx+1) % ordered_visits.len()
   // and remove it as well.
   if ordered_visits.len() % 2 == 0 {
-    let opposite_edge_i0 = (ordered_idx + (ordered_visits.len()/2)) % ordered_visits.len();
-    let opposite_edge_i1 = (ordered_idx + 1 + (ordered_visits.len()/2)) % ordered_visits.len();
+    // below read "X+ordered_visits.len()-1" as "-1" (module arithmetic means we can to this)
+    let opposite_edge_i0 = ( ordered_idx_plus1 + (ordered_visits.len()/2)) % ordered_visits.len();
+    let opposite_edge_i1 = ( opposite_edge_i0+ordered_visits.len()-1 ) % ordered_visits.len();
 
-    // Now we check both combos to catch a one-off case 
-    let mut len_pt1 = 0.0;
-    for i in 0..(ordered_idx-1) {
-      len_pt1 += weights[ordered_visits[i]][ordered_visits[i+1]];
+    println!("ordered_visits.len()={} ordered_idx={} ordered_idx_plus1={} opposite_edge_i0={} opposite_edge_i1={}", ordered_visits.len(), ordered_idx, ordered_idx_plus1, opposite_edge_i0, opposite_edge_i1);
+
+    // Now compute delta weights for the two possible merges:
+    let len_simple = 
+      weights[ ordered_visits[ ordered_idx ]      ][ furthest_non_collected_point_i ]+
+      weights[ furthest_non_collected_point_i     ][ ordered_visits[ (ordered_idx_plus1)%ordered_visits.len() ] ]+
+      weights[ ordered_visits[ opposite_edge_i0 ] ][ ordered_visits[ opposite_edge_i1 ] ];
+
+    let len_inverted = 
+      weights[ ordered_visits[ ordered_idx ]                          ][ furthest_non_collected_point_i ]+
+      weights[ furthest_non_collected_point_i                         ][ ordered_visits[ opposite_edge_i1 ] ]+
+      weights[ ordered_visits[ (ordered_idx_plus1)%ordered_visits.len() ] ][ ordered_visits[ opposite_edge_i0 ] ];
+
+    println!("len_simple={}   len_inverted={}", len_simple, len_inverted);
+
+    if len_simple <= len_inverted {
+      // It is cheapest to just insert in the simplest insertion
+      ordered_visits.insert(ordered_idx_plus1, furthest_non_collected_point_i);
     }
+    else {
+      // We must join furthest_non_collected_point_i to a further away point
+      // and remove the opposite edge entirely, connecting it to the only remaining unconnected point in
+      // the graph. This is straightforward when drawn out beleive me.
+      
+      // Performed LAST otherwise indexes would be incorrect for reversal below
+      //ordered_visits.insert(ordered_idx_plus1, furthest_non_collected_point_i);
 
-    let mut len_pt2 = 0.0;
-    for i in ordered_idx.. {
-      len_pt2 += weights[ordered_visits[i]][ordered_visits[i+1]];
+      // Now furthest_non_collected_point_i must connect to opposite_edge_i1,
+      // which we perform by reversing the list from (ordered_idx+1 -> opposite_edge_i1) inclusive
+      reverse_slice(&mut ordered_visits, ordered_idx_plus1, opposite_edge_i1);
+      // After reversal ordered_idx+1 points to opposite_edge_i0 which is the second edge we want where we want it.
+
+      // Finally push in the new point, which will break the new long edge caused by reversing the slice above
+      ordered_visits.insert(ordered_idx, furthest_non_collected_point_i);
+
+
     }
-
-    std::unimplemented!();
-
-    // check PT1..ordered_idx -> furthest_non_collected_point_i -> (ordered_idx+1)..PT2
-
-    // check opposite_edge_i0..ordered_idx -> furthest_non_collected_point_i -> (ordered_idx+1)..opposite_edge_i1
-
 
   }
   else {
     // Simplest insertion when len() == odd
-    let ordered_idx = (ordered_idx+1) % ordered_visits.len();
-    ordered_visits.insert(ordered_idx, furthest_non_collected_point_i);
+    ordered_visits.insert(ordered_idx_plus1, furthest_non_collected_point_i);
   }
 
   // Store solution
@@ -225,6 +247,62 @@ pub fn next_step(ordered_visits: &Vec<usize>, node_coordinates: &Vec<(usize, f32
   }
   
   return ordered_visits;
+}
+
+// Mutates path between from_i and to_i inclusive, reversing the items between from_i and to_i.
+fn reverse_slice(path: &mut Vec<usize>, from_i: usize, to_i: usize) {
+  let p_len = path.len();
+  if from_i < to_i {
+    // Simple case; reverse w/o overlapping
+    let len = to_i - from_i;
+    // Go from from_i to (from_i+len/2) swapping i and to_i-(from_i-i) at each step
+    for i in from_i..(from_i+(len/2)) {
+      let j = to_i-(from_i-i);
+      path.swap(i, j);
+    }
+    // If we had a len < 2 we need to manually swap the 1 pair
+    if from_i == (from_i+(len/2)) {
+      path.swap(from_i, to_i);
+    }
+  }
+  else {
+    // We must wrap around the list...
+    let len = (path.len() - from_i) + to_i;
+    // Go from to_i to (to_i+len/2) swapping i and from_i-(to_i-i) at each step
+    for n in 0..len/2 {
+      let i = (from_i + n) % path.len();
+      let j = (to_i + path.len() - n) % path.len();
+      //println!("i={} j={} len={}", i, j, len);
+      path.swap(i, j);
+    }
+    // If we had a len < 2 we need to manually swap the 1 pair
+    if 0 == len/2 {
+      path.swap(from_i, to_i);
+    }
+  }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_reverse_slice() {
+        let mut data: Vec<usize> = vec![1,2,3,4,5,6];
+        reverse_slice(&mut data, 0, 2);
+        assert_eq!(data, vec![3,2,1,4,5,6]);
+        reverse_slice(&mut data, 0, 2);
+        assert_eq!(data, vec![1,2,3,4,5,6]);
+
+        reverse_slice(&mut data, 2, 0); // from 2 -> 0; this should wrap around
+        assert_eq!(data, vec![3,2,1,6,5,4]);
+        reverse_slice(&mut data, 2, 0);
+        assert_eq!(data, vec![1,2,3,4,5,6]);
+
+        reverse_slice(&mut data, 0, 1);
+        assert_eq!(data, vec![2,1,3,4,5,6]);
+
+    }
 }
 
 fn compute_furthest(path: &Vec<usize>, unordered: &Vec<usize>, weights: &Vec<Vec<f32>>, _locations: &Vec<(usize, f32, f32)>)
