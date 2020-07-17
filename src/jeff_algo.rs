@@ -190,20 +190,20 @@ pub fn next_step(ordered_visits: &Vec<usize>, node_coordinates: &Vec<(usize, f32
     let opposite_edge_i0 = ( ordered_idx_plus1 + (ordered_visits.len()/2)) % ordered_visits.len();
     let opposite_edge_i1 = ( opposite_edge_i0+ordered_visits.len()-1 ) % ordered_visits.len();
 
-    //println!("ordered_visits.len()={} ordered_idx={} ordered_idx_plus1={} opposite_edge_i0={} opposite_edge_i1={}", ordered_visits.len(), ordered_idx, ordered_idx_plus1, opposite_edge_i0, opposite_edge_i1);
+    println!("ordered_visits.len()={} ordered_idx={} ordered_idx_plus1={} opposite_edge_i0={} opposite_edge_i1={}", ordered_visits.len(), ordered_idx, ordered_idx_plus1, opposite_edge_i0, opposite_edge_i1);
 
     // Now compute delta weights for the two possible merges:
     let len_simple = 
       weights[ ordered_visits[ ordered_idx ]      ][ furthest_non_collected_point_i ]+
-      weights[ furthest_non_collected_point_i     ][ ordered_visits[ (ordered_idx_plus1)%ordered_visits.len() ] ]+
+      weights[ furthest_non_collected_point_i     ][ ordered_visits[ ordered_idx_plus1%ordered_visits.len() ] ]+
       weights[ ordered_visits[ opposite_edge_i0 ] ][ ordered_visits[ opposite_edge_i1 ] ];
 
     let len_inverted = 
       weights[ ordered_visits[ ordered_idx ]                          ][ furthest_non_collected_point_i ]+
       weights[ furthest_non_collected_point_i                         ][ ordered_visits[ opposite_edge_i1 ] ]+
-      weights[ ordered_visits[ (ordered_idx_plus1)%ordered_visits.len() ] ][ ordered_visits[ opposite_edge_i0 ] ];
+      weights[ ordered_visits[ ordered_idx_plus1%ordered_visits.len() ] ][ ordered_visits[ opposite_edge_i0 ] ];
 
-    //println!("len_simple={}   len_inverted={}   ordered_visits={:?}", len_simple, len_inverted, &ordered_visits);
+    println!("len_simple={}   len_inverted={}   ordered_visits={:?}", len_simple, len_inverted, &ordered_visits);
 
     if len_simple <= len_inverted {
       // It is cheapest to just insert in the simplest insertion
@@ -232,6 +232,8 @@ pub fn next_step(ordered_visits: &Vec<usize>, node_coordinates: &Vec<(usize, f32
     // Simplest insertion when len() == odd
     ordered_visits.insert(ordered_idx_plus1, furthest_non_collected_point_i);
   }
+
+  println!("  save_run_prefix={:?}  ordered_visits={:?}", save_run_prefix, &ordered_visits);
 
   // Store solution
   match &save_run_prefix {
