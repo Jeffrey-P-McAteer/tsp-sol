@@ -595,12 +595,16 @@ fn spray(n: usize, bound_granularity: f32) {
       let city_weights = compute_weight_coords(&node_coordinates);
       
       //let jeff_sol = jeff_algo::solve(&node_coordinates, &city_weights, None);
+      //println!("=============");
       let jeff_sol = jeff_algo::next_step(&first_ordered_visits, &node_coordinates, &city_weights, &None);
+      //println!("jeff_sol={:?}", &jeff_sol);
+      
       let brute_sol = brute_algo::solve(&node_coordinates, &city_weights, None);
       
       let jeff_sol_len = compute_dist(&city_weights, &jeff_sol);
       let brute_sol_len = compute_dist(&city_weights, &brute_sol);
       let distance_diff = jeff_sol_len - brute_sol_len;
+      //println!("jeff_sol_len={}   brute_sol_len={}  distance_diff={}", jeff_sol_len, brute_sol_len, distance_diff);
       
       let loc = (point_x, point_y);
       let (loc_x,loc_y) = scale_xy(width, height, x_range as u32, y_range as u32, smallest_x, smallest_y, loc.0, loc.1);
