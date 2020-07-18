@@ -18,54 +18,13 @@
 
 use super::*;
 
-pub fn solve(node_coordinates: &Vec<(usize, f32, f32)>, weights: &Vec<Vec<f32>>, save_run_prefix: Option<String>) -> Vec<usize> {
-  // We begin with points 0, 1, and 2.
-  // These will be overwritten in the largest-triangle-fining process
-  let mut ordered_visits: Vec<usize> = vec![0, 1, 2]; // holds the path as a vector of indexes relating to the city number beginning at 0
-  
-  match &save_run_prefix {
-    Some(prefix) => { if let Err(_e) = create_dir(prefix) { } }
-    None => { }
-  }
-  
-  // If we have 3 or fewer points, we're done. min bound is O(1), good job folks.
-  if weights.len() <= 3 {
-    return (&ordered_visits[0..weights.len()]).to_vec();
-  }
-  
-  { // Find largest triangle
-    { // Make the first 2 points the furthest away in the entire graph
-      for r in 0..weights.len() {
-        for c in 0..weights.len() {
-          if r == c { continue; }
-          let best_largest_w = weights[ordered_visits[0]][ordered_visits[1]];
-          let this_largest_w    = weights[r][c];
-          if this_largest_w > best_largest_w {
-            ordered_visits[0] = r;
-            ordered_visits[1] = c;
-          }
-        }
-      }
-    }
-    { // Ensure ordered_visits[2] != ordered_visits[0] or ordered_visits[1]
-      while ordered_visits[2] == ordered_visits[0] || ordered_visits[2] == ordered_visits[1] {
-        ordered_visits[2] = (ordered_visits[2]+1) % weights.len();
-      }
-    }
-    //save_state_image(format!("./views/0-1.png"), &ordered_visits, &node_coordinates, &(0.0, 0.0));
-    { // Given the longest edge, find 
-      // weight(0, 2) + weight(1, 2) (weights of both edges going to "2")
-      let mut current_longest_point_len = weights[ordered_visits[0]][ordered_visits[2]] + weights[ordered_visits[1]][ordered_visits[2]];
-      for r in 0..weights.len() {
-        if r == ordered_visits[0] || r == ordered_visits[1] { continue; }
-        let this_len = weights[ordered_visits[0]][r] + weights[ordered_visits[1]][r];
-        if this_len > current_longest_point_len {
-          ordered_visits[2] = r;
-          current_longest_point_len = this_len;
-        }
-      }
-    }
-  }
+type CityNum = usize;
+type CityWeight = f32;
+type CityXYCoord = f32;
+
+pub fn solve(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>, weights: &Vec<Vec<CityWeight>>, save_run_prefix: Option<String>) -> Vec<usize> {
+  let mut ordered_visits = compute_largest_triangle(node_coordinates, weights);
+
   // Holds all points not in ordered_visits
   let mut unordered_visits: Vec<usize> = Vec::with_capacity(weights.len()-3);
   'outer: for p in 0..weights.len() {
@@ -77,27 +36,11 @@ pub fn solve(node_coordinates: &Vec<(usize, f32, f32)>, weights: &Vec<Vec<f32>>,
     // we haven't continued, therefore we are not in odered_visits
     unordered_visits.push(p);
   }
-  
+
   while ordered_visits.len() < weights.len() {
-
     ordered_visits = next_step(&ordered_visits, &node_coordinates, &weights, &save_run_prefix);
-
-    // let (furthest_non_collected_point_i,
-    //      ordered_idx,
-    //      unordered_idx) = compute_furthest(&ordered_visits, &unordered_visits, &weights, &node_coordinates);
-    
-    // match &save_run_prefix {
-    //   Some(prefix) => { save_state_image(format!("{}/jalgo-{:03}.png", prefix, ordered_visits.len()), &ordered_visits, &node_coordinates); }
-    //   None => { }
-    // }
-
-    // unordered_visits.remove(unordered_idx);
-    
-    // let ordered_idx = (ordered_idx+1) % ordered_visits.len();
-    // ordered_visits.insert(ordered_idx, furthest_non_collected_point_i);
-    
   }
-  
+
   // Store solution
   match &save_run_prefix {
     Some(prefix) => {
@@ -114,14 +57,8 @@ pub fn solve(node_coordinates: &Vec<(usize, f32, f32)>, weights: &Vec<Vec<f32>>,
 }
 
 // diagnostic which assumes a hamiltonian cycle of 3+ elements passed in, picks next from node_coordinates and inserts it
-pub fn next_step(ordered_visits: &Vec<usize>, node_coordinates: &Vec<(usize, f32, f32)>, weights: &Vec<Vec<f32>>, save_run_prefix: &Option<String>) -> Vec<usize> {
-
-  let mut ordered_visits: Vec<usize> = ordered_visits.clone();
-
-  match &save_run_prefix {
-    Some(prefix) => { if let Err(_e) = create_dir(prefix) { } }
-    None => { }
-  }
+pub fn next_step(ordered_visits: &Vec<CityNum>, node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>, weights: &Vec<Vec<CityWeight>>, save_run_prefix: &Option<String>) -> Vec<usize> {
+  let mut ordered_visits: Vec<CityNum> = ordered_visits.clone();
 
   // Holds all points not in ordered_visits
   let mut unordered_visits: Vec<usize> = Vec::with_capacity(weights.len()-3);
@@ -135,20 +72,11 @@ pub fn next_step(ordered_visits: &Vec<usize>, node_coordinates: &Vec<(usize, f32
     unordered_visits.push(p);
   }
 
-  // let (furthest_non_collected_point_i,
-  //      ordered_idx,
-  //      unordered_idx) = compute_furthest(&ordered_visits, &unordered_visits, &weights, &node_coordinates);
-  
+  let unordered_idx_to_insert = 0;
+  let citynum_to_insert = unordered_visits[unordered_idx_to_insert];
+  unordered_visits.remove(unordered_idx_to_insert);
 
-  let unordered_idx = 0;
-  let furthest_i = unordered_visits[unordered_idx];
-  
-  // Let's re-scope some variables to be immutable now that we've calculated them
-  let furthest_i = furthest_i; // idx to weight matrix
-  let unordered_idx = unordered_idx;
-  // println!("furthest_i={}", furthest_i);
-  // Now determine shortest split & merge, set path_idx=
-  let mut ideal_insert_dist_delta: f32 = f32::INFINITY;
+  let mut ideal_insert_dist_delta: CityWeight = f32::INFINITY;
   let mut path_idx = 0; // 0 indicates a split of the edge that runs between 0 -> 1
   
   for from_i in 0..ordered_visits.len() {
@@ -156,10 +84,10 @@ pub fn next_step(ordered_visits: &Vec<usize>, node_coordinates: &Vec<(usize, f32
     let from_elm = ordered_visits[from_i];
     let to_elm = ordered_visits[to_i];
     
-    let this_dist_delta: f32 = 
+    let this_dist_delta: CityWeight = 
       (-weights[from_elm][to_elm]) +    // removed edge counts negative
-      weights[from_elm][furthest_i] + // add edge from -> new
-      weights[furthest_i][to_elm];    // add edge new -> end
+      weights[from_elm][citynum_to_insert] + // add edge from -> new
+      weights[citynum_to_insert][to_elm];    // add edge new -> end
     
     //println!("from_elm={} to_elm={} this_dist_delta={} ideal_insert_dist_delta={}", from_elm, to_elm, this_dist_delta, ideal_insert_dist_delta);
     if this_dist_delta < ideal_insert_dist_delta {
@@ -168,74 +96,62 @@ pub fn next_step(ordered_visits: &Vec<usize>, node_coordinates: &Vec<(usize, f32
       path_idx = from_i;
     }
   }
-  
-  let furthest_non_collected_point_i = furthest_i/*idx to weight matrix*/;
-  let ordered_idx = path_idx;
-  let unordered_idx = unordered_idx;
 
-  match &save_run_prefix {
-    Some(prefix) => { save_state_image(format!("{}/jalgo-{:03}.png", prefix, ordered_visits.len()), &ordered_visits, &node_coordinates); }
-    None => { }
+  // path_idx is where we think the value citynum_to_insert should be added,
+  // however we know this approach does not uphold the hamiltonian invariant.
+  // Because of this we compute some properties of the graph and use them
+  // to pick a different strategy. This is somewhere between a heuristic and
+  // a mathematical model.
+
+  let path_idx_plus1 = (path_idx+1) % ordered_visits.len();
+
+  let opposite_edge0 = ( path_idx_plus1 + (ordered_visits.len()/2)) % ordered_visits.len();
+  let opposite_edge1 = ( opposite_edge0+ordered_visits.len()-1 ) % ordered_visits.len();
+
+
+  let len_simple = 
+    weights[ ordered_visits[ path_idx ]       ][ citynum_to_insert ]+
+    weights[ citynum_to_insert                ][ ordered_visits[ path_idx_plus1 ] ]+
+    weights[ ordered_visits[ opposite_edge0 ] ][ ordered_visits[ opposite_edge1 ] ];
+
+  let len_inverted_a = 
+    weights[ ordered_visits[ path_idx ]       ][ citynum_to_insert ]+
+    weights[ citynum_to_insert                ][ ordered_visits[ opposite_edge1 ] ]+
+    weights[ ordered_visits[ path_idx_plus1 ] ][ ordered_visits[ opposite_edge0 ] ];
+
+  let len_inverted_b =  // This is still a work in progress 07/17
+    weights[ ordered_visits[ path_idx_plus1 ]       ][ citynum_to_insert ]+
+    weights[ citynum_to_insert                ][ ordered_visits[ opposite_edge0 ] ]+
+    weights[ ordered_visits[ path_idx ] ][ ordered_visits[ opposite_edge1 ] ];
+
+
+  if len_simple <= len_inverted_a && len_simple <= len_inverted_b {
+    // Do the simple insert. This is the correct move for ~80% of graphs
+    ordered_visits.insert(path_idx_plus1, citynum_to_insert);
+
   }
+  else if len_inverted_a <= len_simple && len_inverted_a <= len_inverted_b  {
+    // With our test city this covers quadrants 4 and 2
+    reverse_slice(&mut ordered_visits, path_idx_plus1, opposite_edge1);
+    ordered_visits.insert(path_idx_plus1, citynum_to_insert);
 
-  unordered_visits.remove(unordered_idx);
-
-  let ordered_idx_plus1 = (ordered_idx+1) % ordered_visits.len();
-
-  // If the current ordered_visits is even (2, 4, 6 etc length)
-  // we select the edge opposite ordered_idx -> (ordered_idx+1) % ordered_visits.len()
-  // and remove it as well.
-  if ordered_visits.len() % 2 == 0 {
-    // below read "X+ordered_visits.len()-1" as "-1" (module arithmetic means we can to this)
-    let opposite_edge_i0 = ( ordered_idx_plus1 + (ordered_visits.len()/2)) % ordered_visits.len();
-    let opposite_edge_i1 = ( opposite_edge_i0+ordered_visits.len()-1 ) % ordered_visits.len();
-
-    //println!("ordered_visits.len()={} ordered_idx={} ordered_idx_plus1={} opposite_edge_i0={} opposite_edge_i1={}", ordered_visits.len(), ordered_idx, ordered_idx_plus1, opposite_edge_i0, opposite_edge_i1);
-
-    // Now compute delta weights for the two possible merges:
-    let len_simple = 
-      weights[ ordered_visits[ ordered_idx ]      ][ furthest_non_collected_point_i ]+
-      weights[ furthest_non_collected_point_i     ][ ordered_visits[ (ordered_idx_plus1)%ordered_visits.len() ] ]+
-      weights[ ordered_visits[ opposite_edge_i0 ] ][ ordered_visits[ opposite_edge_i1 ] ];
-
-    let len_inverted = 
-      weights[ ordered_visits[ ordered_idx ]                          ][ furthest_non_collected_point_i ]+
-      weights[ furthest_non_collected_point_i                         ][ ordered_visits[ opposite_edge_i1 ] ]+
-      weights[ ordered_visits[ (ordered_idx_plus1)%ordered_visits.len() ] ][ ordered_visits[ opposite_edge_i0 ] ];
-
-    //println!("len_simple={}   len_inverted={}   ordered_visits={:?}", len_simple, len_inverted, &ordered_visits);
-
-    if len_simple <= len_inverted {
-      // It is cheapest to just insert in the simplest insertion
-      ordered_visits.insert(ordered_idx_plus1, furthest_non_collected_point_i);
-    }
-    else {
-      // We must join furthest_non_collected_point_i to a further away point
-      // and remove the opposite edge entirely, connecting it to the only remaining unconnected point in
-      // the graph. This is straightforward when drawn out beleive me.
-      
-      // Performed LAST otherwise indexes would be incorrect for reversal below
-      //ordered_visits.insert(ordered_idx_plus1, furthest_non_collected_point_i);
-
-      // Now furthest_non_collected_point_i must connect to opposite_edge_i1,
-      // which we perform by reversing the list from (ordered_idx+1 -> opposite_edge_i1) inclusive
-      reverse_slice(&mut ordered_visits, ordered_idx_plus1, opposite_edge_i1);
-      // After reversal ordered_idx+1 points to opposite_edge_i0 which is the second edge we want where we want it.
-      
-      // Finally push in the new point, which will break the new long edge caused by reversing the slice above
-      ordered_visits.insert(ordered_idx_plus1, furthest_non_collected_point_i);
-
-    }
+  }
+  else if len_inverted_b <= len_simple && len_inverted_b <= len_inverted_a  {
+    // With our test city this covers quadrants 1 and 3
+    reverse_slice(&mut ordered_visits, path_idx_plus1, opposite_edge1);
+    ordered_visits.insert(opposite_edge0, citynum_to_insert);
 
   }
   else {
-    // Simplest insertion when len() == odd
-    ordered_visits.insert(ordered_idx_plus1, furthest_non_collected_point_i);
+    panic!("This case should be impossible.");
   }
 
   // Store solution
   match &save_run_prefix {
     Some(prefix) => {
+      if let Err(_e) = create_dir(prefix) {
+        // Unhandled error case
+      }
       save_state_image(format!("{}/jalgo-{:03}.png", prefix, ordered_visits.len()), &ordered_visits, &node_coordinates);
       fs::write(
         format!("{}/jalgo-path.txt", prefix),
@@ -247,6 +163,43 @@ pub fn next_step(ordered_visits: &Vec<usize>, node_coordinates: &Vec<(usize, f32
   
   return ordered_visits;
 }
+
+fn compute_largest_triangle(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>, weights: &Vec<Vec<f32>>) -> Vec<usize> {
+  let mut ordered_visits: Vec<usize> = vec![0, 1, 2]; // holds the path as a vector of indexes relating to the city number beginning at 0
+
+  // Make the first 2 points the furthest away in the entire graph
+  for r in 0..weights.len() {
+    for c in 0..weights.len() {
+      if r == c { continue; }
+      let best_largest_w = weights[ordered_visits[0]][ordered_visits[1]];
+      let this_largest_w    = weights[r][c];
+      if this_largest_w > best_largest_w {
+        ordered_visits[0] = r;
+        ordered_visits[1] = c;
+      }
+    }
+  }
+
+  // Ensure ordered_visits[2] != ordered_visits[0] or ordered_visits[1]
+  while ordered_visits[2] == ordered_visits[0] || ordered_visits[2] == ordered_visits[1] {
+    ordered_visits[2] = (ordered_visits[2]+1) % weights.len();
+  }
+
+  // Given the longest edge, find 
+  // weight(0, 2) + weight(1, 2) (weights of both edges going to "2")
+  let mut current_longest_point_len = weights[ordered_visits[0]][ordered_visits[2]] + weights[ordered_visits[1]][ordered_visits[2]];
+  for r in 0..weights.len() {
+    if r == ordered_visits[0] || r == ordered_visits[1] { continue; }
+    let this_len = weights[ordered_visits[0]][r] + weights[ordered_visits[1]][r];
+    if this_len > current_longest_point_len {
+      ordered_visits[2] = r;
+      current_longest_point_len = this_len;
+    }
+  }
+
+  return ordered_visits;
+}
+
 
 // Mutates path between from_i and to_i inclusive, reversing the items between from_i and to_i.
 fn reverse_slice(path: &mut Vec<usize>, from_i: usize, to_i: usize) {
@@ -302,40 +255,4 @@ mod tests {
         assert_eq!(data, vec![2,1,3,4,5,6]);
 
     }
-}
-
-fn compute_furthest(path: &Vec<usize>, unordered: &Vec<usize>, weights: &Vec<Vec<f32>>, _locations: &Vec<(usize, f32, f32)>)
-  ->
-  (usize /*point i*/, usize /*points idx in path*/, usize /*points idx in unordered*/)
-{
-  let unordered_idx = 0;
-  let furthest_i = unordered[unordered_idx];
-  
-  // Let's re-scope some variables to be immutable now that we've calculated them
-  let furthest_i = furthest_i; // idx to weight matrix
-  let unordered_idx = unordered_idx;
-  // println!("furthest_i={}", furthest_i);
-  // Now determine shortest split & merge, set path_idx=
-  let mut ideal_insert_dist_delta: f32 = f32::INFINITY;
-  let mut path_idx = 0; // 0 indicates a split of the edge that runs between 0 -> 1
-  
-  for from_i in 0..path.len() {
-    let to_i = (from_i+1) % path.len();
-    let from_elm = path[from_i];
-    let to_elm = path[to_i];
-    
-    let this_dist_delta: f32 = 
-      (-weights[from_elm][to_elm]) +    // removed edge counts negative
-      weights[from_elm][furthest_i] + // add edge from -> new
-      weights[furthest_i][to_elm];    // add edge new -> end
-    
-    //println!("from_elm={} to_elm={} this_dist_delta={} ideal_insert_dist_delta={}", from_elm, to_elm, this_dist_delta, ideal_insert_dist_delta);
-    if this_dist_delta < ideal_insert_dist_delta {
-      //println!("We are putting it between positions {} and {}", from_elm, to_elm);
-      ideal_insert_dist_delta = this_dist_delta;
-      path_idx = from_i;
-    }
-  }
-  
-  return (furthest_i/*idx to weight matrix*/, path_idx, unordered_idx);
 }
