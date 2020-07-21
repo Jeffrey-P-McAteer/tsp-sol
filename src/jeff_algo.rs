@@ -142,6 +142,31 @@ pub fn next_step(ordered_visits: &Vec<CityNum>, node_coordinates: &Vec<(CityNum,
     panic!("This case should be impossible.");
   }
 
+
+  // Now we handle edge cases where we can fix them by swapping N and N+1
+  let ov_len = ordered_visits.len();
+  for from_i in 0..ov_len {
+    let a = (from_i + ov_len - 3) % ov_len;
+    let b = (from_i + ov_len - 2) % ov_len; // Considered for swap
+    let c = (from_i + ov_len - 1) % ov_len; // Considered for swap
+    let d = (from_i + ov_len - 0) % ov_len;
+
+    let orig_len = 
+      weights[ ordered_visits[ a ] ][ ordered_visits[ b ] ]+
+      weights[ ordered_visits[ b ] ][ ordered_visits[ c ] ]+
+      weights[ ordered_visits[ c ] ][ ordered_visits[ d ] ];
+
+    let swap_len = 
+      weights[ ordered_visits[ a ] ][ ordered_visits[ c ] ]+
+      weights[ ordered_visits[ c ] ][ ordered_visits[ b ] ]+
+      weights[ ordered_visits[ b ] ][ ordered_visits[ d ] ];
+
+    if swap_len < orig_len {
+      ordered_visits.swap(b, c); // values at b and c are swapped
+    }
+  }
+
+
   // Store solution
   match &save_run_prefix {
     Some(prefix) => {
