@@ -60,21 +60,17 @@ pub fn solve(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>, weight
 pub fn next_step(ordered_visits: &Vec<CityNum>, node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>, weights: &Vec<Vec<CityWeight>>, save_run_prefix: &Option<String>) -> Vec<usize> {
   let mut ordered_visits: Vec<CityNum> = ordered_visits.clone();
 
-  // Holds all points not in ordered_visits
-  let mut unordered_visits: Vec<usize> = Vec::with_capacity(weights.len()-3);
+  let mut citynum_to_insert = 0;
   'outer: for p in 0..weights.len() {
     for ordered in &ordered_visits {
       if p == *ordered {
         continue 'outer;
       }
     }
-    // we haven't continued, therefore we are not in odered_visits
-    unordered_visits.push(p);
+    citynum_to_insert = p;
+    break;
   }
-
-  let unordered_idx_to_insert = 0;
-  let citynum_to_insert = unordered_visits[unordered_idx_to_insert];
-  unordered_visits.remove(unordered_idx_to_insert);
+  let citynum_to_insert = citynum_to_insert;
 
   let mut ideal_insert_dist_delta: CityWeight = f32::INFINITY;
   let mut path_idx = 0; // 0 indicates a split of the edge that runs between 0 -> 1
