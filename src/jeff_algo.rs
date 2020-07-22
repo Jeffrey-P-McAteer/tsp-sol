@@ -108,7 +108,7 @@ pub fn next_step(ordered_visits: &Vec<CityNum>, node_coordinates: &Vec<(CityNum,
     weights[ citynum_to_insert                ][ ordered_visits[ opposite_edge0 ] ]+
     weights[ ordered_visits[ path_idx ] ][ ordered_visits[ opposite_edge1 ] ];
 
-  if save_run_prefix.is_some() { println!("==========================="); }
+  if save_run_prefix.is_some() { println!("============ {:?} ===============", &save_run_prefix); }
   if save_run_prefix.is_some() { println!("path_idx={} path_idx_plus1={} opposite_edge0={} opposite_edge1={}", path_idx, path_idx_plus1, opposite_edge0, opposite_edge1); }
 
   if len_simple <= len_inverted_a && len_simple <= len_inverted_b {
