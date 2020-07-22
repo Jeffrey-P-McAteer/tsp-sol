@@ -25,18 +25,6 @@ type CityXYCoord = f32;
 pub fn solve(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>, weights: &Vec<Vec<CityWeight>>, save_run_prefix: Option<String>) -> Vec<usize> {
   let mut ordered_visits = compute_largest_triangle(node_coordinates, weights);
 
-  // Holds all points not in ordered_visits
-  let mut unordered_visits: Vec<usize> = Vec::with_capacity(weights.len()-3);
-  'outer: for p in 0..weights.len() {
-    for ordered in &ordered_visits {
-      if p == *ordered {
-        continue 'outer;
-      }
-    }
-    // we haven't continued, therefore we are not in odered_visits
-    unordered_visits.push(p);
-  }
-
   while ordered_visits.len() < weights.len() {
     ordered_visits = next_step(&ordered_visits, &node_coordinates, &weights, &save_run_prefix);
   }
@@ -120,19 +108,24 @@ pub fn next_step(ordered_visits: &Vec<CityNum>, node_coordinates: &Vec<(CityNum,
     weights[ citynum_to_insert                ][ ordered_visits[ opposite_edge0 ] ]+
     weights[ ordered_visits[ path_idx ] ][ ordered_visits[ opposite_edge1 ] ];
 
+  if save_run_prefix.is_some() { println!("==========================="); }
+  if save_run_prefix.is_some() { println!("path_idx={} path_idx_plus1={} opposite_edge0={} opposite_edge1={}", path_idx, path_idx_plus1, opposite_edge0, opposite_edge1); }
 
   if len_simple <= len_inverted_a && len_simple <= len_inverted_b {
+    if save_run_prefix.is_some() { println!("simple insert, ordered_visits={:?}", &ordered_visits); }
     // Do the simple insert. This is the correct move for ~80% of graphs
     ordered_visits.insert(path_idx_plus1, citynum_to_insert);
 
   }
   else if len_inverted_a <= len_simple && len_inverted_a <= len_inverted_b  {
+    if save_run_prefix.is_some() { println!("len_inverted_a, ordered_visits={:?}", &ordered_visits); }
     // With our test city this covers quadrants 4 and 2
     reverse_slice(&mut ordered_visits, path_idx_plus1, opposite_edge1);
     ordered_visits.insert(path_idx_plus1, citynum_to_insert);
 
   }
   else if len_inverted_b <= len_simple && len_inverted_b <= len_inverted_a  {
+    if save_run_prefix.is_some() { println!("len_inverted_b, ordered_visits={:?}", &ordered_visits); }
     // With our test city this covers quadrants 1 and 3
     reverse_slice(&mut ordered_visits, path_idx_plus1, opposite_edge1);
     ordered_visits.insert(opposite_edge0, citynum_to_insert);
@@ -161,8 +154,11 @@ pub fn next_step(ordered_visits: &Vec<CityNum>, node_coordinates: &Vec<(CityNum,
       weights[ ordered_visits[ c ] ][ ordered_visits[ b ] ]+
       weights[ ordered_visits[ b ] ][ ordered_visits[ d ] ];
 
+    if save_run_prefix.is_some() { println!("before swap ordered_visits={:?}", ordered_visits); }
     if swap_len < orig_len {
+      if save_run_prefix.is_some() { println!("Swapping idx:{} val:{} and idx:{} val:{} because {} < {}", b, ordered_visits[b], c, ordered_visits[c], swap_len, orig_len); }
       ordered_visits.swap(b, c); // values at b and c are swapped
+      if save_run_prefix.is_some() { println!("after swap ordered_visits={:?}", ordered_visits); }
     }
   }
 
@@ -224,7 +220,7 @@ fn compute_largest_triangle(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXY
 
 // Mutates path between from_i and to_i inclusive, reversing the items between from_i and to_i.
 fn reverse_slice(path: &mut Vec<usize>, from_i: usize, to_i: usize) {
-  let p_len = path.len();
+  //let p_len = path.len();
   if from_i < to_i {
     // Simple case; reverse w/o overlapping
     let len = to_i - from_i;
