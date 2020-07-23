@@ -110,6 +110,7 @@ pub fn next_step(ordered_visits: &Vec<CityNum>, node_coordinates: &Vec<(CityNum,
 
   if save_run_prefix.is_some() { println!("============ {:?} ===============", &save_run_prefix); }
   if save_run_prefix.is_some() { println!("path_idx={} path_idx_plus1={} opposite_edge0={} opposite_edge1={}", path_idx, path_idx_plus1, opposite_edge0, opposite_edge1); }
+  if save_run_prefix.is_some() { println!("len_simple={} len_inverted_a={} len_inverted_b={}", len_simple, len_inverted_a, len_inverted_b); }
 
   if len_simple <= len_inverted_a && len_simple <= len_inverted_b {
     if save_run_prefix.is_some() { println!("simple insert, ordered_visits={:?}", &ordered_visits); }
@@ -154,7 +155,7 @@ pub fn next_step(ordered_visits: &Vec<CityNum>, node_coordinates: &Vec<(CityNum,
       weights[ ordered_visits[ c ] ][ ordered_visits[ b ] ]+
       weights[ ordered_visits[ b ] ][ ordered_visits[ d ] ];
 
-    if save_run_prefix.is_some() { println!("before swap ordered_visits={:?}", ordered_visits); }
+    if save_run_prefix.is_some() { println!("before swap from_i={} ordered_visits={:?}", from_i, ordered_visits); }
     if swap_len < orig_len {
       if save_run_prefix.is_some() { println!("Swapping idx:{} val:{} and idx:{} val:{} because {} < {}", b, ordered_visits[b], c, ordered_visits[c], swap_len, orig_len); }
       ordered_visits.swap(b, c); // values at b and c are swapped
