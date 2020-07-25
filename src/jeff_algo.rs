@@ -46,6 +46,9 @@ pub fn solve(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>, weight
 
 // diagnostic which assumes a hamiltonian cycle of 3+ elements passed in, picks next from node_coordinates and inserts it
 pub fn next_step(ordered_visits: &Vec<CityNum>, node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>, weights: &Vec<Vec<CityWeight>>, save_run_prefix: &Option<String>) -> Vec<usize> {
+  
+  if let Some(p) = save_run_prefix { println!("============ {:?} ===============", &p); }
+
   let mut ordered_visits: Vec<CityNum> = ordered_visits.clone();
 
   let mut citynum_to_insert = 0;
@@ -61,7 +64,7 @@ pub fn next_step(ordered_visits: &Vec<CityNum>, node_coordinates: &Vec<(CityNum,
   let citynum_to_insert = citynum_to_insert;
 
   let mut ideal_insert_dist_delta: CityWeight = f32::INFINITY;
-  let mut path_idx = 0; // 0 indicates a split of the edge that runs between 0 -> 1
+  let mut ins_idx0 = 0; // 0 indicates a split of the edge that runs between 0 -> 1
   
   for from_i in 0..ordered_visits.len() {
     let to_i = (from_i+1) % ordered_visits.len();
@@ -73,95 +76,55 @@ pub fn next_step(ordered_visits: &Vec<CityNum>, node_coordinates: &Vec<(CityNum,
       weights[from_elm][citynum_to_insert] + // add edge from -> new
       weights[citynum_to_insert][to_elm];    // add edge new -> end
     
-    //println!("from_elm={} to_elm={} this_dist_delta={} ideal_insert_dist_delta={}", from_elm, to_elm, this_dist_delta, ideal_insert_dist_delta);
     if this_dist_delta < ideal_insert_dist_delta {
-      //println!("We are putting it between positions {} and {}", from_elm, to_elm);
       ideal_insert_dist_delta = this_dist_delta;
-      path_idx = from_i;
+      ins_idx0 = from_i;
     }
   }
 
-  // path_idx is where we think the value citynum_to_insert should be added,
-  // however we know this approach does not uphold the hamiltonian invariant.
-  // Because of this we compute some properties of the graph and use them
-  // to pick a different strategy. This is somewhere between a heuristic and
-  // a mathematical model.
+  // .insert() takes the final resting place of the added element so
+  // we keep the far end of the edge we are breaking and insert there.
+  let ins_idx1 = (ins_idx0+1) % ordered_visits.len();
 
-  let path_idx_plus1 = (path_idx+1) % ordered_visits.len();
+  ordered_visits.insert(ins_idx1, citynum_to_insert);
+  // ins_idx1 points to the newly inserted city
 
-  let opposite_edge0 = ( path_idx_plus1 + (ordered_visits.len()/2)) % ordered_visits.len();
-  let opposite_edge1 = ( opposite_edge0+ordered_visits.len()-1 ) % ordered_visits.len();
+  // ins_idx2 points to the city to the right of the newly inserted one
+  let ins_idx2 = (ins_idx1+1) % ordered_visits.len();
 
+  // We still need to check interior edges and see
+  // if alternate routes are better. This is going to end up
+  // being a recursive step but for reasearch we may do the first 2-3 iterations manually
+  // to find the pattern.
 
-  let len_simple = 
-    weights[ ordered_visits[ path_idx ]       ][ citynum_to_insert ]+
-    weights[ citynum_to_insert                ][ ordered_visits[ path_idx_plus1 ] ]+
-    weights[ ordered_visits[ opposite_edge0 ] ][ ordered_visits[ opposite_edge1 ] ];
+  for a in 0..ordered_visits.len() {
+    if a == ins_idx1 {
+      continue; // we do not consider the inserted city for inner edges
+    }
+    for b in 0..ordered_visits.len() {
+      if b == ins_idx1 {
+        continue; // we do not consider the inserted city for inner edges
+      }
+      if a == b || a == (b+1) % ordered_visits.len() || (a+1) % ordered_visits.len() == b {
+        continue; // we do not consider edges already in the path
+      }
+      if b > a {
+        continue; // we only consider half the inner edges. We choose those where a < b.
+      }
+      // Now we have an edge from a->b which is not in
+      // the graph or connected to the new point.
+      // For each of these we compute a delta to see what would
+      // happen if we added it and removed the 3rd path on a and b.
+      if save_run_prefix.is_some() {
+        println!("a={} b={} len={}", a, b, ordered_visits.len());
+      }
 
-  let len_inverted_a = 
-    weights[ ordered_visits[ path_idx ]       ][ citynum_to_insert ]+
-    weights[ citynum_to_insert                ][ ordered_visits[ opposite_edge1 ] ]+
-    weights[ ordered_visits[ path_idx_plus1 ] ][ ordered_visits[ opposite_edge0 ] ];
-
-  let len_inverted_b =  // This is still a work in progress 07/17
-    weights[ ordered_visits[ path_idx_plus1 ]       ][ citynum_to_insert ]+
-    weights[ citynum_to_insert                ][ ordered_visits[ opposite_edge0 ] ]+
-    weights[ ordered_visits[ path_idx ] ][ ordered_visits[ opposite_edge1 ] ];
-
-  if save_run_prefix.is_some() { println!("============ {:?} ===============", &save_run_prefix); }
-  if save_run_prefix.is_some() { println!("path_idx={} path_idx_plus1={} opposite_edge0={} opposite_edge1={}", path_idx, path_idx_plus1, opposite_edge0, opposite_edge1); }
-  if save_run_prefix.is_some() { println!("len_simple={} len_inverted_a={} len_inverted_b={}", len_simple, len_inverted_a, len_inverted_b); }
-
-  if len_simple <= len_inverted_a && len_simple <= len_inverted_b {
-    if save_run_prefix.is_some() { println!("simple insert, ordered_visits={:?}", &ordered_visits); }
-    // Do the simple insert. This is the correct move for ~80% of graphs
-    ordered_visits.insert(path_idx_plus1, citynum_to_insert);
-
-  }
-  else if len_inverted_a <= len_simple && len_inverted_a <= len_inverted_b  {
-    if save_run_prefix.is_some() { println!("len_inverted_a, ordered_visits={:?}", &ordered_visits); }
-    // With our test city this covers quadrants 4 and 2
-    reverse_slice(&mut ordered_visits, path_idx_plus1, opposite_edge1);
-    ordered_visits.insert(path_idx_plus1, citynum_to_insert);
-
-  }
-  else if len_inverted_b <= len_simple && len_inverted_b <= len_inverted_a  {
-    if save_run_prefix.is_some() { println!("len_inverted_b, ordered_visits={:?}", &ordered_visits); }
-    // With our test city this covers quadrants 1 and 3
-    reverse_slice(&mut ordered_visits, path_idx_plus1, opposite_edge1);
-    ordered_visits.insert(opposite_edge0, citynum_to_insert);
-
-  }
-  else {
-    panic!("This case should be impossible.");
-  }
-
-
-  // Now we handle edge cases where we can fix them by swapping N and N+1
-  let ov_len = ordered_visits.len();
-  for from_i in 0..ov_len {
-    let a = (from_i + ov_len - 3) % ov_len;
-    let b = (from_i + ov_len - 2) % ov_len; // Considered for swap
-    let c = (from_i + ov_len - 1) % ov_len; // Considered for swap
-    let d = (from_i + ov_len - 0) % ov_len;
-
-    let orig_len = 
-      weights[ ordered_visits[ a ] ][ ordered_visits[ b ] ]+
-      weights[ ordered_visits[ b ] ][ ordered_visits[ c ] ]+
-      weights[ ordered_visits[ c ] ][ ordered_visits[ d ] ];
-
-    let swap_len = 
-      weights[ ordered_visits[ a ] ][ ordered_visits[ c ] ]+
-      weights[ ordered_visits[ c ] ][ ordered_visits[ b ] ]+
-      weights[ ordered_visits[ b ] ][ ordered_visits[ d ] ];
-
-    if save_run_prefix.is_some() { println!("before swap from_i={} ordered_visits={:?}", from_i, ordered_visits); }
-    if swap_len < orig_len {
-      if save_run_prefix.is_some() { println!("Swapping idx:{} val:{} and idx:{} val:{} because {} < {}", b, ordered_visits[b], c, ordered_visits[c], swap_len, orig_len); }
-      ordered_visits.swap(b, c); // values at b and c are swapped
-      if save_run_prefix.is_some() { println!("after swap ordered_visits={:?}", ordered_visits); }
+      
+      
     }
   }
+
+
 
 
   // Store solution
@@ -181,6 +144,7 @@ pub fn next_step(ordered_visits: &Vec<CityNum>, node_coordinates: &Vec<(CityNum,
   
   return ordered_visits;
 }
+
 
 fn compute_largest_triangle(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>, weights: &Vec<Vec<f32>>) -> Vec<usize> {
   let mut ordered_visits: Vec<usize> = vec![0, 1, 2]; // holds the path as a vector of indexes relating to the city number beginning at 0
