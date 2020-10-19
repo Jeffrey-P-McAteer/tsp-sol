@@ -1,19 +1,19 @@
 
 # JAlgo
 
-A novel Traveling Salesman algorithm in `O(N^2)` time, which aims to be a proper deterministic solution to all euclidean symmetric TS problems.
+A novel Traveling Salesman algorithm in `O(N^2)` time, which aims to be a proper deterministic solution to all euclidian symmetric TS problems.
 
 **Edit** This algorithm it not so novel as the author originally thought, and falls into a class of TSP heuristic algorithms known as "Insertion Methods". The author maintains the mindset that this algorithm can go beyond a heuristic to provide a proper solution.
 
 # Theory
 
-This approach decomposes finding an ideal Hamiltonian cycle into:
+This approach decomposes finding an ideal hamiltonian cycle into:
 
  - Begin with a path through any 3 points.
-   - Observe this itself is a solution to TSP - for all points in path, is smallest Hamiltonian
-   - Also note any city of size 3 or fewer is a no-op to solve TSP - the only path is the fastest
+   - Observe this itself is a solution to TSP - for all points in path, is smallest hamiltonian
+   - Also note any vity of size 3 or fewer is a no-op to solve TSP - the only path is the fastest
  - Pick a point from the city that is not in the path.
-   - Insert this point into the path such that if (Path) is fastest Hamiltonian, (Path+Point) will also be fastest Hamiltonian.
+   - Insert this point into the path such that if (Path) is fastest hamiltonian, (Path+Point) will also be fastest hamiltonian.
    - We can iterate all existing edges in path and insert at the smallest change (smallest of `-existing_weight+new_left_edge+new_right_edge`)
  - When all points are inserted in path, you have TSP solution for all given points
 
@@ -46,7 +46,7 @@ cargo run --release delta
 # ./views will be populated with images of steps whenever the two algorithm solutions differ
 ```
 
-Setup a pre-defined city + spray it (add a point at each image pixel + print if insertion produced a Hamiltonian cycle)
+Setup a pre-defined city + spray it (add a point at each image pixel + print if insertion produced a hamiltonian cycle)
 ```
 TSP_INITIAL_COORDS='6.5,8.5 7.5,8.5 8.5,8.5 7.5,8.51' cargo run --release -- spray 4 0.01
 ```
@@ -59,7 +59,7 @@ should be inserted.
 
 Example failure: `envelope_triangle.tsp`.
 
-A naive implementation will begin with the largest triangle and pick by shortest delta insertion weight.
+A naieve implementation will begin with the largest triangle and pick by shortest delta insertion weight.
 
 Observe the failure (`-|.` represent path, `o` represents an unselected point, `X` is a point on path):
 
@@ -163,7 +163,7 @@ st70    :     675        763.354     21ms
 
 Quadratic regression for those numbers (x=size of city, y=time in ms) gives the function: `y = 128.1553 - 0.2493989*x + 0.00005912996*x^2`
 
-Quadratic regression gives: `y = 3.81755 + 0.003054128*x + 0.000008696739*x^2 + 8.445805e-10*x^3 + 1.430081e-13*x^4`
+Quartic regression gives: `y = 3.81755 + 0.003054128*x + 0.000008696739*x^2 + 8.445805e-10*x^3 + 1.430081e-13*x^4`
 
 Given the miniature size of the `x^3` and `x^4` coefficients I can feel confident my `O(N^2)` complexity is real.
 
