@@ -170,10 +170,13 @@ Given the miniature size of the `x^3` and `x^4` coefficients I can feel confiden
 # Misc
 
 
-Good one-liner:
+Good one-liner (s):
 
 ```
 rm -rf views/* ; cargo run --release delta && ( ls -l1 views | wc -l )
+
+rm -rf views/* ; TSP_INITIAL_COORDS='2.5,8.5 7.5,8.5 12.5,8.5 7.4,9.0' cargo run --release -- spray 4 0.1
+
 ```
 
 
