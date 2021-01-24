@@ -155,7 +155,7 @@ pub fn next_step(ordered_visits: &Vec<CityNum>, node_coordinates: &Vec<(CityNum,
 
     }
   }
-  // Final step in the swapping using "spray" with TSP_INITIAL_COORDS='2.5,8.5 7.5,8.5 12.5,8.5 7.4,9.0'
+  // Next step in the swapping using "spray" with TSP_INITIAL_COORDS='2.5,8.5 7.5,8.5 12.5,8.5 7.4,9.0'
   // We essentially need to search for 2 neighbor swaps and perform them at the same time.
   for i in 0..ordered_visits.len() {
     // i is the index under consideration.
@@ -194,6 +194,46 @@ pub fn next_step(ordered_visits: &Vec<CityNum>, node_coordinates: &Vec<(CityNum,
       ordered_visits[e] = t;
     }
 
+  }
+  // Next move. We search for any freestanding i and j with
+  // arbitrary distance between them.
+  for i in 0..ordered_visits.len() {
+    // store indexes to left and right of i
+    let im1 = (i+(ordered_visits.len()-1)) % ordered_visits.len();
+    let ip1 = (i+1) % ordered_visits.len();
+
+    for j in 0..ordered_visits.len() {
+      // avoid impossible/useless swaps
+      if j == i || j == im1 || j == ip1 {
+        continue;
+      }
+
+      // indexes to left and right of j
+      let jm1 = (j+(ordered_visits.len()-1)) % ordered_visits.len();
+      let jp1 = (j+1) % ordered_visits.len();
+
+      // i-1 -> i -> i+1 AND j-1 -> j -> j+1
+      let curr_len =
+        weights[ordered_visits[im1]][ordered_visits[i]]+
+        weights[ordered_visits[i]][ordered_visits[ip1]]+
+        weights[ordered_visits[jm1]][ordered_visits[j]]+
+        weights[ordered_visits[j]][ordered_visits[jp1]];
+
+
+      // i-1 -> j -> i+1 AND j-1 -> i -> j+1
+      let swapped_len =
+        weights[ordered_visits[im1]][ordered_visits[j]]+
+        weights[ordered_visits[j]][ordered_visits[ip1]]+
+        weights[ordered_visits[jm1]][ordered_visits[i]]+
+        weights[ordered_visits[i]][ordered_visits[jp1]];
+
+      if swapped_len < curr_len {
+        // swap i and j
+        let t = ordered_visits[j];
+        ordered_visits[j] = ordered_visits[i];
+        ordered_visits[i] = t;
+      }
+    }
   }
 
 
