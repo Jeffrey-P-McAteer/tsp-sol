@@ -155,6 +155,47 @@ pub fn next_step(ordered_visits: &Vec<CityNum>, node_coordinates: &Vec<(CityNum,
 
     }
   }
+  // Final step in the swapping using "spray" with TSP_INITIAL_COORDS='2.5,8.5 7.5,8.5 12.5,8.5 7.4,9.0'
+  // We essentially need to search for 2 neighbor swaps and perform them at the same time.
+  for i in 0..ordered_visits.len() {
+    // i is the index under consideration.
+    let a = (i+(ordered_visits.len()-1)) % ordered_visits.len();
+    let b = i;
+    let c = (i+1) % ordered_visits.len();
+    let d = (i+2) % ordered_visits.len();
+    let e = (i+3) % ordered_visits.len();
+    let f = (i+4) % ordered_visits.len();
+    
+    // Compute original len a->b->c->d->e->f
+    let curr_len =
+      weights[ordered_visits[a]][ordered_visits[b]]+
+      weights[ordered_visits[b]][ordered_visits[c]]+
+      weights[ordered_visits[c]][ordered_visits[d]]+
+      weights[ordered_visits[d]][ordered_visits[e]]+
+      weights[ordered_visits[e]][ordered_visits[f]];
+
+
+    // compute len a->c->b->e->d->f
+    let swapped_len =
+      weights[ordered_visits[a]][ordered_visits[c]]+
+      weights[ordered_visits[c]][ordered_visits[b]]+
+      weights[ordered_visits[b]][ordered_visits[e]]+
+      weights[ordered_visits[e]][ordered_visits[d]]+
+      weights[ordered_visits[d]][ordered_visits[f]];
+
+    if swapped_len < curr_len {
+      // swap b and c AND d and e
+      let t = ordered_visits[c];
+      ordered_visits[c] = ordered_visits[b];
+      ordered_visits[b] = t;
+
+      let t = ordered_visits[d];
+      ordered_visits[d] = ordered_visits[e];
+      ordered_visits[e] = t;
+    }
+
+  }
+
 
 
 
