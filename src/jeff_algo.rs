@@ -124,33 +124,36 @@ pub fn next_step(ordered_visits: &Vec<CityNum>, node_coordinates: &Vec<(CityNum,
 
   // Research shows we may be able to correct remaining deficiencies
   // by searching for a swap and performing a single swap after each insertion.
-  for i in 0..ordered_visits.len() {
-    // i is the index under consideration.
-    let a = (i+(ordered_visits.len()-1)) % ordered_visits.len();
-    let b = i;
-    let c = (i+1) % ordered_visits.len();
-    let d = (i+2) % ordered_visits.len();
+  // Doing this 2x reduces errors further.
+  for _ in 0..2 {
+    for i in 0..ordered_visits.len() {
+      // i is the index under consideration.
+      let a = (i+(ordered_visits.len()-1)) % ordered_visits.len();
+      let b = i;
+      let c = (i+1) % ordered_visits.len();
+      let d = (i+2) % ordered_visits.len();
 
-    // Compute original len a->b->c->d
-    let curr_len =
-      weights[ordered_visits[a]][ordered_visits[b]]+
-      weights[ordered_visits[b]][ordered_visits[c]]+
-      weights[ordered_visits[c]][ordered_visits[d]];
+      // Compute original len a->b->c->d
+      let curr_len =
+        weights[ordered_visits[a]][ordered_visits[b]]+
+        weights[ordered_visits[b]][ordered_visits[c]]+
+        weights[ordered_visits[c]][ordered_visits[d]];
 
 
-    // compute len a->c->b->d
-    let swapped_len =
-      weights[ordered_visits[a]][ordered_visits[c]]+
-      weights[ordered_visits[c]][ordered_visits[b]]+
-      weights[ordered_visits[b]][ordered_visits[d]];
+      // compute len a->c->b->d
+      let swapped_len =
+        weights[ordered_visits[a]][ordered_visits[c]]+
+        weights[ordered_visits[c]][ordered_visits[b]]+
+        weights[ordered_visits[b]][ordered_visits[d]];
 
-    if swapped_len < curr_len {
-      // swap b and c
-      let t = ordered_visits[c];
-      ordered_visits[c] = ordered_visits[b];
-      ordered_visits[b] = t;
+      if swapped_len < curr_len {
+        // swap b and c
+        let t = ordered_visits[c];
+        ordered_visits[c] = ordered_visits[b];
+        ordered_visits[b] = t;
+      }
+
     }
-
   }
 
 
