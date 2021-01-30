@@ -53,6 +53,17 @@ pub fn solve(node_coordinates: &Vec<(usize, f32, f32)>, weights: &Vec<Vec<f32>>,
         format!("{}/node-coordinates.txt", prefix),
         format!("{:?}", node_coordinates)
       ).expect("Unable to write file");
+      
+      let mut env_s = "TSP_INITIAL_COORDS='".to_string();
+      for (_i, x, y) in node_coordinates.iter() {
+        env_s += format!("{:.2},{:.2} ", x, y).as_str();
+      }
+      env_s += "'";
+
+      fs::write(
+        format!("{}/node-coordinates-env.txt", prefix),
+        env_s
+      ).expect("Unable to write file");
     }
     None => { }
   }
