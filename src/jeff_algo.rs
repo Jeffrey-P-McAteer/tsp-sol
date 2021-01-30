@@ -63,36 +63,6 @@ pub fn next_step(ordered_visits: &Vec<CityNum>, node_coordinates: &Vec<(CityNum,
   }
   let citynum_to_insert = citynum_to_insert;
 
-  // // Simplest strategy: insert at cheapest edge, only considering
-  // // the point before and after the insert.
-
-  // let mut ideal_insert_dist_delta: CityWeight = f32::INFINITY;
-  // let mut ins_idx0 = 0; // 0 indicates a split of the edge that runs between 0 -> 1
-  
-  // for from_i in 0..ordered_visits.len() {
-  //   let to_i = (from_i+1) % ordered_visits.len();
-  //   let from_elm = ordered_visits[from_i];
-  //   let to_elm = ordered_visits[to_i];
-    
-  //   let this_dist_delta: CityWeight = 
-  //     (-weights[from_elm][to_elm]) +    // removed edge counts negative
-  //     weights[from_elm][citynum_to_insert] + // add edge from -> new
-  //     weights[citynum_to_insert][to_elm];    // add edge new -> end
-    
-  //   if this_dist_delta < ideal_insert_dist_delta {
-  //     ideal_insert_dist_delta = this_dist_delta;
-  //     ins_idx0 = from_i;
-  //   }
-  // }
-
-  // // .insert() takes the final resting place of the added element so
-  // // we keep the far end of the edge we are breaking and insert there.
-  // let ins_idx1 = (ins_idx0+1) % ordered_visits.len();
-
-  // ordered_visits.insert(ins_idx1, citynum_to_insert);
-  // // ins_idx1 points to the newly inserted city
-
-
 
   // Simplest strat:
   // for all i:
