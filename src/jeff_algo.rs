@@ -93,6 +93,31 @@ pub fn next_step(ordered_visits: &Vec<CityNum>, node_coordinates: &Vec<(CityNum,
   // // ins_idx1 points to the newly inserted city
 
 
+
+  // Simplest strat:
+  // for all i:
+  //   compute delta to insert citynum_to_insert at location i
+  // keep the smallest insert delta
+  
+  let mut strat_a_best_tour_delta = f32::INFINITY;
+  let mut strat_a_ins_idx0 = 0;
+
+  for from_i in 0..ordered_visits.len() {
+    let to_i = (from_i+1) % ordered_visits.len();
+    let from_elm = ordered_visits[from_i];
+    let to_elm = ordered_visits[to_i];
+    
+    let this_dist_delta: CityWeight = 
+      (-weights[from_elm][to_elm]) +    // removed edge counts negative
+      weights[from_elm][citynum_to_insert] + // add edge from -> new
+      weights[citynum_to_insert][to_elm];    // add edge new -> end
+    
+    if this_dist_delta < strat_a_best_tour_delta {
+      strat_a_best_tour_delta = this_dist_delta;
+      strat_a_ins_idx0 = from_i;
+    }
+  }
+
   // More detailed strat:
   // for all N:
   //   remove N from ordered_visits
@@ -100,8 +125,8 @@ pub fn next_step(ordered_visits: &Vec<CityNum>, node_coordinates: &Vec<(CityNum,
   //   insert N using insert_point_step
   // keep the smallest delta from these ops
 
-  let mut best_tour_delta = f32::INFINITY;
-  let mut best_tour_n = 0;
+  let mut strat_b_best_tour_delta = f32::INFINITY;
+  let mut strat_b_best_tour_n = 0;
 
   for n in 0..ordered_visits.len() {
     let removed_citynum = ordered_visits.remove(n);
@@ -110,10 +135,10 @@ pub fn next_step(ordered_visits: &Vec<CityNum>, node_coordinates: &Vec<(CityNum,
     this_delta += insert_point_step(&mut ordered_visits, node_coordinates, weights, citynum_to_insert);
     this_delta += insert_point_step(&mut ordered_visits, node_coordinates, weights, removed_citynum);
 
-    if this_delta < best_tour_delta {
-      // Keep changes, update best_tour_delta
-      best_tour_delta = this_delta;
-      best_tour_n = n;
+    if this_delta < strat_b_best_tour_delta {
+      // Keep changes, update strat_b_best_tour_delta
+      strat_b_best_tour_delta = this_delta;
+      strat_b_best_tour_n = n;
     }
 
     // Undo changes so ordered_visits is identical to the beginning
@@ -123,10 +148,18 @@ pub fn next_step(ordered_visits: &Vec<CityNum>, node_coordinates: &Vec<(CityNum,
 
   }
 
-  // apply best step from above
-  let removed_citynum = ordered_visits.remove(best_tour_n);
-  insert_point_step(&mut ordered_visits, node_coordinates, weights, citynum_to_insert);
-  insert_point_step(&mut ordered_visits, node_coordinates, weights, removed_citynum);
+  // apply best step from the best strat above
+  if strat_a_best_tour_delta < strat_b_best_tour_delta {
+    // Apply strat a
+    let ins_idx1 = (strat_a_ins_idx0+1) % ordered_visits.len();
+    ordered_visits.insert(ins_idx1, citynum_to_insert);
+  }
+  else {
+    // Apply strat b
+    let removed_citynum = ordered_visits.remove(strat_b_best_tour_n);
+    insert_point_step(&mut ordered_visits, node_coordinates, weights, citynum_to_insert);
+    insert_point_step(&mut ordered_visits, node_coordinates, weights, removed_citynum);
+  }
 
 
   // Store solution
