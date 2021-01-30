@@ -100,28 +100,38 @@ pub fn next_step(ordered_visits: &Vec<CityNum>, node_coordinates: &Vec<(CityNum,
   //   insert N using insert_point_step
   // keep the smallest delta from these ops
 
-  let mut best_ordered_visits: Vec<CityNum> = ordered_visits.clone();
   let mut best_tour_delta = f32::INFINITY;
+  let mut best_tour_n = 0;
 
   for n in 0..ordered_visits.len() {
-    let mut dis_ordered_visits: Vec<CityNum> = ordered_visits.clone();
-    let removed_citynum = dis_ordered_visits.remove(n);
+    let removed_citynum = ordered_visits.remove(n);
 
     let mut this_delta: f32 = 0.0;
-    this_delta += insert_point_step(&mut dis_ordered_visits, node_coordinates, weights, citynum_to_insert);
-    this_delta += insert_point_step(&mut dis_ordered_visits, node_coordinates, weights, removed_citynum);
+    this_delta += insert_point_step(&mut ordered_visits, node_coordinates, weights, citynum_to_insert);
+    this_delta += insert_point_step(&mut ordered_visits, node_coordinates, weights, removed_citynum);
 
     if this_delta < best_tour_delta {
+      // Keep changes, update best_tour_delta
       best_tour_delta = this_delta;
-      best_ordered_visits = dis_ordered_visits;
+      best_tour_n = n;
     }
+
+    // Undo changes so ordered_visits is identical to the beginning
+    remove_point_step(&mut ordered_visits, node_coordinates, weights, removed_citynum);
+    remove_point_step(&mut ordered_visits, node_coordinates, weights, citynum_to_insert);
+    ordered_visits.insert(n, removed_citynum);
 
   }
 
-  let ordered_visits: Vec<CityNum> = best_ordered_visits;
+  // apply best step from above
+  let removed_citynum = ordered_visits.remove(best_tour_n);
+  insert_point_step(&mut ordered_visits, node_coordinates, weights, citynum_to_insert);
+  insert_point_step(&mut ordered_visits, node_coordinates, weights, removed_citynum);
+
 
   // Store solution
   match &save_run_prefix {
+
     Some(prefix) => {
       if let Err(_e) = create_dir(prefix) {
         // Unhandled error case
@@ -169,6 +179,27 @@ fn insert_point_step(ordered_visits: &mut Vec<CityNum>, node_coordinates: &Vec<(
 
   return ideal_insert_dist_delta;
 }
+
+// undoes insert_point_step given the same citynum_to_insert and returns the delta
+fn remove_point_step(ordered_visits: &mut Vec<CityNum>, node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>, weights: &Vec<Vec<CityWeight>>, citynum_to_insert: CityNum) -> CityWeight {
+  let from_i = ordered_visits.iter().position(|&val| val == citynum_to_insert).unwrap();
+
+  ordered_visits.remove(from_i); // returns citynum_to_insert
+
+  let from_i = (from_i+ordered_visits.len()-1) % ordered_visits.len();
+
+  let to_i = (from_i+1) % ordered_visits.len();
+  let from_elm = ordered_visits[from_i];
+  let to_elm = ordered_visits[to_i];
+
+  let this_dist_delta: CityWeight = 
+      weights[from_elm][to_elm] +    // Added edge counts positive
+      (-weights[from_elm][citynum_to_insert]) + // removed edge from -> new
+      (-weights[citynum_to_insert][to_elm]);    // removed edge new -> end
+
+  return this_dist_delta;
+}
+
 
 
 fn compute_largest_triangle(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>, weights: &Vec<Vec<f32>>) -> Vec<usize> {
