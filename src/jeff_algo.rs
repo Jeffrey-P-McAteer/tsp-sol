@@ -63,6 +63,84 @@ pub fn next_step(ordered_visits: &Vec<CityNum>, node_coordinates: &Vec<(CityNum,
   }
   let citynum_to_insert = citynum_to_insert;
 
+  // // Simplest strategy: insert at cheapest edge, only considering
+  // // the point before and after the insert.
+
+  // let mut ideal_insert_dist_delta: CityWeight = f32::INFINITY;
+  // let mut ins_idx0 = 0; // 0 indicates a split of the edge that runs between 0 -> 1
+  
+  // for from_i in 0..ordered_visits.len() {
+  //   let to_i = (from_i+1) % ordered_visits.len();
+  //   let from_elm = ordered_visits[from_i];
+  //   let to_elm = ordered_visits[to_i];
+    
+  //   let this_dist_delta: CityWeight = 
+  //     (-weights[from_elm][to_elm]) +    // removed edge counts negative
+  //     weights[from_elm][citynum_to_insert] + // add edge from -> new
+  //     weights[citynum_to_insert][to_elm];    // add edge new -> end
+    
+  //   if this_dist_delta < ideal_insert_dist_delta {
+  //     ideal_insert_dist_delta = this_dist_delta;
+  //     ins_idx0 = from_i;
+  //   }
+  // }
+
+  // // .insert() takes the final resting place of the added element so
+  // // we keep the far end of the edge we are breaking and insert there.
+  // let ins_idx1 = (ins_idx0+1) % ordered_visits.len();
+
+  // ordered_visits.insert(ins_idx1, citynum_to_insert);
+  // // ins_idx1 points to the newly inserted city
+
+
+  // More detailed strat:
+  // for all N:
+  //   remove N from ordered_visits
+  //   insert citynum_to_insert using insert_point_step
+  //   insert N using insert_point_step
+  // keep the smallest delta from these ops
+
+  let mut best_ordered_visits: Vec<CityNum> = ordered_visits.clone();
+  let mut best_tour_delta = f32::INFINITY;
+
+  for n in 0..ordered_visits.len() {
+    let mut dis_ordered_visits: Vec<CityNum> = ordered_visits.clone();
+    let removed_citynum = dis_ordered_visits.remove(n);
+
+    let mut this_delta: f32 = 0.0;
+    this_delta += insert_point_step(&mut dis_ordered_visits, node_coordinates, weights, citynum_to_insert);
+    this_delta += insert_point_step(&mut dis_ordered_visits, node_coordinates, weights, removed_citynum);
+
+    if this_delta < best_tour_delta {
+      best_tour_delta = this_delta;
+      best_ordered_visits = dis_ordered_visits;
+    }
+
+  }
+
+  let ordered_visits: Vec<CityNum> = best_ordered_visits;
+
+  // Store solution
+  match &save_run_prefix {
+    Some(prefix) => {
+      if let Err(_e) = create_dir(prefix) {
+        // Unhandled error case
+      }
+      save_state_image(format!("{}/jalgo-{:03}.png", prefix, ordered_visits.len()), &ordered_visits, &node_coordinates);
+      fs::write(
+        format!("{}/jalgo-path.txt", prefix),
+        format!("{:?}\nDistance:{}", ordered_visits, compute_dist(weights, &ordered_visits))
+      ).expect("Unable to write file");
+    }
+    None => { }
+  }
+  
+  return ordered_visits;
+}
+
+// Modified args instead of returning a clone
+// returns the delta from this modification (aka how much did len(ordered_visits) change, smaller is better.)
+fn insert_point_step(ordered_visits: &mut Vec<CityNum>, node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>, weights: &Vec<Vec<CityWeight>>, citynum_to_insert: CityNum) -> CityWeight {
   let mut ideal_insert_dist_delta: CityWeight = f32::INFINITY;
   let mut ins_idx0 = 0; // 0 indicates a split of the edge that runs between 0 -> 1
   
@@ -89,172 +167,7 @@ pub fn next_step(ordered_visits: &Vec<CityNum>, node_coordinates: &Vec<(CityNum,
   ordered_visits.insert(ins_idx1, citynum_to_insert);
   // ins_idx1 points to the newly inserted city
 
-  // ins_idx2 points to the city to the right of the newly inserted one
-  let ins_idx2 = (ins_idx1+1) % ordered_visits.len();
-
-  // // We still need to check interior edges and see
-  // // if alternate routes are better. This is going to end up
-  // // being a recursive step but for reasearch we may do the first 2-3 iterations manually
-  // // to find the pattern.
-
-  // for a in 0..ordered_visits.len() {
-  //   if a == ins_idx1 {
-  //     continue; // we do not consider the inserted city for inner edges
-  //   }
-  //   for b in 0..ordered_visits.len() {
-  //     if b == ins_idx1 {
-  //       continue; // we do not consider the inserted city for inner edges
-  //     }
-  //     if a == b || a == (b+1) % ordered_visits.len() || (a+1) % ordered_visits.len() == b {
-  //       continue; // we do not consider edges already in the path
-  //     }
-  //     if b > a {
-  //       continue; // we only consider half the inner edges. We choose those where a < b.
-  //     }
-  //     // Now we have an edge from a->b which is not in
-  //     // the graph or connected to the new point.
-  //     // For each of these we compute a delta to see what would
-  //     // happen if we added it and removed the 3rd path on a and b.
-  //     if save_run_prefix.is_some() {
-  //       println!("a={} b={} len={}", a, b, ordered_visits.len());
-  //     }      
-  //   }
-  // }
-
-
-  // Research shows we may be able to correct remaining deficiencies
-  // by searching for a swap and performing a single swap after each insertion.
-  // Doing this 2x reduces errors further.
-  for _ in 0..2 {
-    for i in 0..ordered_visits.len() {
-      // i is the index under consideration.
-      let a = (i+(ordered_visits.len()-1)) % ordered_visits.len();
-      let b = i;
-      let c = (i+1) % ordered_visits.len();
-      let d = (i+2) % ordered_visits.len();
-
-      // Compute original len a->b->c->d
-      let curr_len =
-        weights[ordered_visits[a]][ordered_visits[b]]+
-        weights[ordered_visits[b]][ordered_visits[c]]+
-        weights[ordered_visits[c]][ordered_visits[d]];
-
-
-      // compute len a->c->b->d
-      let swapped_len =
-        weights[ordered_visits[a]][ordered_visits[c]]+
-        weights[ordered_visits[c]][ordered_visits[b]]+
-        weights[ordered_visits[b]][ordered_visits[d]];
-
-      if swapped_len < curr_len {
-        // swap b and c
-        let t = ordered_visits[c];
-        ordered_visits[c] = ordered_visits[b];
-        ordered_visits[b] = t;
-      }
-
-    }
-  }
-  // Next step in the swapping using "spray" with TSP_INITIAL_COORDS='2.5,8.5 7.5,8.5 12.5,8.5 7.4,9.0'
-  // We essentially need to search for 2 neighbor swaps and perform them at the same time.
-  for i in 0..ordered_visits.len() {
-    // i is the index under consideration.
-    let a = (i+(ordered_visits.len()-1)) % ordered_visits.len();
-    let b = i;
-    let c = (i+1) % ordered_visits.len();
-    let d = (i+2) % ordered_visits.len();
-    let e = (i+3) % ordered_visits.len();
-    let f = (i+4) % ordered_visits.len();
-    
-    // Compute original len a->b->c->d->e->f
-    let curr_len =
-      weights[ordered_visits[a]][ordered_visits[b]]+
-      weights[ordered_visits[b]][ordered_visits[c]]+
-      weights[ordered_visits[c]][ordered_visits[d]]+
-      weights[ordered_visits[d]][ordered_visits[e]]+
-      weights[ordered_visits[e]][ordered_visits[f]];
-
-
-    // compute len a->c->b->e->d->f
-    let swapped_len =
-      weights[ordered_visits[a]][ordered_visits[c]]+
-      weights[ordered_visits[c]][ordered_visits[b]]+
-      weights[ordered_visits[b]][ordered_visits[e]]+
-      weights[ordered_visits[e]][ordered_visits[d]]+
-      weights[ordered_visits[d]][ordered_visits[f]];
-
-    if swapped_len < curr_len {
-      // swap b and c AND d and e
-      let t = ordered_visits[c];
-      ordered_visits[c] = ordered_visits[b];
-      ordered_visits[b] = t;
-
-      let t = ordered_visits[d];
-      ordered_visits[d] = ordered_visits[e];
-      ordered_visits[e] = t;
-    }
-
-  }
-  // Next move. We search for any freestanding i and j with
-  // arbitrary distance between them.
-  for i in 0..ordered_visits.len() {
-    // store indexes to left and right of i
-    let im1 = (i+(ordered_visits.len()-1)) % ordered_visits.len();
-    let ip1 = (i+1) % ordered_visits.len();
-
-    for j in 0..ordered_visits.len() {
-      // avoid impossible/useless swaps
-      if j == i || j == im1 || j == ip1 {
-        continue;
-      }
-
-      // indexes to left and right of j
-      let jm1 = (j+(ordered_visits.len()-1)) % ordered_visits.len();
-      let jp1 = (j+1) % ordered_visits.len();
-
-      // i-1 -> i -> i+1 AND j-1 -> j -> j+1
-      let curr_len =
-        weights[ordered_visits[im1]][ordered_visits[i]]+
-        weights[ordered_visits[i]][ordered_visits[ip1]]+
-        weights[ordered_visits[jm1]][ordered_visits[j]]+
-        weights[ordered_visits[j]][ordered_visits[jp1]];
-
-
-      // i-1 -> j -> i+1 AND j-1 -> i -> j+1
-      let swapped_len =
-        weights[ordered_visits[im1]][ordered_visits[j]]+
-        weights[ordered_visits[j]][ordered_visits[ip1]]+
-        weights[ordered_visits[jm1]][ordered_visits[i]]+
-        weights[ordered_visits[i]][ordered_visits[jp1]];
-
-      if swapped_len < curr_len {
-        // swap i and j
-        let t = ordered_visits[j];
-        ordered_visits[j] = ordered_visits[i];
-        ordered_visits[i] = t;
-      }
-    }
-  }
-
-
-
-
-  // Store solution
-  match &save_run_prefix {
-    Some(prefix) => {
-      if let Err(_e) = create_dir(prefix) {
-        // Unhandled error case
-      }
-      save_state_image(format!("{}/jalgo-{:03}.png", prefix, ordered_visits.len()), &ordered_visits, &node_coordinates);
-      fs::write(
-        format!("{}/jalgo-path.txt", prefix),
-        format!("{:?}\nDistance:{}", ordered_visits, compute_dist(weights, &ordered_visits))
-      ).expect("Unable to write file");
-    }
-    None => { }
-  }
-  
-  return ordered_visits;
+  return ideal_insert_dist_delta;
 }
 
 
