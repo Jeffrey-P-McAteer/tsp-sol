@@ -147,17 +147,18 @@ This makes this test case work, but it does not scale to every TSP problem.
 
 Source: https://wwwproxy.iwr.uni-heidelberg.de/groups/comopt/software/TSPLIB95/STSP.html
 
-Format is `city: ideal_sol jalgo_sol jalso_ms`
+Format is `city: ideal_sol jalgo_sol jalgo_ms`
 
 All tests were run using the release binary at `./target/release/tsp-sol` using a 2014 macbook (`i5-4278U CPU @ 2.60GHz`, single-threaded, 8gb ram installed)
 
 ```
-berlin52:   7,542      8,521.919      4ms
-rat783  :   8,806     11,156.645     12ms
-pcb1173 :  56,892     73,337.836     21ms
-rl5915  : 565,530    733,125.060    676ms
-rl11849 : 923,288  1,198,670.090  5,485ms
-st70    :     675        763.354     21ms
+city:     ideal_sol      jalgo_sol jalgo_ms
+berlin52:     7,542      8,521.919      4ms
+rat783  :     8,806     11,156.645     12ms
+pcb1173 :    56,892     73,337.836     21ms
+rl5915  :   565,530    733,125.060    676ms
+rl11849 :   923,288  1,198,670.090  5,485ms
+st70    :       675        763.354     21ms
 
 ```
 
