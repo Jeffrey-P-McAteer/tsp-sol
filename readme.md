@@ -51,96 +51,6 @@ Setup a pre-defined city + spray it (add a point at each image pixel + print if 
 TSP_INITIAL_COORDS='6.5,8.5 7.5,8.5 8.5,8.5 7.5,8.51' cargo run --release -- spray 4 0.01
 ```
 
-# Issues
-
-For some reason local optimizations hurt the final solution. Because of this a technique must be
-found which is able to avoid picking bad points, or a good definition for the order in which points
-should be inserted.
-
-Example failure: `envelope_triangle.tsp`.
-
-A naive implementation will begin with the largest triangle and pick by shortest delta insertion weight.
-
-Observe the failure (`-|.` represent path, `o` represents an unselected point, `X` is a point on path):
-
-```
-o                                o
-                                  
-                 o                
-                                  
-             o      o             
-                                  
-o                                o
-```
-
-Triangle:
-```
-o                                X
-                            /    |
-                 o     /         |
-                 /               |
-         /   o      o            |
-   /                             |
-X--------------------------------X
-```
-
-```
-X--------------------------------X
-|                                |
-|                o               |
-|                                |
-|            o      o            |
-|                                |
-X--------------------------------X
-```
-
-```
-X\                              /X
-|         \              /       |
-|                X               |
-|                                |
-|            o      o            |
-|                                |
-X--------------------------------X
-```
-
-Now we have a problem: moving to the ideal solution will be impossible to do in a single step
-```
-X\                              /X
-|         \              /       |
-|                X               |
-|                                |
-|            X      o            |
-|      /          \              |
-X/                              \X
-```
-
-```
-X\                              /X
-|         \              /       |
-|                X               |
-|                                |
-|            X------X            |
-|      /                  \      |
-X/                              \X
-```
-
-The correct solution for this city is actually:
-
-```
-X--------------------------------X
-|                                |
-|               /X\              |
-|             /    \             |
-|           /X      X\           |
-|     /                   \      |
-X/                              \X
-```
-
-A major improvement designed using this test case was to track the center of the path, and insert the point furthest away.
-This makes this test case work, but it does not scale to every TSP problem.
-
-
 # Ideal solutions...
 
 ...for some problems and an outdated jalgo reference distance
@@ -149,24 +59,20 @@ Source: https://wwwproxy.iwr.uni-heidelberg.de/groups/comopt/software/TSPLIB95/S
 
 Format is `city: ideal_sol jalgo_sol jalgo_ms`
 
-All tests were run using the release binary at `./target/release/tsp-sol` using a 2014 macbook (`i5-4278U CPU @ 2.60GHz`, single-threaded, 8gb ram installed)
+All tests were run using the release binary at `./target/release/tsp-sol` using a Thinkpad t490 (`i7-8565U CPU @ 1.80GHz`, single-threaded, 16gb ram installed)
 
 ```
 city:     ideal_sol      jalgo_sol jalgo_ms
-berlin52:     7,542      8,521.919      4ms
-rat783  :     8,806     11,156.645     12ms
-pcb1173 :    56,892     73,337.836     21ms
-rl5915  :   565,530    733,125.060    676ms
-rl11849 :   923,288  1,198,670.090  5,485ms
-st70    :       675        763.354     21ms
+berlin52:     7,542      8,245.301      3ms
+st70    :       675        715.058      4ms
+rat783  :     8,806     10,393.754  2,622ms
+pcb1173 :    56,892     69,430.580  9,584ms
+rl5915  :   565,530    733,125.060      ?ms *untested with latest algo
+rl11849 :   923,288  1,198,670.090      ?ms *untested with latest algo
 
 ```
 
-Quadratic regression for those numbers (x=size of city, y=time in ms) gives the function: `y = 128.1553 - 0.2493989*x + 0.00005912996*x^2`
-
-Quadratic regression gives: `y = 3.81755 + 0.003054128*x + 0.000008696739*x^2 + 8.445805e-10*x^3 + 1.430081e-13*x^4`
-
-Given the miniature size of the `x^3` and `x^4` coefficients I can feel confident my `O(N^2)` complexity is real.
+TODO do quadratic regression on test plots as evidence of complexity factor.
 
 # Misc
 
