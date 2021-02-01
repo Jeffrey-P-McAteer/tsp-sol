@@ -74,6 +74,11 @@ rl11849 :   923,288  1,198,670.090      ?ms *untested with latest algo
 
 TODO do quadratic regression on test plots as evidence of complexity factor.
 
+```bash
+# Nifty test one-liner
+for t in berlin52 st70 rat783 pcb1173 ; do echo "Running $t" ; time ./target/release/tsp-sol tsp/$t.tsp ; done
+```
+
 # Misc
 
 
