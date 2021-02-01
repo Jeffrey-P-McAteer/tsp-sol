@@ -89,6 +89,8 @@ rm -rf views/* ; cargo run --release delta && ( ls -l1 views | wc -l )
 
 rm -rf views/* ; TSP_INITIAL_COORDS='2.5,8.5 7.5,8.5 12.5,8.5 7.4,9.0' cargo run --release -- spray 4 0.1
 
+rm -rf views/* ; TSP_INITIAL_COORDS='4.23,4.87 7.16,7.70 2.79,7.70 8.24,3.89 1.08,0.57 1.84,8.72 ' cargo run --release -- spray 6 0.9
+
 ```
 
 
