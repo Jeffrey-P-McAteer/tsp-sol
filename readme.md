@@ -57,6 +57,8 @@ TSP_INITIAL_COORDS='6.5,8.5 7.5,8.5 8.5,8.5 7.5,8.51' cargo run --release -- spr
 
 Source: https://wwwproxy.iwr.uni-heidelberg.de/groups/comopt/software/TSPLIB95/STSP.html
 
+Source: http://elib.zib.de/pub/mp-testdata/tsp/tsplib/stsp-sol.html
+
 Format is `city: ideal_sol jalgo_sol jalgo_ms`
 
 All tests were run using the release binary at `./target/release/tsp-sol` using a Thinkpad t490 (`i7-8565U CPU @ 1.80GHz`, single-threaded, 16gb ram installed)
@@ -65,6 +67,7 @@ All tests were run using the release binary at `./target/release/tsp-sol` using 
 city:     ideal_sol      jalgo_sol jalgo_ms
 berlin52:     7,542      8,245.301      3ms
 st70    :       675        715.058      4ms
+rat99   :     1,211      1,250.809    484ms
 rat783  :     8,806     10,393.754  2,622ms
 pcb1173 :    56,892     69,430.580  9,584ms
 rl5915  :   565,530    733,125.060      ?ms *untested with latest algo
