@@ -87,12 +87,15 @@ for t in berlin52 st70 rat783 pcb1173 ; do echo "Running $t" ; time ./target/rel
 
 Good one-liner (s):
 
-```
+```bash
 rm -rf views/* ; cargo run --release delta && ( ls -l1 views | wc -l )
 
 rm -rf views/* ; TSP_INITIAL_COORDS='2.5,8.5 7.5,8.5 12.5,8.5 7.4,9.0' cargo run --release -- spray 4 0.1
 
 rm -rf views/* ; TSP_INITIAL_COORDS='4.23,4.87 7.16,7.70 2.79,7.70 8.24,3.89 1.08,0.57 1.84,8.72 ' cargo run --release -- spray 6 0.9
+
+# Run until we fail then selectively spray the first 7 cities
+mkdir -p views/selective/ ; rm -rf views/selective/* ; cargo run --release selective && source views/selective/node-coordinates-env.txt && export TSP_INITIAL_COORDS=$TSP_INITIAL_COORDS && echo "TSP_INITIAL_COORDS=$TSP_INITIAL_COORDS" && cargo run --release -- spray 7 0.19
 
 ```
 
