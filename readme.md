@@ -97,6 +97,10 @@ rm -rf views/* ; TSP_INITIAL_COORDS='4.23,4.87 7.16,7.70 2.79,7.70 8.24,3.89 1.0
 # Run until we fail then selectively spray the first 7 cities
 mkdir -p views/selective/ ; rm -rf views/selective/* ; cargo run --release selective && source views/selective/node-coordinates-env.txt && export TSP_INITIAL_COORDS=$TSP_INITIAL_COORDS && echo "TSP_INITIAL_COORDS=$TSP_INITIAL_COORDS" && cargo run --release -- spray 7 0.19
 
+
+TSP_INITIAL_COORDS='5.79,5.22 7.01,9.88 6.61,9.35 9.53,8.49 7.48,8.06 6.44,8.85 5.43,8.73 5.27,9.86' cargo run --release -- spray 8 0.19
+
+
 ```
 
 
