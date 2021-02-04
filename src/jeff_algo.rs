@@ -23,43 +23,11 @@ type CityWeight = f32;
 type CityXYCoord = f32;
 
 pub fn solve(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>, weights: &Vec<Vec<CityWeight>>, save_run_prefix: Option<String>) -> Vec<usize> {
-  // let mut ordered_visits = compute_largest_triangle(node_coordinates, weights);
+  let mut ordered_visits = compute_largest_triangle(node_coordinates, weights);
 
-  // while ordered_visits.len() < weights.len() {
-  //   ordered_visits = next_step(&ordered_visits, &node_coordinates, &weights, &save_run_prefix);
-  // }
-
-  let mut best_dist = f32::INFINITY;
-  let mut best_ordered_visits = vec![];
-
-  for a in 0..node_coordinates.len() {
-    for b in 0..node_coordinates.len() {
-      if a == b {
-        continue;
-      }
-      for c in 0..node_coordinates.len() {
-        if b == c || a == c {
-          continue;
-        }
-
-        // vec![a, b, c] will have all possible 3-element combos of indexes.
-        let mut ordered_visits = vec![a, b, c];
-        while ordered_visits.len() < weights.len() {
-          //println!("{} < {}: {:?}", ordered_visits.len(), weights.len(), &ordered_visits);
-          ordered_visits = next_step(&ordered_visits, &node_coordinates, &weights, &save_run_prefix);
-        }
-
-        let this_dist = compute_dist(weights, &ordered_visits);
-        if this_dist < best_dist {
-          best_dist = this_dist;
-          best_ordered_visits = ordered_visits;
-        }
-
-      }
-    }
+  while ordered_visits.len() < weights.len() {
+    ordered_visits = next_step(&ordered_visits, &node_coordinates, &weights, &save_run_prefix);
   }
-
-  let ordered_visits = best_ordered_visits;
 
   // Store solution
   match &save_run_prefix {
