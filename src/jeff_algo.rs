@@ -29,24 +29,33 @@ pub fn solve(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>, weight
   //   ordered_visits = next_step(&ordered_visits, &node_coordinates, &weights, &save_run_prefix);
   // }
 
-  let mut best_n_dist = f32::INFINITY;
-  let mut best_n = 0;
+  let mut best_dist = f32::INFINITY;
   let mut best_ordered_visits = vec![];
 
-  let last_n = compute_last_nth_triangle(&node_coordinates);
-  for n in 0..last_n {
-    
-    let mut ordered_visits = compute_nth_triangle(node_coordinates, n, last_n);
-    while ordered_visits.len() < weights.len() {
-      //println!("{} < {}: {:?}", ordered_visits.len(), weights.len(), &ordered_visits);
-      ordered_visits = next_step(&ordered_visits, &node_coordinates, &weights, &save_run_prefix);
-    }
+  for a in 0..node_coordinates.len() {
+    for b in 0..node_coordinates.len() {
+      if a == b {
+        continue;
+      }
+      for c in 0..node_coordinates.len() {
+        if b == c || a == c {
+          continue;
+        }
 
-    let this_dist = compute_dist(weights, &ordered_visits);
-    if this_dist < best_n_dist {
-      best_n = n;
-      best_n_dist = this_dist;
-      best_ordered_visits = ordered_visits;
+        // vec![a, b, c] will have all possible 3-element combos of indexes.
+        let mut ordered_visits = vec![a, b, c];
+        while ordered_visits.len() < weights.len() {
+          //println!("{} < {}: {:?}", ordered_visits.len(), weights.len(), &ordered_visits);
+          ordered_visits = next_step(&ordered_visits, &node_coordinates, &weights, &save_run_prefix);
+        }
+
+        let this_dist = compute_dist(weights, &ordered_visits);
+        if this_dist < best_dist {
+          best_dist = this_dist;
+          best_ordered_visits = ordered_visits;
+        }
+
+      }
     }
   }
 
@@ -215,38 +224,6 @@ fn remove_point_step(ordered_visits: &mut Vec<CityNum>, node_coordinates: &Vec<(
       (-weights[citynum_to_insert][to_elm]);    // removed edge new -> end
 
   return this_dist_delta;
-}
-
-fn compute_last_nth_triangle(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>) -> usize {
-  // n! / (n-3)!
-  return (node_coordinates.len())*(node_coordinates.len()-1)*(node_coordinates.len()-2);
-}
-
-// given some number i, pick 3 nodes such that i+1, i+2, etc.. will all be distinct triangles
-fn compute_nth_triangle(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>, n: usize, last: usize) -> Vec<usize>  {
-  // TODO this algorithm is wrong
-  let third = last / 3;
-  let a = (n / third) % node_coordinates.len();
-  let mut b = ((n+1) % third) % node_coordinates.len();
-  let mut c = ((n+2) % third) % node_coordinates.len();
-  
-  while a == b {
-    b = (b+1) % node_coordinates.len();
-  }
-  while b == c {
-    c = (c+1) % node_coordinates.len();
-  }
-  while a == c {
-    c = (c+1) % node_coordinates.len();
-  }
-
-  // assert!(a != b);
-  // assert!(b != c);
-
-  // Holds indexes to cities, NOT city numbers!
-  return vec![
-    a, b, c
-  ];
 }
 
 fn compute_largest_triangle(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>, weights: &Vec<Vec<f32>>) -> Vec<usize> {

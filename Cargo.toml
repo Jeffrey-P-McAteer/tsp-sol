@@ -1,6 +1,7 @@
 [package]
 name = "tsp-sol"
 version = "0.1.0"
+edition = "2018"
 authors = ["Jeffrey McAteer <jeffrey.p.mcateer@gmail.com>"]
 
 [dependencies]
