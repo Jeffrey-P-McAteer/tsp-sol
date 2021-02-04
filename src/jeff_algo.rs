@@ -63,7 +63,7 @@ pub fn next_step(ordered_visits: &Vec<CityNum>, node_coordinates: &Vec<(CityNum,
   }
   let citynum_to_insert = citynum_to_insert;
 
-  // More detailed strat:
+  // More detailed strat: O( N^3 )
   // for all N:
   //   remove N from ordered_visits
   //   insert citynum_to_insert using insert_point_step
@@ -116,12 +116,41 @@ pub fn next_step(ordered_visits: &Vec<CityNum>, node_coordinates: &Vec<(CityNum,
 
   }
 
-  // Apply strat b
+  // Apply strat b to insert citynum_to_insert
   let removed_citynum_n = ordered_visits.remove(strat_b_best_tour_n);
   let removed_citynum_m = ordered_visits.remove(strat_b_best_tour_m);
   insert_point_step(&mut ordered_visits, node_coordinates, weights, citynum_to_insert);
   insert_point_step(&mut ordered_visits, node_coordinates, weights, removed_citynum_m);
   insert_point_step(&mut ordered_visits, node_coordinates, weights, removed_citynum_n);
+
+
+  // Finally try to swap nodes and keep any improvements: O(n)
+  for i in 0..ordered_visits.len() {
+    // i is the index under consideration.
+    let a = (i+(ordered_visits.len()-1)) % ordered_visits.len();
+    let b = i;
+    let c = (i+1) % ordered_visits.len();
+    let d = (i+2) % ordered_visits.len();
+
+    // Compute original len a->b->c->d
+    let curr_len =
+      weights[ordered_visits[a]][ordered_visits[b]]+
+      weights[ordered_visits[b]][ordered_visits[c]]+
+      weights[ordered_visits[c]][ordered_visits[d]];
+
+    // compute len a->c->b->d
+    let swapped_len =
+      weights[ordered_visits[a]][ordered_visits[c]]+
+      weights[ordered_visits[c]][ordered_visits[b]]+
+      weights[ordered_visits[b]][ordered_visits[d]];
+
+    if swapped_len < curr_len {
+      // swap b and c
+      let t = ordered_visits[c];
+      ordered_visits[c] = ordered_visits[b];
+      ordered_visits[b] = t;
+    }
+  }
 
   // Store solution
   match &save_run_prefix {
