@@ -64,14 +64,14 @@ Format is `city: ideal_sol jalgo_sol jalgo_ms`
 All tests were run using the release binary at `./target/release/tsp-sol` using a Thinkpad t490 (`i7-8565U CPU @ 1.80GHz`, single-threaded, 16gb ram installed)
 
 ```
-city:     ideal_sol      jalgo_sol jalgo_ms
-berlin52:     7,542      8,245.301      3ms
-st70    :       675        715.058      4ms
-rat99   :     1,211      1,250.809    484ms
-rat783  :     8,806     10,393.754  2,622ms
-pcb1173 :    56,892     69,430.580  9,584ms
-rl5915  :   565,530    733,125.060      ?ms *untested with latest algo
-rl11849 :   923,288  1,198,670.090      ?ms *untested with latest algo
+city:     ideal_sol      jalgo_sol   jalgo_ms
+berlin52:     7,542      7,782.985        39ms
+st70    :       675        687.916       119ms
+rat99   :     1,211      1,250.809       484ms
+rat783  :     8,806      9,324.545 1,938,490ms (32min 18s)
+pcb1173 :    56,892     69,430.580         ?ms *untested with latest algo
+rl5915  :   565,530    733,125.060         ?ms *untested with latest algo
+rl11849 :   923,288  1,198,670.090         ?ms *untested with latest algo
 
 ```
 
