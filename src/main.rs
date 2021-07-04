@@ -141,7 +141,7 @@ fn delta_test(city_size: usize) -> bool {
   
   let distance_diff = jeff_sol_len - brute_sol_len;
   
-  if distance_diff.abs() > 0.01 { // account for floating point errors
+  if distance_diff.abs() > 0.0001 { // account for floating point errors
     // re-do test, saving results
     let r_test_num: usize = rand::thread_rng().gen_range(0, 10000000);
     
@@ -477,7 +477,7 @@ fn selective() {
     let brute_sol_len = compute_dist(&city_weights, &brute_sol);
     let distance_diff = jeff_sol_len - brute_sol_len;
     
-    if distance_diff.abs() > 0.01 { // account for floating point errors
+    if distance_diff.abs() > 0.0001 { // account for floating point errors
       println!("We have broken jeff_algo at {} points!", city_num+1);
       // we have added a city which breaks things!
       node_coordinates.pop();
