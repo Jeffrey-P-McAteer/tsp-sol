@@ -5,14 +5,12 @@ edition = "2018"
 authors = ["Jeffrey McAteer <jeffrey.p.mcateer@gmail.com>"]
 
 [dependencies]
-tsplib = "0.1.0"
-#image = "*"
-image = "0.20.1"
-imageproc = "0.16.0"
-#rusttype = "*"
-rusttype = "0.5.2"
-rand = "0.5.5"
-permutohedron = "0.2.4"
-factorial = "0.2.1"
+tsplib = "0.1"
+image = "0.23"
+imageproc = { version = "0.22", default-features = false }
+rusttype = "0.9"
+rand = "0.5"
+permutohedron = "0.2"
+factorial = "0.2"
 
 
