@@ -644,7 +644,9 @@ fn spray(n: usize, bound_granularity: f32) {
   }
 
   // Finally write image to views/spray.png
-  image.save(file_path).unwrap();
+  if let Err(e) = image.save(file_path) {
+    println!("Please create the directory ./views/ before running tests!");
+  }
   
   println!("{} failures", num_failures);
   
