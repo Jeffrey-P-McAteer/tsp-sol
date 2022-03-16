@@ -100,6 +100,8 @@ mkdir -p views/selective/ ; rm -rf views/selective/* ; cargo run --release selec
 
 TSP_INITIAL_COORDS='5.79,5.22 7.01,9.88 6.61,9.35 9.53,8.49 7.48,8.06 6.44,8.85 5.43,8.73 5.27,9.86' cargo run --release -- spray 8 0.19
 
+TSP_INITIAL_COORDS='8.20,7.28 7.11,6.85 6.71,7.18 9.34,8.21 8.67,5.21 6.09,5.51 5.11,7.05' cargo run --release -- spray 7 0.02
+
 
 ```
 

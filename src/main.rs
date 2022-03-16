@@ -39,6 +39,9 @@ use std::f32;
 mod brute_algo;
 mod jeff_algo;
 
+// fp numbers within this distance are considered equal
+const fp_epsilon: f32 = 0.000001;
+
 fn usage() {
   println!(r#"Usage: ./tsp-sol path/to/berlin52.tsp|delta|selective|spray
 
@@ -136,7 +139,7 @@ fn delta_test(city_size: usize) -> bool {
   
   let distance_diff = jeff_sol_len - brute_sol_len;
   
-  if distance_diff.abs() > 0.0001 { // account for floating point errors
+  if distance_diff.abs() > fp_epsilon { // account for floating point errors
     // re-do test, saving results
     let r_test_num: usize = rand::thread_rng().gen_range(0, 10000000);
     
@@ -470,7 +473,7 @@ fn selective() {
     let brute_sol_len = compute_dist(&city_weights, &brute_sol);
     let distance_diff = jeff_sol_len - brute_sol_len;
     
-    if distance_diff.abs() > 0.0001 { // account for floating point errors
+    if distance_diff.abs() > fp_epsilon { // account for floating point errors
       println!("We have broken jeff_algo at {} points!", city_num+1);
       // we have added a city which breaks things!
       node_coordinates.pop();
@@ -602,7 +605,7 @@ fn spray(n: usize, bound_granularity: f32) {
       let loc = (point_x, point_y);
       let (loc_x,loc_y) = scale_xy(width, height, x_range as u32, y_range as u32, smallest_x, smallest_y, loc.0, loc.1);
       
-      if distance_diff.abs() > 0.0001 {
+      if distance_diff.abs() > fp_epsilon {
         // jalgo broke, paint red pixel
         *image.get_pixel_mut(loc_x, loc_y) = Rgb([255, 0, 0]);
         num_failures += 1;
