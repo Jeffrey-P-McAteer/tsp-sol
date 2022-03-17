@@ -40,7 +40,7 @@ mod brute_algo;
 mod jeff_algo;
 
 // fp numbers within this distance are considered equal
-const fp_epsilon: f32 = 0.000001;
+const fp_epsilon: f32 = 0.000002;
 
 fn usage() {
   println!(r#"Usage: ./tsp-sol path/to/berlin52.tsp|delta|selective|spray
