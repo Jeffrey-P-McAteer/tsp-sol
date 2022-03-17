@@ -20,7 +20,7 @@ use super::*;
 
 use permutohedron::LexicalPermutation;
 
-pub fn solve(node_coordinates: &Vec<(usize, f32, f32)>, weights: &Vec<Vec<f32>>, save_run_prefix: Option<String>) -> Vec<usize> {
+pub fn solve(node_coordinates: &Vec<(usize, fp, fp)>, weights: &Vec<Vec<fp>>, save_run_prefix: Option<String>) -> Vec<usize> {
   let mut current_path = vec![];
   for i in 0..weights.len() {
     current_path.push(i);

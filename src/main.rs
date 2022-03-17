@@ -35,12 +35,15 @@ use std::io::{BufReader};
 use std::env;
 //use std::io::prelude::*;
 use std::f32;
+use std::f64;
 
 mod brute_algo;
 mod jeff_algo;
 
+pub type fp = f64;
+
 // fp numbers within this distance are considered equal
-const fp_epsilon: f32 = 0.00001;
+const fp_epsilon: fp = 0.0000001;
 
 fn usage() {
   println!(r#"Usage: ./tsp-sol path/to/berlin52.tsp|delta|selective|spray
@@ -66,7 +69,7 @@ spray requires 2 numbers after it, the N-1 size of the city and a resolution to 
 /// We will read in a problem & compute a weights matrix, the solver must return
 /// a vector of the path to take from city index to index.
 /// Solver function header:
-///   pub fn solve(node_coordinates: Vec<(usize, f32, f32)>, weights: &Vec<Vec<f32>>) -> Vec<usize>
+///   pub fn solve(node_coordinates: Vec<(usize, fp, fp)>, weights: &Vec<Vec<fp>>) -> Vec<usize>
 
 fn main() {
   let args: Vec<_> = env::args().collect();
@@ -151,7 +154,7 @@ fn delta_test(city_size: usize) -> bool {
   return true;
 }
 
-fn print_path_metadata(path: &Vec<usize>, weights: &Vec<Vec<f32>>) {
+fn print_path_metadata(path: &Vec<usize>, weights: &Vec<Vec<fp>>) {
   println!("Solution distance: {}", compute_dist(weights, path));
   print!("Solution order: ");
   for p in path {
@@ -160,8 +163,8 @@ fn print_path_metadata(path: &Vec<usize>, weights: &Vec<Vec<f32>>) {
   println!("");
 }
 
-fn compute_dist(weights: &Vec<Vec<f32>>, path: &Vec<usize>) -> f32 {
-  let mut total: f32 = 0.0;
+fn compute_dist(weights: &Vec<Vec<fp>>, path: &Vec<usize>) -> fp {
+  let mut total: fp = 0.0;
   for p_i in 0..path.len() {
     let p  = path[p_i];
     let p2 = path[(p_i+1) % path.len()]; // mod lets us wrap at end (p_i == len(), (p_i+1) % len == 0)
@@ -170,9 +173,9 @@ fn compute_dist(weights: &Vec<Vec<f32>>, path: &Vec<usize>) -> f32 {
   return total;
 }
 
-fn gen_tsp_problem(num_points: usize, min_x: f32, max_x: f32, min_y: f32, max_y: f32) -> (Vec<(usize, f32, f32)>, Vec<Vec<f32>>) {
+fn gen_tsp_problem(num_points: usize, min_x: fp, max_x: fp, min_y: fp, max_y: fp) -> (Vec<(usize, fp, fp)>, Vec<Vec<fp>>) {
   let mut rng = rand::thread_rng();
-  let mut node_coordinates: Vec<(usize, f32, f32)> = vec![];
+  let mut node_coordinates: Vec<(usize, fp, fp)> = vec![];
   
   for i in 0..num_points {
     node_coordinates.push(
@@ -181,12 +184,12 @@ fn gen_tsp_problem(num_points: usize, min_x: f32, max_x: f32, min_y: f32, max_y:
   }
   
   // Compute 2x matrix of edge weights (assumes 2d euclidian geometry)
-  let mut weights: Vec<Vec<f32>> = Vec::with_capacity(node_coordinates.len());
+  let mut weights: Vec<Vec<fp>> = Vec::with_capacity(node_coordinates.len());
   {
     for row_r in &node_coordinates {
-      let mut row_weight_v: Vec<f32> = Vec::with_capacity(node_coordinates.len());
+      let mut row_weight_v: Vec<fp> = Vec::with_capacity(node_coordinates.len());
       for col_r in &node_coordinates {
-        let weight: f32 = (
+        let weight: fp = (
           (row_r.1 - col_r.1).powf(2.0) + // x1 + x2 squared
           (row_r.2 - col_r.2).powf(2.0)   // y1 + y2 squared
         ).sqrt();
@@ -200,7 +203,7 @@ fn gen_tsp_problem(num_points: usize, min_x: f32, max_x: f32, min_y: f32, max_y:
   return (node_coordinates, weights);
 }
 
-fn open_tsp_problem(file_arg: String) -> Option<(Vec<(usize, f32, f32)>, Vec<Vec<f32>>)> {
+fn open_tsp_problem(file_arg: String) -> Option<(Vec<(usize, fp, fp)>, Vec<Vec<fp>>)> {
   if ! Path::new(&file_arg).exists() {
     println!("File does not exist: {}", file_arg);
     return None;
@@ -237,6 +240,8 @@ fn open_tsp_problem(file_arg: String) -> Option<(Vec<(usize, f32, f32)>, Vec<Vec
     }
   };
   
+  let node_coordinates: Vec<(usize, fp, fp)> = node_coordinates.iter().map(|(a, b, c)| (*a, *b as fp, *c as fp) ).collect();
+
   // Compute 2x matrix of edge weights (assumes 2d euclidian geometry)
   let weights = compute_weight_coords(&node_coordinates);
   
@@ -248,30 +253,30 @@ fn open_tsp_problem(file_arg: String) -> Option<(Vec<(usize, f32, f32)>, Vec<Vec
 
 // Meh used in imagery
 
-fn compute_center(path: &Vec<usize>, locations: &Vec<(usize, f32, f32)>) -> (f32, f32) {
-  let mut x_tot: f32 = 0.0;
-  let mut y_tot: f32 = 0.0;
+fn compute_center(path: &Vec<usize>, locations: &Vec<(usize, fp, fp)>) -> (fp, fp) {
+  let mut x_tot: fp = 0.0;
+  let mut y_tot: fp = 0.0;
   
   for p in path {
     x_tot += locations[*p].1;
     y_tot += locations[*p].2;
   }
   
-  x_tot /= path.len() as f32;
-  y_tot /= path.len() as f32;
+  x_tot /= path.len() as fp;
+  y_tot /= path.len() as fp;
   return (x_tot, y_tot);
 }
 
 // Shared imagery functions
 
-fn save_state_image<I: Into<String>>(file_path: I, path: &Vec<usize>, locations: &Vec<(usize, f32, f32)>) {
+fn save_state_image<I: Into<String>>(file_path: I, path: &Vec<usize>, locations: &Vec<(usize, fp, fp)>) {
   let file_path = file_path.into();
   let (width, height) = (600, 600);
   let mut image = RgbImage::new(width + 5, height + 5); // width, height
 
   let (smallest_x, largest_y, largest_x, smallest_y) = get_point_extents(locations);
-  let x_range: f32 = largest_x - smallest_x;
-  let y_range: f32 = largest_y - smallest_y;
+  let x_range: fp = largest_x - smallest_x;
+  let y_range: fp = largest_y - smallest_y;
   
   let font = Font::try_from_bytes(include_bytes!("../resources/NotoSans-Bold.ttf")).unwrap();
 
@@ -312,14 +317,14 @@ fn save_state_image<I: Into<String>>(file_path: I, path: &Vec<usize>, locations:
   image.save(file_path).unwrap();
 }
 
-fn save_state_image_center<I: Into<String>>(file_path: I, path: &Vec<usize>, locations: &Vec<(usize, f32, f32)>, center: &(f32, f32)) {
+fn save_state_image_center<I: Into<String>>(file_path: I, path: &Vec<usize>, locations: &Vec<(usize, fp, fp)>, center: &(fp, fp)) {
   let file_path = file_path.into();
   let (width, height) = (600, 600);
   let mut image = RgbImage::new(width + 5, height + 5); // width, height
   
   let (smallest_x, largest_y, largest_x, smallest_y) = get_point_extents(locations);
-  let x_range: f32 = largest_x - smallest_x;
-  let y_range: f32 = largest_y - smallest_y;
+  let x_range: fp = largest_x - smallest_x;
+  let y_range: fp = largest_y - smallest_y;
   
   let font = Font::try_from_bytes(include_bytes!("../resources/NotoSans-Bold.ttf")).unwrap();
 
@@ -364,30 +369,30 @@ fn save_state_image_center<I: Into<String>>(file_path: I, path: &Vec<usize>, loc
   image.save(file_path).unwrap();
 }
 
-fn scale_xy(img_w: u32, img_h: u32, path_w: u32, path_h: u32, path_x_smallest: f32, path_y_smallest: f32, given_x: f32, given_y: f32) -> (u32, u32) {
-  let mut img_x = (given_x - path_x_smallest) * ((img_w as f32 / path_w as f32) as f32);
-  let mut img_y = (given_y - path_y_smallest) * ((img_h as f32 / path_h as f32) as f32);
+fn scale_xy(img_w: u32, img_h: u32, path_w: u32, path_h: u32, path_x_smallest: fp, path_y_smallest: fp, given_x: fp, given_y: fp) -> (u32, u32) {
+  let mut img_x = (given_x - path_x_smallest) * ((img_w as fp / path_w as fp) as fp);
+  let mut img_y = (given_y - path_y_smallest) * ((img_h as fp / path_h as fp) as fp);
   if img_x < 5.0 {
     img_x = 5.0;
   }
-  if img_x > (img_w-5) as f32 {
-    img_x = (img_w-5) as f32;
+  if img_x > (img_w-5) as fp {
+    img_x = (img_w-5) as fp;
   }
   if img_y < 5.0 {
     img_y = 5.0;
   }
-  if img_y > (img_h-5) as f32 {
-    img_y = (img_h-5) as f32;
+  if img_y > (img_h-5) as fp {
+    img_y = (img_h-5) as fp;
   }
   return (img_x as u32, img_y as u32);
 }
 
 // returns smallestX, largestY, largestX, smallestY
-fn get_point_extents(locations: &Vec<(usize, f32, f32)>) -> (f32, f32, f32, f32) {
-  let mut smallest_x = f32::INFINITY;
-  let mut largest_y = f32::NEG_INFINITY;
-  let mut largest_x = f32::NEG_INFINITY;
-  let mut smallest_y = f32::INFINITY;
+fn get_point_extents(locations: &Vec<(usize, fp, fp)>) -> (fp, fp, fp, fp) {
+  let mut smallest_x = fp::INFINITY;
+  let mut largest_y = fp::NEG_INFINITY;
+  let mut largest_x = fp::NEG_INFINITY;
+  let mut smallest_y = fp::INFINITY;
   for loc in locations {
     let x = loc.1;
     let y = loc.2;
@@ -407,14 +412,14 @@ fn get_point_extents(locations: &Vec<(usize, f32, f32)>) -> (f32, f32, f32, f32)
   return (smallest_x, largest_y, largest_x, smallest_y);
 }
 
-fn compute_weight_coords(node_coordinates: &Vec<(usize, f32, f32)>) -> Vec<Vec<f32>> {
+fn compute_weight_coords(node_coordinates: &Vec<(usize, fp, fp)>) -> Vec<Vec<fp>> {
   // Compute 2x matrix of edge weights (assumes 2d euclidian geometry)
-  let mut weights: Vec<Vec<f32>> = Vec::with_capacity(node_coordinates.len());
+  let mut weights: Vec<Vec<fp>> = Vec::with_capacity(node_coordinates.len());
   {
     for row_r in node_coordinates {
-      let mut row_weight_v: Vec<f32> = Vec::with_capacity(node_coordinates.len());
+      let mut row_weight_v: Vec<fp> = Vec::with_capacity(node_coordinates.len());
       for col_r in node_coordinates {
-        let weight: f32 = (
+        let weight: fp = (
           (row_r.1 - col_r.1).powf(2.0) + // x1 + x2 squared
           (row_r.2 - col_r.2).powf(2.0)   // y1 + y2 squared
         ).sqrt();
@@ -430,20 +435,20 @@ fn compute_weight_coords(node_coordinates: &Vec<(usize, f32, f32)>) -> Vec<Vec<f
 fn selective() {
   println!("Performing selective failure...");
   // Bounding box for all points
-  //let x_min_bound: f32 = 0.0;
-  //let x_max_bound: f32 = 15.0;
-  //let y_min_bound: f32 = 0.0;
-  //let y_max_bound: f32 = 15.0;
+  //let x_min_bound: fp = 0.0;
+  //let x_max_bound: fp = 15.0;
+  //let y_min_bound: fp = 0.0;
+  //let y_max_bound: fp = 15.0;
   
   //let bound_granularity = 0.25; // step size with which to make grid points after failure
   
-  let x_min: f32 = 5.0;
-  let x_max: f32 = 10.0;
-  let y_min: f32 = 5.0;
-  let y_max: f32 = 10.0;
+  let x_min: fp = 5.0;
+  let x_max: fp = 10.0;
+  let y_min: fp = 5.0;
+  let y_max: fp = 10.0;
   
   let mut rng = rand::thread_rng();
-  let mut node_coordinates: Vec<(usize, f32, f32)> = vec![];
+  let mut node_coordinates: Vec<(usize, fp, fp)> = vec![];
   
   // Just add 3 to begin with
   for i in 0..3 {
@@ -498,13 +503,13 @@ fn selective() {
   
 }
 
-fn perform_matrix_image_gen<S: Into<String>>(_img_path: S, _node_coordinates: Vec<(usize, f32, f32)>, _city_weights: Vec<Vec<f32>>) {
+fn perform_matrix_image_gen<S: Into<String>>(_img_path: S, _node_coordinates: Vec<(usize, fp, fp)>, _city_weights: Vec<Vec<fp>>) {
   // Great idea; never finished, see spray(1)
 }
 
-fn get_env_or_random_node_coordinates(n: usize, x_min: f32, x_max: f32, y_min: f32, y_max: f32) -> Vec<(usize, f32, f32)> {
+fn get_env_or_random_node_coordinates(n: usize, x_min: fp, x_max: fp, y_min: fp, y_max: fp) -> Vec<(usize, fp, fp)> {
   let mut rng = rand::thread_rng();
-  let mut node_coordinates: Vec<(usize, f32, f32)> = vec![];
+  let mut node_coordinates: Vec<(usize, fp, fp)> = vec![];
   // Create random set of points OR parse from env var
   match env::var("TSP_INITIAL_COORDS") {
     Ok(initial_coords_s) => {
@@ -512,8 +517,8 @@ fn get_env_or_random_node_coordinates(n: usize, x_min: f32, x_max: f32, y_min: f
       let pairs: Vec<&str> = initial_coords_s.split(" ").collect();
       for i in 0..n {
         let x_and_y_s: Vec<&str> = pairs[i].split(",").collect();
-        let x: f32 = x_and_y_s[0].parse().expect("TSP_INITIAL_COORDS did not contain a number");
-        let y: f32 = x_and_y_s[1].parse().expect("TSP_INITIAL_COORDS did not contain a number");
+        let x: fp = x_and_y_s[0].parse().expect("TSP_INITIAL_COORDS did not contain a number");
+        let y: fp = x_and_y_s[1].parse().expect("TSP_INITIAL_COORDS did not contain a number");
         let new_r_city = (
           i, x, y
         );
@@ -534,21 +539,21 @@ fn get_env_or_random_node_coordinates(n: usize, x_min: f32, x_max: f32, y_min: f
   return node_coordinates;
 }
 
-fn spray(n: usize, bound_granularity: f32) {
+fn spray(n: usize, bound_granularity: fp) {
   println!("Spraying {} cities...", n);
   
   // Bounding box for all points
-  let x_min_bound: f32 = 0.0;
-  let x_max_bound: f32 = 15.0;
-  let y_min_bound: f32 = 0.0;
-  let y_max_bound: f32 = 15.0;
+  let x_min_bound: fp = 0.0;
+  let x_max_bound: fp = 15.0;
+  let y_min_bound: fp = 0.0;
+  let y_max_bound: fp = 15.0;
   
-  let x_min: f32 = 4.0;
-  let x_max: f32 = 11.0;
-  let y_min: f32 = 4.0;
-  let y_max: f32 = 11.0;
+  let x_min: fp = 4.0;
+  let x_max: fp = 11.0;
+  let y_min: fp = 4.0;
+  let y_max: fp = 11.0;
   
-  let node_coordinates: Vec<(usize, f32, f32)> = get_env_or_random_node_coordinates(n, x_min, x_max, y_min, y_max);
+  let node_coordinates: Vec<(usize, fp, fp)> = get_env_or_random_node_coordinates(n, x_min, x_max, y_min, y_max);
   println!("Initial node_coordinates={:?}", &node_coordinates);
   
   // Generate partial image
@@ -557,8 +562,8 @@ fn spray(n: usize, bound_granularity: f32) {
   let mut image = RgbImage::new(width + 5, height + 5); // width, height
   
   let (smallest_x, largest_y, largest_x, smallest_y) = (x_min_bound, y_max_bound, x_max_bound, y_min_bound);
-  let x_range: f32 = largest_x - smallest_x;
-  let y_range: f32 = largest_y - smallest_y;
+  let x_range: fp = largest_x - smallest_x;
+  let y_range: fp = largest_y - smallest_y;
   
   // Use jalgo to compute the first N-1 insertions...
   let city_weights = compute_weight_coords(&node_coordinates);

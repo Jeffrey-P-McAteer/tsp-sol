@@ -19,8 +19,8 @@
 use super::*;
 
 type CityNum = usize;
-type CityWeight = f32;
-type CityXYCoord = f32;
+type CityWeight = fp;
+type CityXYCoord = fp;
 
 pub fn solve(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>, weights: &Vec<Vec<CityWeight>>, save_run_prefix: Option<String>) -> Vec<usize> {
   let mut ordered_visits = compute_largest_triangle(node_coordinates, weights);
@@ -70,7 +70,7 @@ pub fn next_step(ordered_visits: &Vec<CityNum>, node_coordinates: &Vec<(CityNum,
   //   insert N using insert_point_step
   // keep the smallest delta from these ops
 
-  let mut strat_b_best_tour_delta = f32::INFINITY;
+  let mut strat_b_best_tour_delta = fp::INFINITY;
   let mut strat_b_best_tour_n = 0;
   let mut strat_b_best_tour_m = 0;
 
@@ -81,7 +81,7 @@ pub fn next_step(ordered_visits: &Vec<CityNum>, node_coordinates: &Vec<(CityNum,
     let n_right_citynum = ordered_visits[ (n) % ordered_visits.len() ];
 
     // Delta must begin with the removal of 2 edges above
-    let mut this_delta: f32 = (-weights[n_left_citynum][removed_citynum_n]) + (-weights[removed_citynum_n][n_right_citynum]) + weights[n_left_citynum][n_right_citynum];
+    let mut this_delta: fp = (-weights[n_left_citynum][removed_citynum_n]) + (-weights[removed_citynum_n][n_right_citynum]) + weights[n_left_citynum][n_right_citynum];
 
     for m in 0..ordered_visits.len() {
 
@@ -91,7 +91,7 @@ pub fn next_step(ordered_visits: &Vec<CityNum>, node_coordinates: &Vec<(CityNum,
       let m_right_citynum = ordered_visits[ (m) % ordered_visits.len() ];
 
       // Delta must begin with the removal of 2 edges above
-      let mut this_delta: f32 = this_delta;
+      let mut this_delta: fp = this_delta;
       this_delta += (-weights[m_left_citynum][removed_citynum_m]) + (-weights[removed_citynum_m][m_right_citynum]) + weights[m_left_citynum][m_right_citynum];
       this_delta += insert_point_step(&mut ordered_visits, node_coordinates, weights, citynum_to_insert);
       this_delta += insert_point_step(&mut ordered_visits, node_coordinates, weights, removed_citynum_m);
@@ -147,7 +147,7 @@ pub fn next_step(ordered_visits: &Vec<CityNum>, node_coordinates: &Vec<(CityNum,
 // Modified args instead of returning a clone
 // returns the delta from this modification (aka how much did len(ordered_visits) change, smaller is better.)
 fn insert_point_step(ordered_visits: &mut Vec<CityNum>, node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>, weights: &Vec<Vec<CityWeight>>, citynum_to_insert: CityNum) -> CityWeight {
-  let mut ideal_insert_dist_delta: CityWeight = f32::INFINITY;
+  let mut ideal_insert_dist_delta: CityWeight = fp::INFINITY;
   let mut ins_idx0 = 0; // 0 indicates a split of the edge that runs between 0 -> 1
   
   for from_i in 0..ordered_visits.len() {
@@ -196,7 +196,7 @@ fn remove_point_step(ordered_visits: &mut Vec<CityNum>, node_coordinates: &Vec<(
   return this_dist_delta;
 }
 
-fn compute_largest_triangle(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>, weights: &Vec<Vec<f32>>) -> Vec<usize> {
+fn compute_largest_triangle(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>, weights: &Vec<Vec<fp>>) -> Vec<usize> {
   let mut ordered_visits: Vec<usize> = vec![0, 1, 2]; // holds the path as a vector of indexes relating to the city number beginning at 0
 
   // Make the first 2 points the furthest away in the entire graph
