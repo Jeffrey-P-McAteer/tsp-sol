@@ -40,10 +40,11 @@ use std::f64;
 mod brute_algo;
 mod jeff_algo;
 
-pub type fp = f64;
+pub type fp = f32;
 
 // fp numbers within this distance are considered equal
-const fp_epsilon: fp = 0.0000001;
+const fp_epsilon: fp = 0.0001;
+
 
 fn usage() {
   println!(r#"Usage: ./tsp-sol path/to/berlin52.tsp|delta|selective|spray
@@ -539,8 +540,14 @@ fn get_env_or_random_node_coordinates(n: usize, x_min: fp, x_max: fp, y_min: fp,
   return node_coordinates;
 }
 
-fn spray(n: usize, bound_granularity: fp) {
+fn spray(n: usize, mut bound_granularity: fp) {
   println!("Spraying {} cities...", n);
+
+  if bound_granularity < 0.025 {
+    println!("Resetting {} to 0.025 because that's the size of a single pixel...", bound_granularity);
+    bound_granularity = 0.025;
+  }
+  let bound_granularity = bound_granularity;
   
   // Bounding box for all points
   let x_min_bound: fp = 0.0;

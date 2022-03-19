@@ -105,6 +105,23 @@ TSP_INITIAL_COORDS='8.20,7.28 7.11,6.85 6.71,7.18 9.34,8.21 8.67,5.21 6.09,5.51 
 
 ```
 
+# Performance profiling
+
+ - Install `perf` (see your OS's package manager for details)
+ - Use cargo to install `cargo-flamegraph`: `cargo install flamegraph`
+ - Run a release binary w/ to generate a flamegraph:
+
+```bash
+# May not always be necessary, see https://lwn.net/Articles/696216/ for details
+echo -1 | sudo tee /proc/sys/kernel/perf_event_paranoid
+
+TSP_INITIAL_COORDS='5.79,5.22 7.01,9.88 6.61,9.35 9.53,8.49 7.48,8.06 6.44,8.85 5.43,8.73 5.27,9.86' cargo flamegraph -o /tmp/graph.svg -- spray 8 0.09
+
+firefox /tmp/graph.svg
+
+
+```
+
 
 # License
 

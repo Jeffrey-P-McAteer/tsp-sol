@@ -1,7 +1,7 @@
 [package]
 name = "tsp-sol"
 version = "0.1.0"
-edition = "2018"
+edition = "2021"
 authors = ["Jeffrey McAteer <jeffrey.p.mcateer@gmail.com>"]
 
 [dependencies]
@@ -13,4 +13,5 @@ rand = "0.5"
 permutohedron = "0.2"
 factorial = "0.2"
 
-
+[profile.release]
+debug = 1

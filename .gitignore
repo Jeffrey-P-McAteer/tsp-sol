@@ -5,3 +5,7 @@
 out.png
 tsp/kaggle-2018.tsp
 *.bak
+perf.data
+flamegraph.svg
+
+
