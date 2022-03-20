@@ -6,6 +6,7 @@ out.png
 tsp/kaggle-2018.tsp
 *.bak
 perf.data
+perf.data.old
 flamegraph.svg
 
 

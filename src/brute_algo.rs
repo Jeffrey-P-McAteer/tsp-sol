@@ -25,10 +25,20 @@ pub fn solve(node_coordinates: &Vec<(usize, fp, fp)>, weights: &Vec<Vec<fp>>, sa
   for i in 0..weights.len() {
     current_path.push(i);
   }
+  // We, uh... need to go backwards until we hit the "first ordered permutation".
+  // This was a bug in the original implementation which apparently just went from
+  // random permutation index -> last sorted permutation.
+  loop {
+    if !current_path.prev_permutation() {
+      break;
+    }
+  }
+
   let mut best_path = current_path.clone();
   let mut best_path_dist = compute_dist(weights, &best_path);
   
   loop {
+    //*
     //println!("current_path = {:?}", current_path);
     let this_dist = compute_dist(weights, &current_path);
     if this_dist < best_path_dist {
@@ -39,6 +49,44 @@ pub fn solve(node_coordinates: &Vec<(usize, fp, fp)>, weights: &Vec<Vec<fp>>, sa
     if !current_path.next_permutation() {
       break;
     }
+    /**/
+
+    /*
+    // we copy in https://docs.rs/permutohedron/0.2.4/src/permutohedron/lexical.rs.html#34
+    // and only track path distance deltas for a huge performance boost.
+    let mut this_dist = best_path_dist;
+    
+    // Step 1: Identify the longest, rightmost weakly decreasing part of the vector
+    let mut i = current_path.len() - 1;
+    while i > 0 && current_path[i-1] >= current_path[i] {
+        i -= 1;
+    }
+
+    // If that is the entire vector, this is the last-ordered permutation.
+    if i == 0 {
+        break;
+    }
+
+    // Step 2: Find the rightmost element larger than the pivot (i-1)
+    let mut j = current_path.len() - 1;
+    while j >= i && current_path[j] <= current_path[i-1]  {
+        j -= 1;
+    }
+
+    // Step 3: Swap that element with the pivot
+    current_path.swap(j, i-1);
+
+    // Step 4: Reverse the (previously) weakly decreasing part
+    current_path[i..].reverse();
+
+    // Because we've only modified a part of the distance, we have significantly fewer
+    // floating point ops required to make the same decision!
+    if this_dist < best_path_dist {
+      best_path = current_path.clone();
+      best_path_dist = this_dist;
+    }
+    */
+
   }
   
   // Store solution
