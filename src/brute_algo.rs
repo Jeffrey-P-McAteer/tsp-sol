@@ -150,7 +150,15 @@ pub fn solve_mt(node_coordinates: &Vec<(usize, fp, fp)>, weights: &Vec<Vec<fp>>,
   let permutations_per_t = num_permutations / threads;
 
   let mut thread_paths = vec![];
+  // We move the permutation forward by permutations_per_t each step so threads do not need to re-do any work to get to their beginning
   for t in 0..threads {
+    let begin_p = permutations_per_t * t;
+    let end_p = permutations_per_t * (t+1);
+    for _ in begin_p..end_p {
+      if !current_path.next_permutation() {
+        break;
+      }
+    }
     thread_paths.push( current_path.clone() );
   }
 
@@ -173,12 +181,12 @@ pub fn solve_mt(node_coordinates: &Vec<(usize, fp, fp)>, weights: &Vec<Vec<fp>>,
         let mut best_path = current_path.clone();
         let mut best_path_dist = compute_dist(weights, &best_path);
 
-        // Increment permution until we hit this thread's chunk of work
-        for _ in 0..begin_p {
-          if !current_path.next_permutation() {
-            break;
-          }
-        }
+        // // Increment permution until we hit this thread's chunk of work
+        // for _ in 0..begin_p {
+        //   if !current_path.next_permutation() {
+        //     break;
+        //   }
+        // }
 
         let mut p = begin_p;
         
