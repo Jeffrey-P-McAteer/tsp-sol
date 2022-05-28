@@ -12,6 +12,9 @@ rusttype = "0.9"
 rand = "0.5"
 permutohedron = "0.2"
 factorial = "0.2"
+num_cpus = "1.13"
+crossbeam = "0.8"
+num = "0.4"
 
 [profile.release]
 debug = 1
