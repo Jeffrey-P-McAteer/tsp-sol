@@ -18,3 +18,9 @@ num = "0.4"
 
 [profile.release]
 debug = 1
+# https://deterministic.space/high-performance-rust.html
+lto = "fat"
+codegen-units = 1
+
+
+

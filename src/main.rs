@@ -1,5 +1,6 @@
 
 #![allow(unused_imports)]
+#![allow(unused_variables)]
 #![allow(dead_code)]
 
 /**
@@ -48,6 +49,7 @@ mod jeff_algo;
 pub type fp = f32;
 
 // fp numbers within this distance are considered equal
+#[allow(non_upper_case_globals)]
 const fp_epsilon: fp = 0.0001;
 
 

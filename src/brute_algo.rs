@@ -97,14 +97,14 @@ pub fn solve_st(node_coordinates: &Vec<(usize, fp, fp)>, weights: &Vec<Vec<fp>>,
 
     // Compute the current distance from j-1 -> j -> j+1 AND i-2 -> i-1 -> i,
     // which will be removed & added back later
-    let delta_to_rm = compute_dist(weights, &[ current_path[b(j-1, l)], current_path[b(j, l)], current_path[b(j+1, l)] ]) +
-                      compute_dist(weights, &[ current_path[b(i-2, l)], current_path[b(i-1, l)], current_path[b(i, l)] ]);
+    let delta_to_rm = compute_dist(weights, &[ current_path[b(j-2, l)], current_path[b(j-1, l)], current_path[b(j, l)], current_path[b(j+1, l)], current_path[b(j+2, l)] ]) +
+                      compute_dist(weights, &[ current_path[b(i-3, l)], current_path[b(i-2, l)], current_path[b(i-1, l)], current_path[b(i, l)], current_path[b(i+1, l)] ]);
 
     // Step 3: Swap that element with the pivot
     current_path.swap(j, i-1);
 
-    let delta_to_add = compute_dist(weights, &[ current_path[b(j-1, l)], current_path[b(j, l)], current_path[b(j+1, l)] ]) +
-                       compute_dist(weights, &[ current_path[b(i-2, l)], current_path[b(i-1, l)], current_path[b(i, l)] ]);
+    let delta_to_add = compute_dist(weights, &[ current_path[b(j-2, l)], current_path[b(j-1, l)], current_path[b(j, l)], current_path[b(j+1, l)], current_path[b(j+2, l)] ]) +
+                       compute_dist(weights, &[ current_path[b(i-3, l)], current_path[b(i-2, l)], current_path[b(i-1, l)], current_path[b(i, l)], current_path[b(i+1, l)] ]);
 
     last_path_dist -= delta_to_rm;
     last_path_dist += delta_to_add;
@@ -123,8 +123,13 @@ pub fn solve_st(node_coordinates: &Vec<(usize, fp, fp)>, weights: &Vec<Vec<fp>>,
     // Proof helper
     let slow_distance = compute_dist(weights, &current_path);
     //assert_eq!(last_path_dist, slow_distance);
+    println!("i={i} j={j}", i=i, j=j);
     if last_path_dist != slow_distance {
       println!("{} != {}", last_path_dist, slow_distance);
+      println!("current_path = {:?}", current_path);
+    }
+    else {
+      println!("FINE!");
       println!("current_path = {:?}", current_path);
     }
 
