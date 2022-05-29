@@ -122,6 +122,12 @@ firefox /tmp/graph.svg
 
 ```
 
+# Further research ideas
+
+ - https://docs.rs/packed_simd/latest/packed_simd/index.html
+    - Possible low-level performance bump?
+
+
 
 # License
 

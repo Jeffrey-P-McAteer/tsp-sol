@@ -25,8 +25,19 @@ use num::{Num, NumCast};
 use permutohedron::LexicalPermutation;
 
 pub fn solve(node_coordinates: &Vec<(usize, fp, fp)>, weights: &Vec<Vec<fp>>, save_run_prefix: Option<String>) -> Vec<usize> {
-  solve_mt(node_coordinates, weights, save_run_prefix)
-  //solve_st(node_coordinates, weights, save_run_prefix)
+  /*let s1 = solve_mt(node_coordinates, weights, save_run_prefix.clone());
+  let s2 = solve_st(node_coordinates, weights, save_run_prefix);
+  
+  // If s1 and s2 are different we have a huge problem
+  assert_eq!(s1.len(), s2.len());
+  for (a, b) in s1.iter().zip(s2.iter()) {
+    assert_eq!(a, b);
+  }
+
+  return s2;
+  */
+  //solve_mt(node_coordinates, weights, save_run_prefix)
+  solve_st(node_coordinates, weights, save_run_prefix)
 }
 
 pub fn solve_st(node_coordinates: &Vec<(usize, fp, fp)>, weights: &Vec<Vec<fp>>, save_run_prefix: Option<String>) -> Vec<usize> {
@@ -45,9 +56,10 @@ pub fn solve_st(node_coordinates: &Vec<(usize, fp, fp)>, weights: &Vec<Vec<fp>>,
 
   let mut best_path = current_path.clone();
   let mut best_path_dist = compute_dist(weights, &best_path);
+  let mut last_path_dist = best_path_dist;
   
   loop {
-    //*
+    /*
     //println!("current_path = {:?}", current_path);
     let this_dist = compute_dist(weights, &current_path);
     if this_dist < best_path_dist {
@@ -58,12 +70,11 @@ pub fn solve_st(node_coordinates: &Vec<(usize, fp, fp)>, weights: &Vec<Vec<fp>>,
     if !current_path.next_permutation() {
       break;
     }
-    /**/
+    */
 
-    /*
+    //*
     // we copy in https://docs.rs/permutohedron/0.2.4/src/permutohedron/lexical.rs.html#34
     // and only track path distance deltas for a huge performance boost.
-    let mut this_dist = best_path_dist;
     
     // Step 1: Identify the longest, rightmost weakly decreasing part of the vector
     let mut i = current_path.len() - 1;
@@ -82,19 +93,48 @@ pub fn solve_st(node_coordinates: &Vec<(usize, fp, fp)>, weights: &Vec<Vec<fp>>,
         j -= 1;
     }
 
+    let l = current_path.len();
+
+    // Compute the current distance from j-1 -> j -> j+1 AND i-2 -> i-1 -> i,
+    // which will be removed & added back later
+    let delta_to_rm = compute_dist(weights, &[ current_path[b(j-1, l)], current_path[b(j, l)], current_path[b(j+1, l)] ]) +
+                      compute_dist(weights, &[ current_path[b(i-2, l)], current_path[b(i-1, l)], current_path[b(i, l)] ]);
+
     // Step 3: Swap that element with the pivot
     current_path.swap(j, i-1);
+
+    let delta_to_add = compute_dist(weights, &[ current_path[b(j-1, l)], current_path[b(j, l)], current_path[b(j+1, l)] ]) +
+                       compute_dist(weights, &[ current_path[b(i-2, l)], current_path[b(i-1, l)], current_path[b(i, l)] ]);
+
+    last_path_dist -= delta_to_rm;
+    last_path_dist += delta_to_add;
+
+    // Same thing for our reverse() operation
+    let delta_to_rm = compute_dist(weights, &current_path[b(i-1, l)..current_path.len()]);
 
     // Step 4: Reverse the (previously) weakly decreasing part
     current_path[i..].reverse();
 
+    let delta_to_add = compute_dist(weights, &current_path[b(i-1, l)..current_path.len()]);
+
+    last_path_dist -= delta_to_rm;
+    last_path_dist += delta_to_add;
+
+    // Proof helper
+    let slow_distance = compute_dist(weights, &current_path);
+    //assert_eq!(last_path_dist, slow_distance);
+    if last_path_dist != slow_distance {
+      println!("{} != {}", last_path_dist, slow_distance);
+      println!("current_path = {:?}", current_path);
+    }
+
     // Because we've only modified a part of the distance, we have significantly fewer
     // floating point ops required to make the same decision!
-    if this_dist < best_path_dist {
+    if last_path_dist < best_path_dist {
       best_path = current_path.clone();
-      best_path_dist = this_dist;
+      best_path_dist = last_path_dist;
     }
-    */
+    //*/
 
   }
   

@@ -1,3 +1,7 @@
+
+#![allow(unused_imports)]
+#![allow(dead_code)]
+
 /**
  *  tsp-sol - an experimental environment for traveling salesman solution analysis
  *  Copyright (C) 2019  Jeffrey McAteer <jeffrey.p.mcateer@gmail.com>
@@ -40,6 +44,7 @@ use std::f64;
 mod brute_algo;
 mod jeff_algo;
 
+#[allow(non_camel_case_types)]
 pub type fp = f32;
 
 // fp numbers within this distance are considered equal
@@ -156,7 +161,7 @@ fn delta_test(city_size: usize) -> bool {
 }
 
 fn print_path_metadata(path: &Vec<usize>, weights: &Vec<Vec<fp>>) {
-  println!("Solution distance: {}", compute_dist(weights, path));
+  println!("Solution distance: {}", compute_dist(weights, &path));
   print!("Solution order: ");
   for p in path {
     print!("{} ", *p);
@@ -164,7 +169,12 @@ fn print_path_metadata(path: &Vec<usize>, weights: &Vec<Vec<fp>>) {
   println!("");
 }
 
-fn compute_dist(weights: &Vec<Vec<fp>>, path: &Vec<usize>) -> fp {
+// Bounds some number i within len, used heavily in index calculations
+fn b(i: usize, len: usize) -> usize {
+  return (i + len) % len;
+}
+
+fn compute_dist(weights: &Vec<Vec<fp>>, path: &[usize]) -> fp {
   let mut total: fp = 0.0;
   for p_i in 0..path.len() {
     let p  = path[p_i];
