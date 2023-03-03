@@ -324,7 +324,7 @@ fn save_state_image<I: Into<String>>(file_path: I, path: &Vec<usize>, locations:
     // Set all location pixels to be red // r,g,b
     //image.get_pixel_mut(loc_x, loc_y).data = [255, 0, 0];
     //circle_it(&mut image, loc_x, loc_y, [255, 0, 0]);
-    draw_hollow_circle_mut(&mut image, (loc_x as i32, loc_y as i32), 14 /*radius*/, Rgb([255, 0, 0]));
+    draw_hollow_circle_mut(&mut image, (loc_x as i32, loc_y as i32), 10 /*radius*/, Rgb([255, 0, 0]));
     
     // Also draw an index number
     let font_height = 18.0;
@@ -748,7 +748,7 @@ fn spray(n: usize, mut bound_granularity: fp) {
     // Set all location pixels to be red // r,g,b
     //image.get_pixel_mut(loc_x, loc_y).data = [255, 0, 0];
     //circle_it(&mut image, loc_x, loc_y, [255, 0, 0]);
-    draw_hollow_circle_mut(&mut image, (loc_x as i32, loc_y as i32), 14 /*radius*/, Rgb([255, 0, 0]));
+    draw_hollow_circle_mut(&mut image, (loc_x as i32, loc_y as i32), 10 /*radius*/, Rgb([255, 0, 0]));
     
     // Also draw an index number
     
