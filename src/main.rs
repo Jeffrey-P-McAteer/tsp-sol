@@ -307,10 +307,25 @@ fn save_state_image<I: Into<String>>(file_path: I, path: &Vec<usize>, locations:
 
   let (mut smallest_x, mut largest_y, mut largest_x, mut smallest_y) = get_point_extents(locations);
 
-  smallest_x -= 3.5;
-  largest_y += 3.5;
-  largest_x += 3.5;
-  smallest_y -= 3.5;
+  if smallest_x > 0.0 {
+    smallest_x = 0.0;
+  }
+  if largest_y < 15.0 {
+    largest_y = 15.0;
+  }
+  if largest_x < 15.0 {
+    largest_x = 15.0;
+  }
+  if smallest_y > 0.0 {
+    smallest_y = 0.0;
+  }
+  // we'll expand to a 0x15 grid to normalize most of our data; if something larger comes in
+  // the image will merely be skewed between runs by the furthest points
+
+  // smallest_x -= 3.5;
+  // largest_y += 3.5;
+  // largest_x += 3.5;
+  // smallest_y -= 3.5;
 
   let x_range: fp = largest_x - smallest_x;
   let y_range: fp = largest_y - smallest_y;
