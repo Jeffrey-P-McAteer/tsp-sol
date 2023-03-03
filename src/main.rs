@@ -683,7 +683,8 @@ fn spray(n: usize, mut bound_granularity: fp) {
       
       //let jeff_sol = jeff_algo::solve(&node_coordinates, &city_weights, None);
       //println!("=============");
-      let jeff_sol = jeff_algo::next_step(&first_ordered_visits, &node_coordinates, &city_weights, &None);
+      //let jeff_sol = jeff_algo::next_step(&first_ordered_visits, &node_coordinates, &city_weights, &None);
+      let jeff_sol = jeff_algo::solve(&node_coordinates, &city_weights, None);
       //println!("jeff_sol={:?}", &jeff_sol);
       
       let brute_sol = brute_algo::solve(&node_coordinates, &city_weights, None);
@@ -710,7 +711,7 @@ fn spray(n: usize, mut bound_granularity: fp) {
         if bound_granularity >= 0.2 {
           let prefix_dir = format!("./views/spray-jalgo-f{:03}", num_failures);
           
-          jeff_algo::next_step(&first_ordered_visits, &node_coordinates, &city_weights, &Some(format!("{}-jeff-next_step", prefix_dir.clone() ) ));
+          // Debugging jeff_algo::next_step(&first_ordered_visits, &node_coordinates, &city_weights, &Some(format!("{}-jeff-next_step", prefix_dir.clone() ) ));
           //jeff_algo::solve(&node_coordinates, &city_weights, Some(prefix_dir.clone()));
           
           //brute_algo::solve(&node_coordinates, &city_weights, Some(prefix_dir.clone()));
@@ -722,8 +723,8 @@ fn spray(n: usize, mut bound_granularity: fp) {
               delta_node_coords.push( node_coordinates[j] );
             }
             let city_weights = compute_weight_coords(&delta_node_coords);
-            brute_algo::solve(&delta_node_coords, &city_weights, Some(prefix_dir.clone()));
             jeff_algo::solve(&delta_node_coords, &city_weights, Some(prefix_dir.clone()));
+            brute_algo::solve(&delta_node_coords, &city_weights, Some(prefix_dir.clone()));
           }
           
         }
