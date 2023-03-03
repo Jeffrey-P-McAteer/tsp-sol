@@ -86,6 +86,8 @@ fn main() {
     usage();
     return;
   }
+
+  attempt_to_raise_priority();
   
   let file_arg = args.get(1).unwrap();
   
@@ -125,6 +127,21 @@ fn main() {
   //let solution_p = brute_algo::solve(&node_coordinates, &weights, None);
   //println!("====== brute_algo::solve ======");
   //print_path_metadata(&solution_p, &weights);
+}
+
+fn attempt_to_raise_priority() {
+  use std::process;
+  use std::process::Command;
+  let our_pid = process::id();
+  let psutil_script = if cfg!(windows) {
+    format!("import psutil ; pid={our_pid} ; p=psutil.Process(pid) ; p.cpu_affinity([0]) ; p.nice(psutil.HIGH_PRIORITY_CLASS)", our_pid=our_pid)
+  }
+  else {
+    format!("import psutil ; pid={our_pid} ; p=psutil.Process(pid) ; p.cpu_affinity([0]) ; p.nice(-5)", our_pid=our_pid)
+  };
+  let res = Command::new("python").args(&[
+    "-c", &psutil_script
+  ]).spawn();
 }
 
 fn delta(num_tests: usize, lower_city_size: usize, upper_city_size: usize) -> usize {
@@ -505,8 +522,9 @@ fn selective() {
       jeff_algo::solve(&node_coordinates, &city_weights, Some("./views/selective/".to_string()));
       
       // compute a 2d matrix of points and plot blue if they result in correct, red if they do not.
-      perform_matrix_image_gen("./views/selective-map.png", node_coordinates, city_weights, );
+      // perform_matrix_image_gen("./views/selective-map.png", node_coordinates, city_weights, );
       
+      // UPDATE: this is now done by spray() as a separate step.
       
       return;
     }
@@ -549,10 +567,6 @@ fn is_identical_path(path_a: &[usize], path_b: &[usize]) -> bool {
   }
 
   return true; // identical b/c all path_a[i+] == path_b[i+]
-}
-
-fn perform_matrix_image_gen<S: Into<String>>(_img_path: S, _node_coordinates: Vec<(usize, fp, fp)>, _city_weights: Vec<Vec<fp>>) {
-  // Great idea; never finished, see spray(1)
 }
 
 fn get_env_or_random_node_coordinates(n: usize, x_min: fp, x_max: fp, y_min: fp, y_max: fp) -> Vec<(usize, fp, fp)> {
@@ -672,7 +686,8 @@ fn spray(n: usize, mut bound_granularity: fp) {
         // BUT only if bound_granularity > 0.1 as a performance improvement to high-res sprays
         if bound_granularity >= 0.2 {
           let prefix_dir = format!("./views/spray-jalgo-f{:03}", num_failures);
-          jeff_algo::next_step(&first_ordered_visits, &node_coordinates, &city_weights, &Some(prefix_dir.clone()));
+          //jeff_algo::next_step(&first_ordered_visits, &node_coordinates, &city_weights, &Some(prefix_dir.clone()));
+          jeff_algo::solve(&node_coordinates, &city_weights, Some(prefix_dir.clone()));
           brute_algo::solve(&node_coordinates, &city_weights, Some(prefix_dir.clone()));
         }
       }
