@@ -350,6 +350,11 @@ fn save_state_image<I: Into<String>>(file_path: I, path: &Vec<usize>, locations:
       Rgb([200, 200, 200])
     );
   }
+
+  // does the folder exist?
+  let file_parent_dir = std::path::PathBuf::from(file_path.clone());
+  let file_parent_dir = file_parent_dir.parent().expect("All image paths should have a parent");
+  std::fs::create_dir_all(&file_parent_dir).unwrap_or(());
   
   image.save(file_path).unwrap();
 }
