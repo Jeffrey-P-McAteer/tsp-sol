@@ -36,141 +36,107 @@ pub fn solve(node_coordinates: &Vec<(usize, fp, fp)>, weights: &Vec<Vec<fp>>, sa
 
   return s2;
   */
-  //solve_mt(node_coordinates, weights, save_run_prefix)
+  //solve_mt(node_coordinates, weights, save_run_prefix) // currently incorrect!
   solve_st(node_coordinates, weights, save_run_prefix)
 }
 
 pub fn solve_st(node_coordinates: &Vec<(usize, fp, fp)>, weights: &Vec<Vec<fp>>, save_run_prefix: Option<String>) -> Vec<usize> {
   let mut current_path = vec![];
-  for i in 0..weights.len() {
-    current_path.push(i);
-  }
-  // We, uh... need to go backwards until we hit the "first ordered permutation".
-  // This was a bug in the original implementation which apparently just went from
-  // random permutation index -> last sorted permutation.
-  loop {
-    if !current_path.prev_permutation() {
-      break;
-    }
-  }
-
-  let mut best_path = current_path.clone();
-  let mut best_path_dist = compute_dist(weights, &best_path);
-  let mut last_path_dist = best_path_dist;
-  
-  loop {
-    /*
-    //println!("current_path = {:?}", current_path);
-    let this_dist = compute_dist(weights, &current_path);
-    if this_dist < best_path_dist {
-      best_path = current_path.clone();
-      best_path_dist = this_dist;
-    }
-    
-    if !current_path.next_permutation() {
-      break;
-    }
-    */
-
-    //*
-    // we copy in https://docs.rs/permutohedron/0.2.4/src/permutohedron/lexical.rs.html#34
-    // and only track path distance deltas for a huge performance boost.
-    
-    // Step 1: Identify the longest, rightmost weakly decreasing part of the vector
-    let mut i = current_path.len() - 1;
-    while i > 0 && current_path[i-1] >= current_path[i] {
-        i -= 1;
-    }
-
-    // If that is the entire vector, this is the last-ordered permutation.
-    if i == 0 {
-        break;
-    }
-
-    // Step 2: Find the rightmost element larger than the pivot (i-1)
-    let mut j = current_path.len() - 1;
-    while j >= i && current_path[j] <= current_path[i-1]  {
-        j -= 1;
-    }
-
-    let l = current_path.len();
-
-    // Compute the current distance from j-1 -> j -> j+1 AND i-2 -> i-1 -> i,
-    // which will be removed & added back later
-    let delta_to_rm = compute_dist(weights, &[ current_path[b(j-2, l)], current_path[b(j-1, l)], current_path[b(j, l)], current_path[b(j+1, l)], current_path[b(j+2, l)] ]) +
-                      compute_dist(weights, &[ current_path[b(i-3, l)], current_path[b(i-2, l)], current_path[b(i-1, l)], current_path[b(i, l)], current_path[b(i+1, l)] ]);
-
-    // Step 3: Swap that element with the pivot
-    current_path.swap(j, i-1);
-
-    let delta_to_add = compute_dist(weights, &[ current_path[b(j-2, l)], current_path[b(j-1, l)], current_path[b(j, l)], current_path[b(j+1, l)], current_path[b(j+2, l)] ]) +
-                       compute_dist(weights, &[ current_path[b(i-3, l)], current_path[b(i-2, l)], current_path[b(i-1, l)], current_path[b(i, l)], current_path[b(i+1, l)] ]);
-
-    last_path_dist -= delta_to_rm;
-    last_path_dist += delta_to_add;
-
-    // Same thing for our reverse() operation
-    let delta_to_rm = compute_dist(weights, &current_path[b(i-1, l)..current_path.len()]);
-
-    // Step 4: Reverse the (previously) weakly decreasing part
-    current_path[i..].reverse();
-
-    let delta_to_add = compute_dist(weights, &current_path[b(i-1, l)..current_path.len()]);
-
-    last_path_dist -= delta_to_rm;
-    last_path_dist += delta_to_add;
-
-    // Proof helper
-    let slow_distance = compute_dist(weights, &current_path);
-    //assert_eq!(last_path_dist, slow_distance);
-    println!("i={i} j={j}", i=i, j=j);
-    if last_path_dist != slow_distance {
-      println!("{} != {}", last_path_dist, slow_distance);
-      println!("current_path = {:?}", current_path);
-    }
-    else {
-      println!("FINE!");
-      println!("current_path = {:?}", current_path);
-    }
-
-    // Because we've only modified a part of the distance, we have significantly fewer
-    // floating point ops required to make the same decision!
-    if last_path_dist < best_path_dist {
-      best_path = current_path.clone();
-      best_path_dist = last_path_dist;
-    }
-    //*/
-
-  }
-  
-  // Store solution
-  match &save_run_prefix {
-    Some(prefix) => {
-      save_state_image(format!("{}/brute-{:03}.png", prefix, best_path.len()), &best_path, &node_coordinates);
-      fs::write(
-        format!("{}/brute-path.txt", prefix),
-        format!("{:?}\nDistance:{}", best_path, compute_dist(weights, &best_path))
-      ).expect("Unable to write file");
-      fs::write(
-        format!("{}/node-coordinates.txt", prefix),
-        format!("{:?}", node_coordinates)
-      ).expect("Unable to write file");
-      
-      let mut env_s = "TSP_INITIAL_COORDS='".to_string();
-      for (_i, x, y) in node_coordinates.iter() {
-        env_s += format!("{:.2},{:.2} ", x, y).as_str();
-      }
-      env_s += "'";
-
-      fs::write(
-        format!("{}/node-coordinates-env.txt", prefix),
-        env_s
-      ).expect("Unable to write file");
-    }
-    None => { }
-  }
-  
-  return best_path;
+   for i in 0..weights.len() {
+     current_path.push(i);
+   }
+   // We, uh... need to go backwards until we hit the "first ordered permutation".
+   // This was a bug in the original implementation which apparently just went from
+   // random permutation index -> last sorted permutation.
+   loop {
+     if !current_path.prev_permutation() {
+       break;
+     }
+   }
+ 
+   let mut best_path = current_path.clone();
+   let mut best_path_dist = compute_dist(weights, &best_path);
+   
+   loop {
+     //*
+     //println!("current_path = {:?}", current_path);
+     let this_dist = compute_dist(weights, &current_path);
+     if this_dist < best_path_dist {
+       best_path = current_path.clone();
+       best_path_dist = this_dist;
+     }
+     
+     if !current_path.next_permutation() {
+       break;
+     }
+     /**/
+ 
+     /*
+     // we copy in https://docs.rs/permutohedron/0.2.4/src/permutohedron/lexical.rs.html#34
+     // and only track path distance deltas for a huge performance boost.
+     let mut this_dist = best_path_dist;
+     
+     // Step 1: Identify the longest, rightmost weakly decreasing part of the vector
+     let mut i = current_path.len() - 1;
+     while i > 0 && current_path[i-1] >= current_path[i] {
+         i -= 1;
+     }
+ 
+     // If that is the entire vector, this is the last-ordered permutation.
+     if i == 0 {
+         break;
+     }
+ 
+     // Step 2: Find the rightmost element larger than the pivot (i-1)
+     let mut j = current_path.len() - 1;
+     while j >= i && current_path[j] <= current_path[i-1]  {
+         j -= 1;
+     }
+ 
+     // Step 3: Swap that element with the pivot
+     current_path.swap(j, i-1);
+ 
+     // Step 4: Reverse the (previously) weakly decreasing part
+     current_path[i..].reverse();
+ 
+     // Because we've only modified a part of the distance, we have significantly fewer
+     // floating point ops required to make the same decision!
+     if this_dist < best_path_dist {
+       best_path = current_path.clone();
+       best_path_dist = this_dist;
+     }
+     */
+ 
+   }
+   
+   // Store solution
+   match &save_run_prefix {
+     Some(prefix) => {
+       save_state_image(format!("{}/brute-{:03}.png", prefix, best_path.len()), &best_path, &node_coordinates);
+       fs::write(
+         format!("{}/brute-path.txt", prefix),
+         format!("{:?}\nDistance:{}", best_path, compute_dist(weights, &best_path))
+       ).expect("Unable to write file");
+       fs::write(
+         format!("{}/node-coordinates.txt", prefix),
+         format!("{:?}", node_coordinates)
+       ).expect("Unable to write file");
+       
+       let mut env_s = "TSP_INITIAL_COORDS='".to_string();
+       for (_i, x, y) in node_coordinates.iter() {
+         env_s += format!("{:.2},{:.2} ", x, y).as_str();
+       }
+       env_s += "'";
+ 
+       fs::write(
+         format!("{}/node-coordinates-env.txt", prefix),
+         env_s
+       ).expect("Unable to write file");
+     }
+     None => { }
+   }
+   
+   return best_path;
 }
 
 pub fn solve_mt(node_coordinates: &Vec<(usize, fp, fp)>, weights: &Vec<Vec<fp>>, save_run_prefix: Option<String>) -> Vec<usize> {
