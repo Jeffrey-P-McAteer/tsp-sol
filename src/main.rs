@@ -632,8 +632,8 @@ fn spray(n: usize, mut bound_granularity: fp) {
   
   // Generate partial image
   let file_path = "views/spray.png";
-  let (width, height) = (600, 600);
-  let mut image = RgbImage::new(width + 5, height + 5); // width, height
+  let (width, height) = (900, 900);
+  let mut image = RgbImage::new(width + 15, height + 15); // width, height
   
   let (smallest_x, largest_y, largest_x, smallest_y) = (x_min_bound, y_max_bound, x_max_bound, y_min_bound);
   let x_range: fp = largest_x - smallest_x;
@@ -699,6 +699,11 @@ fn spray(n: usize, mut bound_granularity: fp) {
       if distance_diff.abs() > fp_epsilon && !is_identical_path(&jeff_sol, &brute_sol) {
         // jalgo broke, paint red pixel
         *image.get_pixel_mut(loc_x, loc_y) = Rgb([255, 0, 0]);
+        {
+          *image.get_pixel_mut(loc_x+1, loc_y) = Rgb([255, 0, 0]);
+          *image.get_pixel_mut(loc_x+1, loc_y+1) = Rgb([255, 0, 0]);
+          *image.get_pixel_mut(loc_x, loc_y+1) = Rgb([255, 0, 0]);
+        }
         num_failures += 1;
         // Also save a copy of the state in views/spray-jalgo*
         // BUT only if bound_granularity > 0.1 as a performance improvement to high-res sprays
@@ -743,11 +748,11 @@ fn spray(n: usize, mut bound_granularity: fp) {
     // Set all location pixels to be red // r,g,b
     //image.get_pixel_mut(loc_x, loc_y).data = [255, 0, 0];
     //circle_it(&mut image, loc_x, loc_y, [255, 0, 0]);
-    draw_hollow_circle_mut(&mut image, (loc_x as i32, loc_y as i32), 10 /*radius*/, Rgb([255, 0, 0]));
+    draw_hollow_circle_mut(&mut image, (loc_x as i32, loc_y as i32), 14 /*radius*/, Rgb([255, 0, 0]));
     
     // Also draw an index number
     
-    let font_height = 14.0;
+    let font_height = 18.0;
     let font_scale = Scale { x: font_height, y: font_height };
     draw_text_mut(&mut image, Rgb([200, 200, 255]), loc_x as u32, loc_y as u32, font_scale, &font, format!("{}", i).as_str());
   }
