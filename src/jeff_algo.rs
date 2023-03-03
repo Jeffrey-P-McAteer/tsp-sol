@@ -26,7 +26,8 @@ pub fn solve(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>, weight
   let mut ordered_visits = compute_largest_triangle(node_coordinates, weights);
 
   while ordered_visits.len() < weights.len() {
-    ordered_visits = next_step(&ordered_visits, &node_coordinates, &weights, &save_run_prefix);
+    //ordered_visits = next_step(&ordered_visits, &node_coordinates, &weights, &save_run_prefix);
+    ordered_visits = next_step(&ordered_visits, &node_coordinates, &weights, &None);
   }
 
   // Store solution

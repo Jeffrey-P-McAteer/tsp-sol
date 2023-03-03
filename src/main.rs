@@ -302,10 +302,16 @@ fn compute_center(path: &Vec<usize>, locations: &Vec<(usize, fp, fp)>) -> (fp, f
 
 fn save_state_image<I: Into<String>>(file_path: I, path: &Vec<usize>, locations: &Vec<(usize, fp, fp)>) {
   let file_path = file_path.into();
-  let (width, height) = (600, 600);
-  let mut image = RgbImage::new(width + 5, height + 5); // width, height
+  let (width, height) = (900, 900);
+  let mut image = RgbImage::new(width + 15, height + 15); // width, height
 
-  let (smallest_x, largest_y, largest_x, smallest_y) = get_point_extents(locations);
+  let (mut smallest_x, mut largest_y, mut largest_x, mut smallest_y) = get_point_extents(locations);
+
+  smallest_x -= 3.5;
+  largest_y += 3.5;
+  largest_x += 3.5;
+  smallest_y -= 3.5;
+
   let x_range: fp = largest_x - smallest_x;
   let y_range: fp = largest_y - smallest_y;
   
@@ -318,10 +324,10 @@ fn save_state_image<I: Into<String>>(file_path: I, path: &Vec<usize>, locations:
     // Set all location pixels to be red // r,g,b
     //image.get_pixel_mut(loc_x, loc_y).data = [255, 0, 0];
     //circle_it(&mut image, loc_x, loc_y, [255, 0, 0]);
-    draw_hollow_circle_mut(&mut image, (loc_x as i32, loc_y as i32), 10 /*radius*/, Rgb([255, 0, 0]));
+    draw_hollow_circle_mut(&mut image, (loc_x as i32, loc_y as i32), 14 /*radius*/, Rgb([255, 0, 0]));
     
     // Also draw an index number
-    let font_height = 14.0;
+    let font_height = 18.0;
     let font_scale = Scale { x: font_height, y: font_height };
     draw_text_mut(&mut image, Rgb([200, 200, 255]), loc_x as u32, loc_y as u32, font_scale, &font, format!("{}", i).as_str());
   }
@@ -637,6 +643,18 @@ fn spray(n: usize, mut bound_granularity: fp) {
   let city_weights = compute_weight_coords(&node_coordinates);
   let first_ordered_visits = jeff_algo::solve(&node_coordinates, &city_weights, None);
 
+  let brute_sol = brute_algo::solve(&node_coordinates, &city_weights, None);
+  // If jeff disagrees w/ brute, the rest of the loop does not make sense!
+  let first_ordered_visits_len = compute_dist(&city_weights, &first_ordered_visits);
+  let brute_sol_len = compute_dist(&city_weights, &brute_sol);
+  let distance_diff = first_ordered_visits_len - brute_sol_len;
+  if distance_diff.abs() > fp_epsilon && !is_identical_path(&first_ordered_visits, &brute_sol) {
+    println!("Refusing to spray; jeff_sol={:?} ({}) and brute_sol={:?} ({}) are already broken!",
+      first_ordered_visits, first_ordered_visits_len, brute_sol, brute_sol_len
+    );
+    return;
+  }
+
   // Now test a grid of points every bound_granularity units,
   // computing the ideal and jalgo. When the two do not match, make a dot on
   // the spray image we generate.
@@ -678,7 +696,7 @@ fn spray(n: usize, mut bound_granularity: fp) {
       let loc = (point_x, point_y);
       let (loc_x,loc_y) = scale_xy(width, height, x_range as u32, y_range as u32, smallest_x, smallest_y, loc.0, loc.1);
       
-      if distance_diff.abs() > fp_epsilon && !is_identical_path(&jeff_sol, &brute_sol)  {
+      if distance_diff.abs() > fp_epsilon && !is_identical_path(&jeff_sol, &brute_sol) {
         // jalgo broke, paint red pixel
         *image.get_pixel_mut(loc_x, loc_y) = Rgb([255, 0, 0]);
         num_failures += 1;
@@ -686,9 +704,23 @@ fn spray(n: usize, mut bound_granularity: fp) {
         // BUT only if bound_granularity > 0.1 as a performance improvement to high-res sprays
         if bound_granularity >= 0.2 {
           let prefix_dir = format!("./views/spray-jalgo-f{:03}", num_failures);
-          //jeff_algo::next_step(&first_ordered_visits, &node_coordinates, &city_weights, &Some(prefix_dir.clone()));
-          jeff_algo::solve(&node_coordinates, &city_weights, Some(prefix_dir.clone()));
-          brute_algo::solve(&node_coordinates, &city_weights, Some(prefix_dir.clone()));
+          
+          jeff_algo::next_step(&first_ordered_visits, &node_coordinates, &city_weights, &Some(format!("{}-jeff-next_step", prefix_dir.clone() ) ));
+          //jeff_algo::solve(&node_coordinates, &city_weights, Some(prefix_dir.clone()));
+          
+          //brute_algo::solve(&node_coordinates, &city_weights, Some(prefix_dir.clone()));
+          // Also dump brute_algo solutions for node_coordinates N-1, n-2, etc... until 3
+
+          for i in 3..(node_coordinates.len()+1) {
+            let mut delta_node_coords = vec![];
+            for j in 0..i {
+              delta_node_coords.push( node_coordinates[j] );
+            }
+            let city_weights = compute_weight_coords(&delta_node_coords);
+            brute_algo::solve(&delta_node_coords, &city_weights, Some(prefix_dir.clone()));
+            jeff_algo::solve(&delta_node_coords, &city_weights, Some(prefix_dir.clone()));
+          }
+          
         }
       }
       else {

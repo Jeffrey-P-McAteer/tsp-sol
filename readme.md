@@ -103,6 +103,8 @@ TSP_INITIAL_COORDS='5.79,5.22 7.01,9.88 6.61,9.35 9.53,8.49 7.48,8.06 6.44,8.85 
 TSP_INITIAL_COORDS='8.20,7.28 7.11,6.85 6.71,7.18 9.34,8.21 8.67,5.21 6.09,5.51 5.11,7.05' cargo run --release -- spray 7 0.02
 
 
+TSP_INITIAL_COORDS='7.13,5.80 7.17,7.57 5.90,7.68 7.91,5.98 8.59,5.42 7.14,6.45 6.52,8.38 9.23,5.49 ' cargo run --release -- spray 8 0.5
+
 ```
 
 # Performance profiling
