@@ -46,7 +46,8 @@ mod brute_algo;
 mod jeff_algo;
 
 #[allow(non_camel_case_types)]
-pub type fp = f32;
+//pub type fp = f32;
+pub type fp = f64;
 
 // fp numbers within this distance are considered equal
 #[allow(non_upper_case_globals)]
@@ -150,7 +151,7 @@ fn delta_test(city_size: usize) -> bool {
   
   let distance_diff = jeff_sol_len - brute_sol_len;
   
-  if distance_diff.abs() > fp_epsilon { // account for floating point errors
+  if distance_diff.abs() > fp_epsilon && !is_identical_path(&jeff_sol, &brute_sol) { // account for floating point errors
     // re-do test, saving results
     let r_test_num: usize = rand::thread_rng().gen_range(0, 10000000);
     
@@ -521,35 +522,33 @@ fn is_identical_path(path_a: &[usize], path_b: &[usize]) -> bool {
     return false; // duh
   }
 
-  // For all offset rotations of path a...
-  for path_a_offset in 0..path_a.len() {
-    // See if every path_a[idx+offset] == path_b[idx]
-    let mut all_match = true;
-    for i in 0..path_a.len() {
-      if path_a[(i+path_a_offset) % path_a.len()] != path_b[i] {
-        all_match = false;
-      }
-    }  
-    if all_match {
-      return true;
+  let mut smallest_usize_in_a = usize::MAX;
+  let mut smallest_usize_idx_in_a = 0;
+  for i in 0..path_a.len() {
+    if path_a[i] < smallest_usize_in_a {
+      smallest_usize_in_a = path_a[i];
+      smallest_usize_idx_in_a = i;
     }
   }
 
-  // Now do the same thing, but iterate over path_b backwards to compare flipped order
-  for path_a_offset in 0..path_a.len() {
-    // See if every path_a[idx+offset] == path_b[idx]
-    let mut all_match = true;
-    for i in 0..path_a.len() {
-      if path_a[(i+path_a_offset) % path_a.len()] != path_b[(path_b.len()-1) - i] {
-        all_match = false;
-      }
-    }  
-    if all_match {
-      return true;
+  let mut smallest_usize_idx_in_b = 0;
+  for i in 0..path_b.len() {
+    if path_b[i] == smallest_usize_in_a {
+      smallest_usize_idx_in_b = i;
+      break;
     }
   }
 
-  return false; // No overlap!
+  // Both lists now have a begin index at their smallest value (assume 0)
+  // we walk them & compare values; if any are not equal then these have
+  // different orders!
+  for i in 0..path_a.len() {
+    if path_a[(i+smallest_usize_idx_in_a) % path_a.len()] != path_b[(i+smallest_usize_idx_in_b) % path_b.len()] {
+      return false; // Not identical b/c values differ!
+    }
+  }
+
+  return true; // identical b/c all path_a[i+] == path_b[i+]
 }
 
 fn perform_matrix_image_gen<S: Into<String>>(_img_path: S, _node_coordinates: Vec<(usize, fp, fp)>, _city_weights: Vec<Vec<fp>>) {
@@ -665,7 +664,7 @@ fn spray(n: usize, mut bound_granularity: fp) {
       let loc = (point_x, point_y);
       let (loc_x,loc_y) = scale_xy(width, height, x_range as u32, y_range as u32, smallest_x, smallest_y, loc.0, loc.1);
       
-      if distance_diff.abs() > fp_epsilon {
+      if distance_diff.abs() > fp_epsilon && !is_identical_path(&jeff_sol, &brute_sol)  {
         // jalgo broke, paint red pixel
         *image.get_pixel_mut(loc_x, loc_y) = Rgb([255, 0, 0]);
         num_failures += 1;
