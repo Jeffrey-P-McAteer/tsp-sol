@@ -131,7 +131,7 @@ fn main() {
 
 fn attempt_to_raise_priority() {
   use std::process;
-  use std::process::Command;
+  use std::process::{Command, Stdio};
   let our_pid = process::id();
   let psutil_script = if cfg!(windows) {
     format!("import psutil ; pid={our_pid} ; p=psutil.Process(pid) ; p.cpu_affinity([0]) ; p.nice(psutil.HIGH_PRIORITY_CLASS)", our_pid=our_pid)
@@ -141,7 +141,11 @@ fn attempt_to_raise_priority() {
   };
   let res = Command::new("python").args(&[
     "-c", &psutil_script
-  ]).spawn();
+  ])
+    .stdout(Stdio::null())
+    .stderr(Stdio::null())
+    .stdin(Stdio::null())
+    .spawn();
 }
 
 fn delta(num_tests: usize, lower_city_size: usize, upper_city_size: usize) -> usize {
