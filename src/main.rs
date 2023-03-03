@@ -491,7 +491,7 @@ fn selective() {
     let brute_sol_len = compute_dist(&city_weights, &brute_sol);
     let distance_diff = jeff_sol_len - brute_sol_len;
     
-    if distance_diff.abs() > fp_epsilon { // account for floating point errors
+    if distance_diff.abs() > fp_epsilon && !is_identical_path(&jeff_sol, &brute_sol) { // account for floating point errors
       println!("We have broken jeff_algo at {} points!", city_num+1);
       // we have added a city which breaks things!
       node_coordinates.pop();
@@ -514,6 +514,42 @@ fn selective() {
   println!("Failed to break after 10, resetting...");
   selective();
   
+}
+
+fn is_identical_path(path_a: &[usize], path_b: &[usize]) -> bool {
+  if path_a.len() != path_b.len() {
+    return false; // duh
+  }
+
+  // For all offset rotations of path a...
+  for path_a_offset in 0..path_a.len() {
+    // See if every path_a[idx+offset] == path_b[idx]
+    let mut all_match = true;
+    for i in 0..path_a.len() {
+      if path_a[(i+path_a_offset) % path_a.len()] != path_b[i] {
+        all_match = false;
+      }
+    }  
+    if all_match {
+      return true;
+    }
+  }
+
+  // Now do the same thing, but iterate over path_b backwards to compare flipped order
+  for path_a_offset in 0..path_a.len() {
+    // See if every path_a[idx+offset] == path_b[idx]
+    let mut all_match = true;
+    for i in 0..path_a.len() {
+      if path_a[(i+path_a_offset) % path_a.len()] != path_b[(path_b.len()-1) - i] {
+        all_match = false;
+      }
+    }  
+    if all_match {
+      return true;
+    }
+  }
+
+  return false; // No overlap!
 }
 
 fn perform_matrix_image_gen<S: Into<String>>(_img_path: S, _node_coordinates: Vec<(usize, fp, fp)>, _city_weights: Vec<Vec<fp>>) {
