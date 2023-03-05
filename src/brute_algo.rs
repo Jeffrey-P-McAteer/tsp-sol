@@ -82,6 +82,9 @@ fn get_num_permutations<T>(current_path: &Vec<T>) -> usize {
 
 #[inline(always)]
 fn get_permutation_cache_key(begin_permutation_num: usize, num_weights: usize) -> usize {
+  if num_weights > 99 { // because they would overlap
+    panic!("Refusing to allow brute-force cache keys to be used with a graph 100+ cities large. Please change cache key algorithm to use larger graphs.");
+  }
   return (begin_permutation_num * 100) + num_weights; // ensures overlapping begin_permutation_num across graph sizes do not collide.
 }
 
