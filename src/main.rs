@@ -90,6 +90,27 @@ fn main() {
   attempt_to_raise_priority();
   
   let file_arg = args.get(1).unwrap();
+
+  let mut use_jalgo = true;
+  let mut use_brute = false;
+  for arg in &args {
+    if arg == "jalgo" {
+      println!("Enabling jalgo...");
+      use_jalgo = true;
+    }
+    if arg == "brute" {
+      println!("Enabling brute...");
+      use_brute = true;
+    }
+    if arg == "no-jalgo" {
+      println!("Disabling jalgo...");
+      use_jalgo = false;
+    }
+    if arg == "no-brute" {
+      println!("Brute jalgo...");
+      use_brute = false;
+    }
+  }
   
   if file_arg == "delta" {
     let num = 1000;
@@ -120,13 +141,18 @@ fn main() {
     }
   };
   
-  let solution_p = jeff_algo::solve(&node_coordinates, &weights, None);
-  println!("====== jeff_algo::solve ======");
-  print_path_metadata(&solution_p, &weights);
+  if use_jalgo {
+    let solution_p = jeff_algo::solve(&node_coordinates, &weights, None);
+    println!("====== jeff_algo::solve ======");
+    print_path_metadata(&solution_p, &weights);
+  }
   
-  //let solution_p = brute_algo::solve(&node_coordinates, &weights, None);
-  //println!("====== brute_algo::solve ======");
-  //print_path_metadata(&solution_p, &weights);
+  if use_brute {
+    let solution_p = brute_algo::solve(&node_coordinates, &weights, None);
+    println!("====== brute_algo::solve ======");
+    print_path_metadata(&solution_p, &weights);
+  }
+
 }
 
 fn attempt_to_raise_priority() {
