@@ -87,7 +87,9 @@ fn main() {
     return;
   }
 
-  attempt_to_raise_priority();
+  if cfg!(windows) {
+    attempt_to_raise_priority();
+  }
   
   let file_arg = args.get(1).unwrap();
 
