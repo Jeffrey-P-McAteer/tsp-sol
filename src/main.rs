@@ -134,10 +134,12 @@ fn attempt_to_raise_priority() {
   use std::process::{Command, Stdio};
   let our_pid = process::id();
   let psutil_script = if cfg!(windows) {
-    format!("import psutil ; pid={our_pid} ; p=psutil.Process(pid) ; p.cpu_affinity([0]) ; p.nice(psutil.HIGH_PRIORITY_CLASS)", our_pid=our_pid)
+    //format!("import psutil ; pid={our_pid} ; p=psutil.Process(pid) ; p.cpu_affinity([0]) ; p.nice(psutil.HIGH_PRIORITY_CLASS)", our_pid=our_pid)
+    format!("import psutil ; pid={our_pid} ; p=psutil.Process(pid) ; p.nice(psutil.HIGH_PRIORITY_CLASS)", our_pid=our_pid)
   }
   else {
-    format!("import psutil ; pid={our_pid} ; p=psutil.Process(pid) ; p.cpu_affinity([0]) ; p.nice(-5)", our_pid=our_pid)
+    //format!("import psutil ; pid={our_pid} ; p=psutil.Process(pid) ; p.cpu_affinity([0]) ; p.nice(-5)", our_pid=our_pid)
+    format!("import psutil ; pid={our_pid} ; p=psutil.Process(pid) ;  p.nice(-5)", our_pid=our_pid)
   };
   let res = Command::new("python").args(&[
     "-c", &psutil_script

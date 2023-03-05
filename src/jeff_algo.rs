@@ -82,7 +82,7 @@ pub fn next_step(ordered_visits: &Vec<CityNum>, node_coordinates: &Vec<(CityNum,
     let n_right_citynum = ordered_visits[ (n) % ordered_visits.len() ];
 
     // Delta must begin with the removal of 2 edges above
-    let mut this_delta: fp = (-weights[n_left_citynum][removed_citynum_n]) + (-weights[removed_citynum_n][n_right_citynum]) + weights[n_left_citynum][n_right_citynum];
+    let this_delta: fp = (-weights[n_left_citynum][removed_citynum_n]) + (-weights[removed_citynum_n][n_right_citynum]) + weights[n_left_citynum][n_right_citynum];
 
     for m in 0..ordered_visits.len() {
 
