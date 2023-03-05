@@ -23,4 +23,5 @@ lto = "fat"
 codegen-units = 1
 panic = "abort"
 
+# We have RUSTFLAGS="-C target-cpu=native" in our profile
 
