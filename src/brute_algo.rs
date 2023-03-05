@@ -26,7 +26,7 @@ use num::{Num, NumCast};
 use permutohedron::LexicalPermutation;
 
 pub fn solve(node_coordinates: &Vec<(usize, fp, fp)>, weights: &Vec<Vec<fp>>, save_run_prefix: Option<String>) -> Vec<usize> {
-  let best_path = if weights.len() < 5 {
+  let best_path = if weights.len() < 7 {
     solve_st(node_coordinates, weights, 0, get_num_permutations(weights) ) // avoid thread overhead
   }
   else {
