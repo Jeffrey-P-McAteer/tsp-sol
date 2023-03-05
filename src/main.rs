@@ -229,9 +229,11 @@ fn b(i: usize, len: usize) -> usize {
 fn compute_dist(weights: &Vec<Vec<fp>>, path: &[usize]) -> fp {
   let mut total: fp = 0.0;
   for p_i in 0..path.len() {
-    let p  = path[p_i];
-    let p2 = path[(p_i+1) % path.len()]; // mod lets us wrap at end (p_i == len(), (p_i+1) % len == 0)
-    total += weights[p][p2];
+    unsafe {
+      let p  = path.get_unchecked(  p_i  );
+      let p2 = path.get_unchecked(  (p_i+1) % path.len()  ); // mod lets us wrap at end (p_i == len(), (p_i+1) % len == 0)
+      total += weights.get_unchecked( *p ).get_unchecked( *p2 );
+    }
   }
   return total;
 }
