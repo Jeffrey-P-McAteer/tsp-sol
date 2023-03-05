@@ -64,6 +64,7 @@ pub fn solve(node_coordinates: &Vec<(usize, fp, fp)>, weights: &Vec<Vec<fp>>, sa
 }
 
 // The mathematicians know num permutations == factorial of set, but I sure won't remember that.
+#[inline(always)]
 fn get_num_permutations<T>(current_path: &Vec<T>) -> usize {
   return factorial( current_path.len() );
 }
@@ -183,6 +184,7 @@ pub fn solve_mt(node_coordinates: &Vec<(usize, fp, fp)>, weights: &Vec<Vec<fp>>)
     }
 }*/
 
+#[inline(always)]
 pub fn factorial(num: usize) -> usize {
     match num {
         n if n <= 0 => 1,
