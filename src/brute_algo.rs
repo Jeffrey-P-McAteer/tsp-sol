@@ -19,11 +19,22 @@
 use std::sync::{Mutex, RwLock, Arc};
 use std::sync::atomic::{AtomicBool, Ordering};
 
+use std::collections::HashMap;
+
 use super::*;
 
 use num::{Num, NumCast};
 
 use permutohedron::LexicalPermutation;
+
+use once_cell::sync::Lazy;
+
+// Maps a begin_permutation_num -> Vec<usize> coordinates.
+// As long as the .len() of the shared Vec<usize>s is the same this will save
+// a ton of work.
+static PERMUTATIONS_CACHE: Lazy<Mutex<HashMap<usize, Vec<usize> >>> = Lazy::new(|| {
+    Mutex::new( HashMap::new() )
+});
 
 pub fn solve(node_coordinates: &Vec<(usize, fp, fp)>, weights: &Vec<Vec<fp>>, save_run_prefix: Option<String>) -> Vec<usize> {
   let best_path = if weights.len() < 7 {
@@ -69,24 +80,34 @@ fn get_num_permutations<T>(current_path: &Vec<T>) -> usize {
   return factorial( current_path.len() );
 }
 
+#[inline(always)]
+fn get_permutation_cache_key(begin_permutation_num: usize, num_weights: usize) -> usize {
+  return (begin_permutation_num * 100) + num_weights; // ensures overlapping begin_permutation_num across graph sizes do not collide.
+}
+
 pub fn solve_st(node_coordinates: &Vec<(usize, fp, fp)>, weights: &Vec<Vec<fp>>, begin_permutation_num: usize, max_permutation_num: usize) -> Vec<usize> {
    let mut current_path = vec![];
-   for i in 0..weights.len() {
-     current_path.push(i);
+   if let Some(cached_path) = PERMUTATIONS_CACHE.lock().unwrap().get( &get_permutation_cache_key(begin_permutation_num, weights.len()) ) {
+      current_path = cached_path.clone();
    }
+   else {
+     for i in 0..weights.len() {
+       current_path.push(i);
+     }
+     // We, uh... need to go backwards until we hit the "first ordered permutation".
+     // This was a bug in the original implementation which apparently just went from
+     // random permutation index -> last sorted permutation.
+     loop {
+       if !current_path.prev_permutation() {
+         break;
+       }
+     }
 
-   // We, uh... need to go backwards until we hit the "first ordered permutation".
-   // This was a bug in the original implementation which apparently just went from
-   // random permutation index -> last sorted permutation.
-   loop {
-     if !current_path.prev_permutation() {
-       break;
+     for _ in 0..begin_permutation_num { // move UP to the first permutation idx
+        current_path.next_permutation();
      }
    }
-
-   for _ in 0..begin_permutation_num { // move UP to the first permutation idx
-      current_path.next_permutation();
-   }
+   // Now current_path is the correct permutation for this range
  
    let mut best_path = current_path.clone();
    let mut best_path_dist = compute_dist(weights, &best_path);
@@ -127,6 +148,36 @@ pub fn solve_mt(node_coordinates: &Vec<(usize, fp, fp)>, weights: &Vec<Vec<fp>>)
   }
 
   let thread_best_paths = Arc::new(Mutex::new(thread_best_paths));
+
+  // Populate cache for all begin_p values plus the threads * permutations_per_t beginning.
+  let mut cache_current_path = vec![];
+   for i in 0..weights.len() {
+     cache_current_path.push(i);
+   }
+   // We, uh... need to go backwards until we hit the "first ordered permutation".
+   // This was a bug in the original implementation which apparently just went from
+   // random permutation index -> last sorted permutation.
+   loop {
+     if !cache_current_path.prev_permutation() {
+       break;
+     }
+   }
+  for t in 0..(threads+1) {
+    let begin_p = permutations_per_t * t;
+    let end_p = permutations_per_t * (t+1);
+    let mut cache_ref = PERMUTATIONS_CACHE.lock().unwrap();
+    if let Some(cached_path) = cache_ref.get(&get_permutation_cache_key(begin_p, weights.len())) {
+      cache_current_path = cached_path.clone();
+    }
+    else {
+      cache_ref.insert(get_permutation_cache_key(begin_p, weights.len()), cache_current_path.clone() );
+      for _ in 0..permutations_per_t { // increase by permutations_per_t permutations & insert
+          cache_current_path.next_permutation();
+      }
+      cache_ref.insert(get_permutation_cache_key(end_p, weights.len()), cache_current_path.clone() );
+    }
+  }
+
 
   crossbeam::scope(|s| {
     for t in 0..threads {
