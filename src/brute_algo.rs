@@ -29,7 +29,9 @@ use permutohedron::LexicalPermutation;
 
 use once_cell::sync::Lazy;
 
+#[cfg(not(windows))]
 use fasthash::*;
+#[cfg(not(windows))]
 use fasthash::{FastHash, XXHasher};
 
 use std::hash::{Hash, Hasher};
@@ -45,11 +47,19 @@ type CityXYCoord = fp;
 // Maps a begin_permutation_num -> Vec<CityNum> coordinates.
 // As long as the .len() of the shared Vec<CityNum>s is the same this will save
 // a ton of work.
+#[cfg(not(windows))]
 static PERMUTATIONS_CACHE: Lazy<Mutex<HashMap<CityNum, Vec<CityNum>, fasthash::RandomState<fasthash::xx::Hash64> >>> = Lazy::new(|| {
     let s = fasthash::RandomState::<fasthash::xx::Hash64>::new();
     Mutex::new( HashMap::with_hasher(s) )
 });
+#[cfg(windows)]
+static PERMUTATIONS_CACHE: Lazy<Mutex<HashMap<CityNum, Vec<CityNum> >>> = Lazy::new(|| {
+  Mutex::new( HashMap::new() )
+});
 
+// Because SyncUnsafeCell is only available in nightly but I want it now to
+// play fast + loose with a fast cache, I copied most of the implementation in here
+// for use in PICKLE_DB as a global cache that assumes one-thread-at-a-time access patterns.
 pub struct MySyncUnsafeCell<T: ?Sized> {
     value: std::cell::UnsafeCell<T>,
 }
@@ -116,11 +126,16 @@ static PICKLE_DB: Lazy<MySyncUnsafeCell< PickleDb >> = Lazy::new(|| {
   //     PickleDb::new("target/cached_solutions.db", PickleDbDumpPolicy::AutoDump, SerializationMethod::Cbor)
   //   )
   // )
-  let pickle_db = match PickleDb::load("target/cached_solutions.db", PickleDbDumpPolicy::PeriodicDump( std::time::Duration::from_millis(14500) ), SerializationMethod::Cbor) {
+  
+  //let save_delay_ms = 14500;
+  let save_delay_ms = 4500;
+  //let save_delay_ms = 500;
+  
+  let pickle_db = match PickleDb::load("target/cached_solutions.db", PickleDbDumpPolicy::PeriodicDump( std::time::Duration::from_millis(save_delay_ms) ), SerializationMethod::Cbor) {
     Ok(db) => db,
     Err(e) => {
       eprintln!("Error loading target/cached_solutions.db: {:?}", e);
-      PickleDb::new("target/cached_solutions.db", PickleDbDumpPolicy::PeriodicDump( std::time::Duration::from_millis(14500) ), SerializationMethod::Cbor)
+      PickleDb::new("target/cached_solutions.db", PickleDbDumpPolicy::PeriodicDump( std::time::Duration::from_millis(save_delay_ms) ), SerializationMethod::Cbor)
     }
   };
 
@@ -173,18 +188,36 @@ pub fn solve(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>, weight
 
 #[inline(always)]
 fn cached_solution_key(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>) -> String {
-  let mut s = XXHasher::default();
-  for (node_num, node_x, node_y) in node_coordinates {
-    let node_x: isize = ( node_x * 10000.0 ) as isize;
-    let node_y: isize = ( node_y * 10000.0 ) as isize;
+  #[cfg(not(windows))]
+  {
+    let mut s = XXHasher::default();
+    for (node_num, node_x, node_y) in node_coordinates {
+      let node_x: isize = ( node_x * 10000.0 ) as isize;
+      let node_y: isize = ( node_y * 10000.0 ) as isize;
 
-    node_num.hash(&mut s);
-    node_x.hash(&mut s);
-    node_y.hash(&mut s);
+      node_num.hash(&mut s);
+      node_x.hash(&mut s);
+      node_y.hash(&mut s);
+    }
+    let hash_u64 = s.finish();
+
+    format!("{:#08x}", hash_u64)
   }
-  let hash_u64 = s.finish();
+  #[cfg(windows)]
+  {
+    let mut s = std::collections::hash_map::DefaultHasher::default();
+    for (node_num, node_x, node_y) in node_coordinates {
+      let node_x: isize = ( node_x * 10000.0 ) as isize;
+      let node_y: isize = ( node_y * 10000.0 ) as isize;
 
-  format!("{:#08x}", hash_u64)
+      node_num.hash(&mut s);
+      node_x.hash(&mut s);
+      node_y.hash(&mut s);
+    }
+    let hash_u64 = s.finish();
+
+    format!("{:#08x}", hash_u64)
+  }
 }
 
 #[inline(always)]

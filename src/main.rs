@@ -81,12 +81,19 @@ spray requires 2 numbers after it, the N-1 size of the city and a resolution to 
 ///   pub fn solve(node_coordinates: Vec<(usize, fp, fp)>, weights: &Vec<Vec<fp>>) -> Vec<usize>
 
 fn main() {
+  let begin_time = std::time::Instant::now();
+  timed_main();
+  let exec_duration = begin_time.elapsed();
+  println!("=== Elapsed time: {:?} ===", exec_duration);
+}
+
+fn timed_main() {
   let args: Vec<_> = env::args().collect();
   if args.len() < 2 {
     usage();
     return;
   }
-
+  
   if cfg!(windows) {
     attempt_to_raise_priority();
   }
