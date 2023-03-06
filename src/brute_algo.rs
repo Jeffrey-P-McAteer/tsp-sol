@@ -29,14 +29,30 @@ use permutohedron::LexicalPermutation;
 
 use once_cell::sync::Lazy;
 
-// Maps a begin_permutation_num -> Vec<usize> coordinates.
-// As long as the .len() of the shared Vec<usize>s is the same this will save
+use fasthash::*;
+use fasthash::{FastHash, XXHasher};
+
+use std::hash::{Hash, Hasher};
+use std::io::{Read, Write};
+
+type CityNum = usize;
+type CityWeight = fp;
+type CityXYCoord = fp;
+
+
+// Maps a begin_permutation_num -> Vec<CityNum> coordinates.
+// As long as the .len() of the shared Vec<CityNum>s is the same this will save
 // a ton of work.
-static PERMUTATIONS_CACHE: Lazy<Mutex<HashMap<usize, Vec<usize> >>> = Lazy::new(|| {
-    Mutex::new( HashMap::new() )
+static PERMUTATIONS_CACHE: Lazy<Mutex<HashMap<CityNum, Vec<CityNum>, fasthash::RandomState<fasthash::xx::Hash64> >>> = Lazy::new(|| {
+    let s = fasthash::RandomState::<fasthash::xx::Hash64>::new();
+    Mutex::new( HashMap::with_hasher(s) )
 });
 
-pub fn solve(node_coordinates: &Vec<(usize, fp, fp)>, weights: &Vec<Vec<fp>>, save_run_prefix: Option<String>) -> Vec<usize> {
+pub fn solve(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>, weights: &Vec<Vec<CityWeight>>, save_run_prefix: Option<String>) -> Vec<CityNum> {
+  if let Some(cached_solution_vec) = get_cached_solution(node_coordinates) {
+    return cached_solution_vec;
+  }
+
   let best_path = if weights.len() < 7 {
     solve_st(node_coordinates, weights, 0, get_num_permutations(weights) ) // avoid thread overhead
   }
@@ -71,24 +87,81 @@ pub fn solve(node_coordinates: &Vec<(usize, fp, fp)>, weights: &Vec<Vec<fp>>, sa
      None => { }
   }
 
+  cache_solution(node_coordinates, &best_path);
+
   return best_path;
 }
 
+#[inline(always)]
+fn cached_solution_key(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>) -> String {
+  let mut s = XXHasher::default();
+  for (node_num, node_x, node_y) in node_coordinates {
+    let node_x: isize = ( node_x * 10000.0 ) as isize;
+    let node_y: isize = ( node_y * 10000.0 ) as isize;
+
+    node_num.hash(&mut s);
+    node_x.hash(&mut s);
+    node_y.hash(&mut s);
+  }
+  let hash_u64 = s.finish();
+
+  format!("{:#08x}", hash_u64)
+}
+
+#[inline(always)]
+fn cached_solution_file(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>) -> String {
+  format!("target/_cached_solution_{}.txt", cached_solution_key(node_coordinates) )
+}
+
+fn get_cached_solution(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>) -> Option<Vec<CityNum>> {
+  let cache_file = cached_solution_file(node_coordinates);
+  let mut f = File::open(&cache_file).ok()?;
+  let mut buffer = Vec::new();
+  f.read_to_end(&mut buffer).ok()?;
+  // buffer is full of bytes, decode to Vec<CityNum>
+  let zero_vec = zerovec::ZeroVec::parse_byte_slice(&buffer).ok()?;
+  let vec_u64: Vec<u64> = zero_vec.to_vec();
+
+  // I hereby declare all u64 == usize for the machines running this code
+  Some( unsafe { std::mem::transmute::<Vec<u64>,Vec<usize>>(vec_u64) } )
+}
+
+fn cache_solution(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>, solution_best_path: &Vec<CityNum>) -> Option<()> {
+  // I hereby declare all u64 == usize for the machines running this code
+  let solution_best_path: &Vec<u64> = unsafe { std::mem::transmute::<&Vec<usize>, &Vec<u64>>(solution_best_path) };
+  let zero_vec = zerovec::ZeroVec::from_slice_or_alloc(&solution_best_path);
+  
+  let zero_vec_bytes = zero_vec.into_bytes();
+  let cache_file = cached_solution_file(node_coordinates);
+  
+  let mut file = std::fs::OpenOptions::new()
+      .create(true) // To create a new file
+      .write(true)
+      // either use the ? operator or unwrap since it returns a Result
+      .open(&cache_file).ok()?;
+
+  file.write_all( &zero_vec_bytes.to_vec() ).ok()?;
+
+  Some(())
+}
+
+
+
 // The mathematicians know num permutations == factorial of set, but I sure won't remember that.
 #[inline(always)]
-fn get_num_permutations<T>(current_path: &Vec<T>) -> usize {
+fn get_num_permutations<T>(current_path: &Vec<T>) -> CityNum {
   return factorial( current_path.len() );
 }
 
 #[inline(always)]
-fn get_permutation_cache_key(begin_permutation_num: usize, num_weights: usize) -> usize {
+fn get_permutation_cache_key(begin_permutation_num: CityNum, num_weights: CityNum) -> CityNum {
   if num_weights > 99 { // because they would overlap
     panic!("Refusing to allow brute-force cache keys to be used with a graph 100+ cities large. Please change cache key algorithm to use larger graphs.");
   }
   return (begin_permutation_num * 100) + num_weights; // ensures overlapping begin_permutation_num across graph sizes do not collide.
 }
 
-pub fn solve_st(node_coordinates: &Vec<(usize, fp, fp)>, weights: &Vec<Vec<fp>>, begin_permutation_num: usize, max_permutation_num: usize) -> Vec<usize> {
+pub fn solve_st(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>, weights: &Vec<Vec<CityWeight>>, begin_permutation_num: CityNum, max_permutation_num: CityNum) -> Vec<CityNum> {
    let mut current_path = vec![];
    if let Some(cached_path) = PERMUTATIONS_CACHE.lock().unwrap().get( &get_permutation_cache_key(begin_permutation_num, weights.len()) ) {
       current_path = cached_path.clone();
@@ -136,7 +209,7 @@ pub fn solve_st(node_coordinates: &Vec<(usize, fp, fp)>, weights: &Vec<Vec<fp>>,
    return best_path;
 }
 
-pub fn solve_mt(node_coordinates: &Vec<(usize, fp, fp)>, weights: &Vec<Vec<fp>>) -> Vec<usize> {
+pub fn solve_mt(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>, weights: &Vec<Vec<CityWeight>>) -> Vec<CityNum> {
   let threads = num_cpus::get_physical();
   let num_permutations = get_num_permutations( weights );
   let permutations_per_t = num_permutations / threads;
@@ -145,7 +218,7 @@ pub fn solve_mt(node_coordinates: &Vec<(usize, fp, fp)>, weights: &Vec<Vec<fp>>)
   let permutations_remainder = num_permutations - (permutations_per_t * threads); // we just do this at the end of other threads work
   let a_thread_is_processing_remainder = Arc::new(AtomicBool::new(false));
 
-  let mut thread_best_paths: Vec<Vec<usize>> = vec![];
+  let mut thread_best_paths: Vec<Vec<CityNum>> = vec![];
   for t in 0..(threads + 1) {
     thread_best_paths.push(vec![]); // empty vec is sentinel value
   }
@@ -239,7 +312,7 @@ pub fn solve_mt(node_coordinates: &Vec<(usize, fp, fp)>, weights: &Vec<Vec<fp>>)
 }*/
 
 #[inline(always)]
-pub fn factorial(num: usize) -> usize {
+pub fn factorial(num: CityNum) -> CityNum {
     match num {
         n if n <= 0 => 1,
         n if n > 0 => (1..num+1).product(),
