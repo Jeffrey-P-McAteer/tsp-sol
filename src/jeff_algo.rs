@@ -25,6 +25,9 @@ type CityXYCoord = fp;
 pub fn solve(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>, weights: &Vec<Vec<CityWeight>>, save_run_prefix: Option<String>) -> Vec<usize> {
   let mut ordered_visits_strat_a = compute_largest_triangle(node_coordinates, weights);
   let mut ordered_visits_strat_b = compute_largest_triangle(node_coordinates, weights);
+  let mut ordered_visits_strat_c = compute_smallest_triangle(node_coordinates, weights);
+  let mut ordered_visits_strat_d = compute_smallest_triangle(node_coordinates, weights);
+
 
   while ordered_visits_strat_a.len() < weights.len() {
     //ordered_visits = next_step(&ordered_visits, &node_coordinates, &weights, &save_run_prefix);
@@ -32,8 +35,12 @@ pub fn solve(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>, weight
     //ordered_visits = next_step(&ordered_visits, &node_coordinates, &weights, &next_city_num_first_not_inserted);
 
     ordered_visits_strat_a = next_step(&ordered_visits_strat_a, &node_coordinates, &weights, &next_city_num_first_not_inserted);
-    
+
     ordered_visits_strat_b = next_step(&ordered_visits_strat_b, &node_coordinates, &weights, &next_city_num_last_not_inserted);
+
+    ordered_visits_strat_c = next_step(&ordered_visits_strat_c, &node_coordinates, &weights, &next_city_num_first_not_inserted);
+
+    ordered_visits_strat_d = next_step(&ordered_visits_strat_d, &node_coordinates, &weights, &next_city_num_last_not_inserted);
     
     // ordered_visits = next_step(&ordered_visits, &node_coordinates, &weights, &next_city_num_last_not_inserted);
     // ordered_visits = best_of(weights,
@@ -43,7 +50,7 @@ pub fn solve(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>, weight
 
   }
 
-  let ordered_visits = best_of(weights, ordered_visits_strat_a, ordered_visits_strat_b);
+  let ordered_visits = best_of(weights, best_of(weights, ordered_visits_strat_a, ordered_visits_strat_b), best_of(weights, ordered_visits_strat_c, ordered_visits_strat_d));
 
   // Store solution
   match &save_run_prefix {
@@ -85,6 +92,19 @@ fn next_city_num_last_not_inserted(ordered_visits: &Vec<CityNum>, weights: &Vec<
     citynum_to_insert = p;
   }
   citynum_to_insert
+}
+
+fn next_city_num_middle_not_inserted(ordered_visits: &Vec<CityNum>, weights: &Vec<Vec<CityWeight>>) -> CityNum {
+  let mut possible_citynums_to_insert = vec![];
+  'outer: for p in 0..weights.len() {
+    for ordered in ordered_visits {
+      if p == *ordered {
+        continue 'outer;
+      }
+    }
+    possible_citynums_to_insert.push( p );
+  }
+  possible_citynums_to_insert[ possible_citynums_to_insert.len() / 2 ]
 }
 
 fn best_of(weights: &Vec<Vec<CityWeight>>, ordered_visits_a: Vec<CityNum>, ordered_visits_b: Vec<CityNum>) -> Vec<CityNum> {
@@ -266,6 +286,42 @@ fn compute_largest_triangle(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXY
     if this_len > current_longest_point_len {
       ordered_visits[2] = r;
       current_longest_point_len = this_len;
+    }
+  }
+
+  return ordered_visits;
+}
+
+fn compute_smallest_triangle(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>, weights: &Vec<Vec<fp>>) -> Vec<usize> {
+  let mut ordered_visits: Vec<usize> = vec![0, 1, 2]; // holds the path as a vector of indexes relating to the city number beginning at 0
+
+  // Make the first 2 points the closest away in the entire graph
+  for r in 0..weights.len() {
+    for c in 0..weights.len() {
+      if r == c { continue; }
+      let best_smallest_w = weights[ordered_visits[0]][ordered_visits[1]];
+      let this_smallest_w    = weights[r][c];
+      if this_smallest_w < best_smallest_w {
+        ordered_visits[0] = r;
+        ordered_visits[1] = c;
+      }
+    }
+  }
+
+  // Ensure ordered_visits[2] != ordered_visits[0] or ordered_visits[1]
+  while ordered_visits[2] == ordered_visits[0] || ordered_visits[2] == ordered_visits[1] {
+    ordered_visits[2] = (ordered_visits[2]+1) % weights.len();
+  }
+
+  // Given the shortest edge, find 
+  // weight(0, 2) + weight(1, 2) (weights of both edges going to "2")
+  let mut current_shortest_point_len = weights[ordered_visits[0]][ordered_visits[2]] + weights[ordered_visits[1]][ordered_visits[2]];
+  for r in 0..weights.len() {
+    if r == ordered_visits[0] || r == ordered_visits[1] { continue; }
+    let this_len = weights[ordered_visits[0]][r] + weights[ordered_visits[1]][r];
+    if this_len < current_shortest_point_len {
+      ordered_visits[2] = r;
+      current_shortest_point_len = this_len;
     }
   }
 
