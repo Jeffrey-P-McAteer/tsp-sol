@@ -153,6 +153,33 @@ pub static PICKLE_DB: Lazy<MySyncUnsafeCell< PickleDb >> = Lazy::new(|| {
 
 pub fn solve(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>, weights: &Vec<Vec<CityWeight>>, save_run_prefix: Option<String>) -> Vec<CityNum> {
   if let Some(cached_solution_vec) = get_cached_solution(node_coordinates) {
+      // Store solution
+      match &save_run_prefix {
+        Some(prefix) => {
+          save_state_image(format!("{}/brute-{:03}.png", prefix, cached_solution_vec.len()), &cached_solution_vec, &node_coordinates);
+          fs::write(
+            format!("{}/brute-path.txt", prefix),
+            format!("{:?}\nDistance:{}", cached_solution_vec, compute_dist(weights, &cached_solution_vec))
+          ).expect("Unable to write file");
+          fs::write(
+            format!("{}/node-coordinates.txt", prefix),
+            format!("{:?}", node_coordinates)
+          ).expect("Unable to write file");
+          
+          let mut env_s = "TSP_INITIAL_COORDS='".to_string();
+          for (_i, x, y) in node_coordinates.iter() {
+            env_s += format!("{:.2},{:.2} ", x, y).as_str();
+          }
+          env_s += "'";
+
+          fs::write(
+            format!("{}/node-coordinates-env.txt", prefix),
+            env_s
+          ).expect("Unable to write file");
+        }
+        None => { }
+    }
+    
     return cached_solution_vec;
   }
 
