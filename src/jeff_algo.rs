@@ -27,7 +27,14 @@ pub fn solve(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>, weight
 
   while ordered_visits.len() < weights.len() {
     //ordered_visits = next_step(&ordered_visits, &node_coordinates, &weights, &save_run_prefix);
-    ordered_visits = next_step(&ordered_visits, &node_coordinates, &weights, &None);
+
+    ordered_visits = next_step(&ordered_visits, &node_coordinates, &weights, &next_city_num_first_not_inserted);
+    
+    // ordered_visits = best_of(weights,
+    //   next_step(&ordered_visits, &node_coordinates, &weights, &next_city_num_first_not_inserted),
+    //   next_step(&ordered_visits, &node_coordinates, &weights, &next_city_num_last_not_inserted)
+    // );
+
   }
 
   // Store solution
@@ -45,16 +52,10 @@ pub fn solve(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>, weight
   return ordered_visits;
 }
 
-// diagnostic which assumes a hamiltonian cycle of 3+ elements passed in, picks next from node_coordinates and inserts it
-pub fn next_step(ordered_visits: &Vec<CityNum>, node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>, weights: &Vec<Vec<CityWeight>>, save_run_prefix: &Option<String>) -> Vec<usize> {
-  
-  if let Some(p) = save_run_prefix { println!("============ {:?} ===============", &p); }
-
-  let mut ordered_visits: Vec<CityNum> = ordered_visits.clone();
-
+fn next_city_num_first_not_inserted(ordered_visits: &Vec<CityNum>, weights: &Vec<Vec<CityWeight>>) -> CityNum {
   let mut citynum_to_insert = 0;
   'outer: for p in 0..weights.len() {
-    for ordered in &ordered_visits {
+    for ordered in ordered_visits {
       if p == *ordered {
         continue 'outer;
       }
@@ -62,7 +63,55 @@ pub fn next_step(ordered_visits: &Vec<CityNum>, node_coordinates: &Vec<(CityNum,
     citynum_to_insert = p;
     break;
   }
-  let citynum_to_insert = citynum_to_insert;
+  citynum_to_insert
+}
+
+fn next_city_num_last_not_inserted(ordered_visits: &Vec<CityNum>, weights: &Vec<Vec<CityWeight>>) -> CityNum {
+  let mut citynum_to_insert = 0;
+  'outer: for p in 0..weights.len() {
+    for ordered in ordered_visits {
+      if p == *ordered {
+        continue 'outer;
+      }
+    }
+    citynum_to_insert = p;
+  }
+  citynum_to_insert
+}
+
+fn best_of(weights: &Vec<Vec<CityWeight>>, ordered_visits_a: Vec<CityNum>, ordered_visits_b: Vec<CityNum>) -> Vec<CityNum> {
+  let a_len = compute_dist(weights, &ordered_visits_a);
+  let b_len = compute_dist(weights, &ordered_visits_b);
+  if a_len <= b_len {
+    ordered_visits_a
+  }
+  else {
+    ordered_visits_b
+  }
+}
+
+// diagnostic which assumes a hamiltonian cycle of 3+ elements passed in, picks next from node_coordinates and inserts it
+pub fn next_step(
+  ordered_visits: &Vec<CityNum>,
+  node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>,
+  weights: &Vec<Vec<CityWeight>>,
+  next_city_num_fn: &dyn Fn(&Vec<CityNum>, &Vec<Vec<CityWeight>>) -> CityNum) -> Vec<CityNum>
+{
+  
+  let mut ordered_visits: Vec<CityNum> = ordered_visits.clone();
+
+  // let mut citynum_to_insert = 0;
+  // 'outer: for p in 0..weights.len() {
+  //   for ordered in &ordered_visits {
+  //     if p == *ordered {
+  //       continue 'outer;
+  //     }
+  //   }
+  //   citynum_to_insert = p;
+  //   break;
+  // }
+  // let citynum_to_insert = citynum_to_insert;
+  let citynum_to_insert = next_city_num_fn(&ordered_visits, weights);
 
   // More detailed strat: O( N^3 )
   // for all N:
@@ -123,24 +172,6 @@ pub fn next_step(ordered_visits: &Vec<CityNum>, node_coordinates: &Vec<(CityNum,
   insert_point_step(&mut ordered_visits, node_coordinates, weights, citynum_to_insert);
   insert_point_step(&mut ordered_visits, node_coordinates, weights, removed_citynum_m);
   insert_point_step(&mut ordered_visits, node_coordinates, weights, removed_citynum_n);
-
-
-
-  // Store solution
-  match &save_run_prefix {
-
-    Some(prefix) => {
-      if let Err(_e) = create_dir(prefix) {
-        // Unhandled error case
-      }
-      save_state_image(format!("{}/jalgo-{:03}.png", prefix, ordered_visits.len()), &ordered_visits, &node_coordinates);
-      fs::write(
-        format!("{}/jalgo-path.txt", prefix),
-        format!("{:?}\nDistance:{}", ordered_visits, compute_dist(weights, &ordered_visits))
-      ).expect("Unable to write file");
-    }
-    None => { }
-  }
   
   return ordered_visits;
 }
