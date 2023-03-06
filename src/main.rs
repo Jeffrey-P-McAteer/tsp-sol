@@ -108,6 +108,7 @@ fn timed_main() {
 
   let mut use_jalgo = true;
   let mut use_brute = false;
+  let mut write_solution_out_to_views = false;
   for arg in &args {
     if arg == "jalgo" {
       println!("Enabling jalgo...");
@@ -124,6 +125,12 @@ fn timed_main() {
     if arg == "no-brute" {
       println!("Brute jalgo...");
       use_brute = false;
+    }
+    if arg == "view" {
+      write_solution_out_to_views = true;
+    }
+    if arg == "no-view" {
+      write_solution_out_to_views = false;
     }
   }
   
@@ -157,13 +164,23 @@ fn timed_main() {
   };
   
   if use_jalgo {
-    let solution_p = jeff_algo::solve(&node_coordinates, &weights, None);
+    let solution_p = if write_solution_out_to_views {
+      jeff_algo::solve(&node_coordinates, &weights, Some( "./views/tsp_problem".to_string() ))
+    }
+    else {
+      jeff_algo::solve(&node_coordinates, &weights, None)
+    };
     println!("====== jeff_algo::solve ======");
     print_path_metadata(&solution_p, &weights);
   }
   
   if use_brute {
-    let solution_p = brute_algo::solve(&node_coordinates, &weights, None);
+    let solution_p = if write_solution_out_to_views {
+      brute_algo::solve(&node_coordinates, &weights, Some( "./views/tsp_problem".to_string() ))
+    }
+    else {
+      brute_algo::solve(&node_coordinates, &weights, None)
+    };
     println!("====== brute_algo::solve ======");
     print_path_metadata(&solution_p, &weights);
   }

@@ -65,6 +65,7 @@ All tests were run using the release binary at `./target/release/tsp-sol` using 
 
 ```
 city:     ideal_sol      jalgo_sol   jalgo_ms
+berma14 :    30.878         30.878        34ms
 berlin52:     7,542      7,782.985        39ms
 st70    :       675        687.916       119ms
 rat99   :     1,211      1,250.809       484ms
