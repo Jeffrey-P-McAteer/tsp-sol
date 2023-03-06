@@ -51,11 +51,20 @@ static PERMUTATIONS_CACHE: Lazy<Mutex<HashMap<CityNum, Vec<CityNum>, fasthash::R
 });
 
 static PICKLE_DB: Lazy<Mutex< PickleDb >> = Lazy::new(|| {
-  Mutex::new(
-    PickleDb::load("target/cached_solutions.db", PickleDbDumpPolicy::AutoDump, SerializationMethod::Cbor).unwrap_or(
-      PickleDb::new("target/cached_solutions.db", PickleDbDumpPolicy::AutoDump, SerializationMethod::Cbor)
-    )
-  )
+  // Mutex::new(
+  //   PickleDb::load("target/cached_solutions.db", PickleDbDumpPolicy::AutoDump, SerializationMethod::Cbor).unwrap_or(
+  //     PickleDb::new("target/cached_solutions.db", PickleDbDumpPolicy::AutoDump, SerializationMethod::Cbor)
+  //   )
+  // )
+  let pickle_db = match PickleDb::load("target/cached_solutions.db", PickleDbDumpPolicy::PeriodicDump( std::time::Duration::from_millis(14500) ), SerializationMethod::Cbor) {
+    Ok(db) => db,
+    Err(e) => {
+      eprintln!("Error loading target/cached_solutions.db: {:?}", e);
+      PickleDb::new("target/cached_solutions.db", PickleDbDumpPolicy::PeriodicDump( std::time::Duration::from_millis(14500) ), SerializationMethod::Cbor)
+    }
+  };
+
+  Mutex::new(pickle_db)
 });
 
 pub fn solve(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>, weights: &Vec<Vec<CityWeight>>, save_run_prefix: Option<String>) -> Vec<CityNum> {
@@ -157,7 +166,11 @@ fn cache_solution(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>, s
 
   // Some(())
 
-  PICKLE_DB.lock().unwrap().set::<Vec<CityNum>>( &cached_solution_key(node_coordinates), solution_best_path ).ok()?;
+  //PICKLE_DB.lock().unwrap().set::<Vec<CityNum>>( &cached_solution_key(node_coordinates), solution_best_path ).ok()?;
+  if let Err(e) = PICKLE_DB.lock().unwrap().set::<Vec<CityNum>>( &cached_solution_key(node_coordinates), solution_best_path ) {
+    eprintln!("Error setting: {:?}", e);
+    return None;
+  }
 
   Some(())
 }
