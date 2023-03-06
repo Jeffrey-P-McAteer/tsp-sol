@@ -23,6 +23,31 @@ type CityWeight = fp;
 type CityXYCoord = fp;
 
 pub fn solve(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>, weights: &Vec<Vec<CityWeight>>, save_run_prefix: Option<String>) -> Vec<usize> {
+  let mut ordered_visits = compute_largest_triangle(node_coordinates, weights);
+  
+  while ordered_visits.len() < weights.len() {
+    ordered_visits = next_step(&ordered_visits, &node_coordinates, &weights, &next_city_num_first_not_inserted);
+  }
+
+  // Store solution
+  match &save_run_prefix {
+    Some(prefix) => {
+      save_state_image(format!("{}/jalgo-{:03}.png", prefix, ordered_visits.len()), &ordered_visits, &node_coordinates);
+      fs::write(
+        format!("{}/jalgo-path.txt", prefix),
+        format!("{:?}\nDistance:{}", ordered_visits, compute_dist(weights, &ordered_visits))
+      ).expect("Unable to write file");
+    }
+    None => { }
+  }
+  
+  return ordered_visits;
+}
+
+
+// Crummy hacks
+/*
+pub fn solve(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>, weights: &Vec<Vec<CityWeight>>, save_run_prefix: Option<String>) -> Vec<usize> {
   let mut ordered_visits_strat_a = compute_largest_triangle(node_coordinates, weights);
   let mut ordered_visits_strat_b = compute_largest_triangle(node_coordinates, weights);
   let mut ordered_visits_strat_c = compute_smallest_triangle(node_coordinates, weights);
@@ -66,6 +91,7 @@ pub fn solve(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>, weight
   
   return ordered_visits;
 }
+*/
 
 fn next_city_num_first_not_inserted(ordered_visits: &Vec<CityNum>, weights: &Vec<Vec<CityWeight>>) -> CityNum {
   let mut citynum_to_insert = 0;
@@ -234,7 +260,7 @@ pub fn next_step(
   insert_point_step(&mut ordered_visits, node_coordinates, weights, removed_citynum_n);
 
   // Scan + swap anything that decreases tour
-  perform_swaps(&mut ordered_visits, weights);
+  // perform_swaps(&mut ordered_visits, weights);
   
   return ordered_visits;
 }
