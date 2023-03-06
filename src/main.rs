@@ -85,6 +85,12 @@ fn main() {
   timed_main();
   let exec_duration = begin_time.elapsed();
   println!("=== Elapsed time: {:?} ===", exec_duration);
+  
+  // Flush any brute algo cache we may have
+  if let Err(e) = brute_algo::PICKLE_DB.get_mut().dump() {
+    eprintln!("Error saving brute cache: {:?}", e);
+  }
+
 }
 
 fn timed_main() {

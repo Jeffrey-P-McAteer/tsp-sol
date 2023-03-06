@@ -120,22 +120,31 @@ impl<T: Default> Default for MySyncUnsafeCell<T> {
     }
 }
 
-static PICKLE_DB: Lazy<MySyncUnsafeCell< PickleDb >> = Lazy::new(|| {
+pub static PICKLE_DB: Lazy<MySyncUnsafeCell< PickleDb >> = Lazy::new(|| {
   // Mutex::new(
   //   PickleDb::load("target/cached_solutions.db", PickleDbDumpPolicy::AutoDump, SerializationMethod::Cbor).unwrap_or(
   //     PickleDb::new("target/cached_solutions.db", PickleDbDumpPolicy::AutoDump, SerializationMethod::Cbor)
   //   )
   // )
   
-  //let save_delay_ms = 14500;
-  let save_delay_ms = 4500;
-  //let save_delay_ms = 500;
-  
-  let pickle_db = match PickleDb::load("target/cached_solutions.db", PickleDbDumpPolicy::PeriodicDump( std::time::Duration::from_millis(save_delay_ms) ), SerializationMethod::Cbor) {
+  // Save cache one a minute; we also flush at the end of main(),
+  // so we ought to be able to avoid a ton of overhead.
+  // let save_delay_ms = 60100;
+
+  // let pickle_db = match PickleDb::load("target/cached_solutions.db", PickleDbDumpPolicy::PeriodicDump( std::time::Duration::from_millis(save_delay_ms) ), SerializationMethod::Cbor) {
+  //   Ok(db) => db,
+  //   Err(e) => {
+  //     eprintln!("Error loading target/cached_solutions.db: {:?}", e);
+  //     PickleDb::new("target/cached_solutions.db", PickleDbDumpPolicy::PeriodicDump( std::time::Duration::from_millis(save_delay_ms) ), SerializationMethod::Cbor)
+  //   }
+  // };
+
+  // Even more agressive: we only dump at the end of main(), manually
+  let pickle_db = match PickleDb::load("target/cached_solutions.db", PickleDbDumpPolicy::DumpUponRequest, SerializationMethod::Cbor) {
     Ok(db) => db,
     Err(e) => {
       eprintln!("Error loading target/cached_solutions.db: {:?}", e);
-      PickleDb::new("target/cached_solutions.db", PickleDbDumpPolicy::PeriodicDump( std::time::Duration::from_millis(save_delay_ms) ), SerializationMethod::Cbor)
+      PickleDb::new("target/cached_solutions.db", PickleDbDumpPolicy::DumpUponRequest, SerializationMethod::Cbor)
     }
   };
 
