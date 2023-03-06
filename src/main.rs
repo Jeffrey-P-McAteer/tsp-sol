@@ -584,7 +584,7 @@ fn selective() {
   }
   
   // If we hit 11 cities without a failure we'll recurse and start from 3 again.
-  for city_num in 3..9 {
+  for city_num in 3..10 {
     let new_r_city = (
       city_num,
       rng.gen_range(x_min, x_max),
@@ -622,7 +622,7 @@ fn selective() {
     }
   }
   
-  println!("Failed to break after 10, resetting...");
+  println!("Failed to break after 11, resetting...");
   selective();
   
 }
