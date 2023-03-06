@@ -35,6 +35,8 @@ use fasthash::{FastHash, XXHasher};
 use std::hash::{Hash, Hasher};
 use std::io::{Read, Write};
 
+use pickledb::{PickleDb, PickleDbDumpPolicy, SerializationMethod};
+
 type CityNum = usize;
 type CityWeight = fp;
 type CityXYCoord = fp;
@@ -46,6 +48,14 @@ type CityXYCoord = fp;
 static PERMUTATIONS_CACHE: Lazy<Mutex<HashMap<CityNum, Vec<CityNum>, fasthash::RandomState<fasthash::xx::Hash64> >>> = Lazy::new(|| {
     let s = fasthash::RandomState::<fasthash::xx::Hash64>::new();
     Mutex::new( HashMap::with_hasher(s) )
+});
+
+static PICKLE_DB: Lazy<Mutex< PickleDb >> = Lazy::new(|| {
+  Mutex::new(
+    PickleDb::load("target/cached_solutions.db", PickleDbDumpPolicy::AutoDump, SerializationMethod::Cbor).unwrap_or(
+      PickleDb::new("target/cached_solutions.db", PickleDbDumpPolicy::AutoDump, SerializationMethod::Cbor)
+    )
+  )
 });
 
 pub fn solve(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>, weights: &Vec<Vec<CityWeight>>, save_run_prefix: Option<String>) -> Vec<CityNum> {
@@ -114,33 +124,40 @@ fn cached_solution_file(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoor
 }
 
 fn get_cached_solution(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>) -> Option<Vec<CityNum>> {
-  let cache_file = cached_solution_file(node_coordinates);
-  let mut f = File::open(&cache_file).ok()?;
-  let mut buffer = Vec::new();
-  f.read_to_end(&mut buffer).ok()?;
+  //let cache_file = cached_solution_file(node_coordinates);
+  //let mut f = File::open(&cache_file).ok()?;
+  //let mut buffer = Vec::new();
+  //f.read_to_end(&mut buffer).ok()?;
   // buffer is full of bytes, decode to Vec<CityNum>
-  let zero_vec = zerovec::ZeroVec::parse_byte_slice(&buffer).ok()?;
-  let vec_u64: Vec<u64> = zero_vec.to_vec();
+  //let zero_vec = zerovec::ZeroVec::parse_byte_slice(&buffer).ok()?;
+  //let vec_u64: Vec<u64> = zero_vec.to_vec();
 
   // I hereby declare all u64 == usize for the machines running this code
-  Some( unsafe { std::mem::transmute::<Vec<u64>,Vec<usize>>(vec_u64) } )
+  //Some( unsafe { std::mem::transmute::<Vec<u64>,Vec<usize>>(vec_u64) } )
+  
+  PICKLE_DB.lock().unwrap().get::<Vec<CityNum>>( &cached_solution_key(node_coordinates) )
+
 }
 
 fn cache_solution(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>, solution_best_path: &Vec<CityNum>) -> Option<()> {
   // I hereby declare all u64 == usize for the machines running this code
-  let solution_best_path: &Vec<u64> = unsafe { std::mem::transmute::<&Vec<usize>, &Vec<u64>>(solution_best_path) };
-  let zero_vec = zerovec::ZeroVec::from_slice_or_alloc(&solution_best_path);
+  // let solution_best_path: &Vec<u64> = unsafe { std::mem::transmute::<&Vec<usize>, &Vec<u64>>(solution_best_path) };
+  // let zero_vec = zerovec::ZeroVec::from_slice_or_alloc(&solution_best_path);
   
-  let zero_vec_bytes = zero_vec.into_bytes();
-  let cache_file = cached_solution_file(node_coordinates);
+  // let zero_vec_bytes = zero_vec.into_bytes();
+  // let cache_file = cached_solution_file(node_coordinates);
   
-  let mut file = std::fs::OpenOptions::new()
-      .create(true) // To create a new file
-      .write(true)
-      // either use the ? operator or unwrap since it returns a Result
-      .open(&cache_file).ok()?;
+  // let mut file = std::fs::OpenOptions::new()
+  //     .create(true) // To create a new file
+  //     .write(true)
+  //     // either use the ? operator or unwrap since it returns a Result
+  //     .open(&cache_file).ok()?;
 
-  file.write_all( &zero_vec_bytes.to_vec() ).ok()?;
+  // file.write_all( &zero_vec_bytes.to_vec() ).ok()?;
+
+  // Some(())
+
+  PICKLE_DB.lock().unwrap().set::<Vec<CityNum>>( &cached_solution_key(node_coordinates), solution_best_path ).ok()?;
 
   Some(())
 }
