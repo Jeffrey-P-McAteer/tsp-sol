@@ -118,6 +118,38 @@ fn best_of(weights: &Vec<Vec<CityWeight>>, ordered_visits_a: Vec<CityNum>, order
   }
 }
 
+// Takes a mutable ref to ordered visits; does not add anything,
+// merely tries to swap all indexes and keeps swaps which make path shorter.
+// Dumb guesses.
+fn perform_swaps(ordered_visits: &mut Vec<CityNum>, weights: &Vec<Vec<CityWeight>>) {
+  for i in 0..ordered_visits.len() {
+    let j = (i + 1) % ordered_visits.len();
+    // Is swapping the value at i with j better?
+    // TODO optimize away from re-calculating entire graph lengths!
+
+    let orig_len = compute_dist(weights, ordered_visits);
+
+    // Swap
+    let tmp = ordered_visits[i];
+    ordered_visits[i] = ordered_visits[j];
+    ordered_visits[j] = tmp;
+
+    let new_len = compute_dist(weights, ordered_visits);
+
+    if orig_len < new_len { // If we were better at the beginning (common)
+      // Swap back
+      let tmp = ordered_visits[i];
+      ordered_visits[i] = ordered_visits[j];
+      ordered_visits[j] = tmp;
+    }
+    else {
+      println!("Found a useful swap! ({} to {})", orig_len, new_len);
+    }
+
+
+  }
+}
+
 // diagnostic which assumes a hamiltonian cycle of 3+ elements passed in, picks next from node_coordinates and inserts it
 pub fn next_step(
   ordered_visits: &Vec<CityNum>,
@@ -200,6 +232,9 @@ pub fn next_step(
   insert_point_step(&mut ordered_visits, node_coordinates, weights, citynum_to_insert);
   insert_point_step(&mut ordered_visits, node_coordinates, weights, removed_citynum_m);
   insert_point_step(&mut ordered_visits, node_coordinates, weights, removed_citynum_n);
+
+  // Scan + swap anything that decreases tour
+  perform_swaps(&mut ordered_visits, weights);
   
   return ordered_visits;
 }
