@@ -26,7 +26,12 @@ pub fn solve(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>, weight
   let mut ordered_visits = compute_largest_triangle(node_coordinates, weights);
   
   while ordered_visits.len() < weights.len() {
-    ordered_visits = next_step(&ordered_visits, &node_coordinates, &weights, &next_city_num_first_not_inserted);
+    if ordered_visits.len() > 3 {
+      ordered_visits = next_step_3_deep(&ordered_visits, &node_coordinates, &weights, &next_city_num_first_not_inserted);
+    }
+    else {
+      ordered_visits = next_step(&ordered_visits, &node_coordinates, &weights, &next_city_num_first_not_inserted);
+    }
   }
 
   // Store solution
@@ -264,6 +269,109 @@ pub fn next_step(
   
   return ordered_visits;
 }
+
+
+// diagnostic which assumes a hamiltonian cycle of 4+ elements passed in, picks next from node_coordinates and inserts it
+pub fn next_step_3_deep(
+  ordered_visits: &Vec<CityNum>,
+  node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>,
+  weights: &Vec<Vec<CityWeight>>,
+  next_city_num_fn: &dyn Fn(&Vec<CityNum>, &Vec<Vec<CityWeight>>) -> CityNum) -> Vec<CityNum>
+{
+  
+  let mut ordered_visits: Vec<CityNum> = ordered_visits.clone();
+
+  let citynum_to_insert = next_city_num_fn(&ordered_visits, weights);
+
+  // More detailed strat: O( N^3 )
+  // for all N:
+  //   remove N from ordered_visits
+  //   insert citynum_to_insert using insert_point_step
+  //   insert N using insert_point_step
+  // keep the smallest delta from these ops
+
+  let mut strat_b_best_tour_delta = fp::INFINITY;
+  let mut strat_b_best_tour_n = 0;
+  let mut strat_b_best_tour_m = 0;
+  let mut strat_b_best_tour_l = 0;
+
+  for n in 0..ordered_visits.len() {
+    let removed_citynum_n = ordered_visits.remove(n);
+
+    let n_left_citynum = ordered_visits[ (n + ordered_visits.len() - 1) % ordered_visits.len() ];
+    let n_right_citynum = ordered_visits[ (n) % ordered_visits.len() ];
+
+    // Delta must begin with the removal of 2 edges above
+    let this_delta: fp = (-weights[n_left_citynum][removed_citynum_n]) + (-weights[removed_citynum_n][n_right_citynum]) + weights[n_left_citynum][n_right_citynum];
+
+    for m in 0..ordered_visits.len() {
+
+      let removed_citynum_m = ordered_visits.remove(m);
+
+      let m_left_citynum = ordered_visits[ (m + ordered_visits.len() - 1) % ordered_visits.len() ];
+      let m_right_citynum = ordered_visits[ (m) % ordered_visits.len() ];
+
+      // Delta must begin with the removal of 2 edges above
+      let mut this_delta: fp = this_delta;
+      this_delta += (-weights[m_left_citynum][removed_citynum_m]) + (-weights[removed_citynum_m][m_right_citynum]) + weights[m_left_citynum][m_right_citynum];
+
+      for l in 0..ordered_visits.len() {
+        let removed_citynum_l = ordered_visits.remove(l);
+
+        let l_left_citynum = ordered_visits[ (l + ordered_visits.len() - 1) % ordered_visits.len() ];
+        let l_right_citynum = ordered_visits[ (l) % ordered_visits.len() ];
+
+        // Delta must begin with the removal of 2 edges above
+        let mut this_delta: fp = this_delta;
+        this_delta += (-weights[l_left_citynum][removed_citynum_l]) + (-weights[removed_citynum_l][l_right_citynum]) + weights[l_left_citynum][l_right_citynum];
+
+        this_delta += insert_point_step(&mut ordered_visits, node_coordinates, weights, citynum_to_insert);
+        this_delta += insert_point_step(&mut ordered_visits, node_coordinates, weights, removed_citynum_l);
+        this_delta += insert_point_step(&mut ordered_visits, node_coordinates, weights, removed_citynum_m);
+        this_delta += insert_point_step(&mut ordered_visits, node_coordinates, weights, removed_citynum_n);
+
+        if this_delta < strat_b_best_tour_delta {
+          // Keep changes, update strat_b_best_tour_delta
+          strat_b_best_tour_delta = this_delta;
+          strat_b_best_tour_n = n;
+          strat_b_best_tour_m = m;
+          strat_b_best_tour_l = l;
+        }
+
+        // Undo changes so ordered_visits is identical to the beginning
+        remove_point_step(&mut ordered_visits, node_coordinates, weights, removed_citynum_n);
+        remove_point_step(&mut ordered_visits, node_coordinates, weights, removed_citynum_m);
+        remove_point_step(&mut ordered_visits, node_coordinates, weights, removed_citynum_l);
+        remove_point_step(&mut ordered_visits, node_coordinates, weights, citynum_to_insert);
+        ordered_visits.insert(l, removed_citynum_l);
+
+      }
+
+      ordered_visits.insert(m, removed_citynum_m);
+
+    }
+
+    ordered_visits.insert(n, removed_citynum_n);
+
+  }
+
+  // Apply strat b to insert citynum_to_insert
+  let removed_citynum_n = ordered_visits.remove(strat_b_best_tour_n);
+  let removed_citynum_m = ordered_visits.remove(strat_b_best_tour_m);
+  let removed_citynum_l = ordered_visits.remove(strat_b_best_tour_l);
+  insert_point_step(&mut ordered_visits, node_coordinates, weights, citynum_to_insert);
+  insert_point_step(&mut ordered_visits, node_coordinates, weights, removed_citynum_l);
+  insert_point_step(&mut ordered_visits, node_coordinates, weights, removed_citynum_m);
+  insert_point_step(&mut ordered_visits, node_coordinates, weights, removed_citynum_n);
+
+  // Scan + swap anything that decreases tour
+  // perform_swaps(&mut ordered_visits, weights);
+  
+  return ordered_visits;
+}
+
+
+
 
 // Modified args instead of returning a clone
 // returns the delta from this modification (aka how much did len(ordered_visits) change, smaller is better.)
