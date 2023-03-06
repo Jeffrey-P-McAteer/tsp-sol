@@ -48,7 +48,7 @@ cargo run --release delta
 
 Setup a pre-defined city + spray it (add a point at each image pixel + print if insertion produced a Hamiltonian cycle)
 ```
-TSP_INITIAL_COORDS='6.5,8.5 7.5,8.5 8.5,8.5 7.5,8.51' cargo run --release -- spray 4 0.01
+RUSTFLAGS='-C target-cpu=native' TSP_INITIAL_COORDS='6.5,8.5 7.5,8.5 8.5,8.5 7.5,8.51' cargo run --release -- spray 4 0.01
 ```
 
 # Ideal solutions...
@@ -117,7 +117,7 @@ TSP_INITIAL_COORDS='7.13,5.80 7.17,7.57 5.90,7.68 7.91,5.98 8.59,5.42 7.14,6.45 
 # May not always be necessary, see https://lwn.net/Articles/696216/ for details
 echo -1 | sudo tee /proc/sys/kernel/perf_event_paranoid
 
-TSP_INITIAL_COORDS='5.79,5.22 7.01,9.88 6.61,9.35 9.53,8.49 7.48,8.06 6.44,8.85 5.43,8.73 5.27,9.86' cargo flamegraph -o /tmp/graph.svg -- spray 8 0.09
+RUSTFLAGS='-C target-cpu=native' TSP_INITIAL_COORDS='5.79,5.22 7.01,9.88 6.61,9.35 9.53,8.49 7.48,8.06 6.44,8.85 5.43,8.73 5.27,9.86' cargo flamegraph -o /tmp/graph.svg -- spray 8 0.09
 
 firefox /tmp/graph.svg
 
