@@ -23,19 +23,27 @@ type CityWeight = fp;
 type CityXYCoord = fp;
 
 pub fn solve(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>, weights: &Vec<Vec<CityWeight>>, save_run_prefix: Option<String>) -> Vec<usize> {
-  let mut ordered_visits = compute_largest_triangle(node_coordinates, weights);
+  let mut ordered_visits_strat_a = compute_largest_triangle(node_coordinates, weights);
+  let mut ordered_visits_strat_b = compute_largest_triangle(node_coordinates, weights);
 
-  while ordered_visits.len() < weights.len() {
+  while ordered_visits_strat_a.len() < weights.len() {
     //ordered_visits = next_step(&ordered_visits, &node_coordinates, &weights, &save_run_prefix);
 
-    ordered_visits = next_step(&ordered_visits, &node_coordinates, &weights, &next_city_num_first_not_inserted);
+    //ordered_visits = next_step(&ordered_visits, &node_coordinates, &weights, &next_city_num_first_not_inserted);
+
+    ordered_visits_strat_a = next_step(&ordered_visits_strat_a, &node_coordinates, &weights, &next_city_num_first_not_inserted);
     
+    ordered_visits_strat_b = next_step(&ordered_visits_strat_b, &node_coordinates, &weights, &next_city_num_last_not_inserted);
+    
+    // ordered_visits = next_step(&ordered_visits, &node_coordinates, &weights, &next_city_num_last_not_inserted);
     // ordered_visits = best_of(weights,
     //   next_step(&ordered_visits, &node_coordinates, &weights, &next_city_num_first_not_inserted),
     //   next_step(&ordered_visits, &node_coordinates, &weights, &next_city_num_last_not_inserted)
     // );
 
   }
+
+  let ordered_visits = best_of(weights, ordered_visits_strat_a, ordered_visits_strat_b);
 
   // Store solution
   match &save_run_prefix {
