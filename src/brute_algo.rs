@@ -50,7 +50,67 @@ static PERMUTATIONS_CACHE: Lazy<Mutex<HashMap<CityNum, Vec<CityNum>, fasthash::R
     Mutex::new( HashMap::with_hasher(s) )
 });
 
-static PICKLE_DB: Lazy<Mutex< PickleDb >> = Lazy::new(|| {
+pub struct MySyncUnsafeCell<T: ?Sized> {
+    value: std::cell::UnsafeCell<T>,
+}
+unsafe impl<T: ?Sized + Sync> Sync for MySyncUnsafeCell<T> {}
+
+impl<T> MySyncUnsafeCell<T> {
+    /// Constructs a new instance of `MySyncUnsafeCell` which will wrap the specified value.
+    #[inline]
+    pub fn new(value: T) -> Self {
+        //Self { value: std::cell::UnsafeCell { value } }
+        Self { value: std::cell::UnsafeCell::new(value) }
+    }
+
+    /// Unwraps the value.
+    #[inline]
+    pub fn into_inner(self) -> T {
+        self.value.into_inner()
+    }
+}
+
+impl<T: ?Sized> MySyncUnsafeCell<T> {
+    /// Gets a mutable pointer to the wrapped value.
+    ///
+    /// This can be cast to a pointer of any kind.
+    /// Ensure that the access is unique (no active references, mutable or not)
+    /// when casting to `&mut T`, and ensure that there are no mutations
+    /// or mutable aliases going on when casting to `&T`
+    #[inline]
+    pub fn get(&self) -> *mut T {
+        self.value.get()
+    }
+
+    /// Returns a mutable reference to the underlying data.
+    ///
+    /// This call borrows the `MySyncUnsafeCell` mutably (at compile-time) which
+    /// guarantees that we possess the only reference.
+    #[inline]
+    pub fn get_mut(&self) -> &mut T {
+        unsafe { &mut *self.value.get() as &mut T } // SAFETY: We do not check nulls!
+    }
+
+    /// Gets a mutable pointer to the wrapped value.
+    ///
+    /// See [`UnsafeCell::get`] for details.
+    #[inline]
+    pub fn raw_get(this: *const Self) -> *mut T {
+        // We can just cast the pointer from `MySyncUnsafeCell<T>` to `T` because
+        // of #[repr(transparent)] on both MySyncUnsafeCell and UnsafeCell.
+        // See UnsafeCell::raw_get.
+        this as *const T as *mut T
+    }
+}
+
+impl<T: Default> Default for MySyncUnsafeCell<T> {
+    /// Creates an `MySyncUnsafeCell`, with the `Default` value for T.
+    fn default() -> MySyncUnsafeCell<T> {
+        MySyncUnsafeCell::new(Default::default())
+    }
+}
+
+static PICKLE_DB: Lazy<MySyncUnsafeCell< PickleDb >> = Lazy::new(|| {
   // Mutex::new(
   //   PickleDb::load("target/cached_solutions.db", PickleDbDumpPolicy::AutoDump, SerializationMethod::Cbor).unwrap_or(
   //     PickleDb::new("target/cached_solutions.db", PickleDbDumpPolicy::AutoDump, SerializationMethod::Cbor)
@@ -64,7 +124,7 @@ static PICKLE_DB: Lazy<Mutex< PickleDb >> = Lazy::new(|| {
     }
   };
 
-  Mutex::new(pickle_db)
+  MySyncUnsafeCell::new(pickle_db)
 });
 
 pub fn solve(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>, weights: &Vec<Vec<CityWeight>>, save_run_prefix: Option<String>) -> Vec<CityNum> {
@@ -144,7 +204,7 @@ fn get_cached_solution(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord
   // I hereby declare all u64 == usize for the machines running this code
   //Some( unsafe { std::mem::transmute::<Vec<u64>,Vec<usize>>(vec_u64) } )
   
-  PICKLE_DB.lock().unwrap().get::<Vec<CityNum>>( &cached_solution_key(node_coordinates) )
+  PICKLE_DB.get_mut().get::<Vec<CityNum>>( &cached_solution_key(node_coordinates) )
 
 }
 
@@ -167,7 +227,7 @@ fn cache_solution(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>, s
   // Some(())
 
   //PICKLE_DB.lock().unwrap().set::<Vec<CityNum>>( &cached_solution_key(node_coordinates), solution_best_path ).ok()?;
-  if let Err(e) = PICKLE_DB.lock().unwrap().set::<Vec<CityNum>>( &cached_solution_key(node_coordinates), solution_best_path ) {
+  if let Err(e) = PICKLE_DB.get_mut().set::<Vec<CityNum>>( &cached_solution_key(node_coordinates), solution_best_path ) {
     eprintln!("Error setting: {:?}", e);
     return None;
   }
