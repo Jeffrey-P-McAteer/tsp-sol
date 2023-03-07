@@ -26,12 +26,25 @@ pub fn solve(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>, weight
   let mut ordered_visits = compute_largest_triangle(node_coordinates, weights);
   
   while ordered_visits.len() < weights.len() {
-    if ordered_visits.len() > 3 {
-      ordered_visits = next_step_3_deep(&ordered_visits, &node_coordinates, &weights, &next_city_num_first_not_inserted);
-    }
-    else {
-      ordered_visits = next_step(&ordered_visits, &node_coordinates, &weights, &next_city_num_first_not_inserted);
-    }
+    // if ordered_visits.len() > 3 {
+    //   ordered_visits = next_step_3_deep(&ordered_visits, &node_coordinates, &weights, &next_city_num_first_not_inserted);
+    // }
+    // else {
+    //   ordered_visits = next_step(&ordered_visits, &node_coordinates, &weights, &next_city_num_first_not_inserted);
+    // }
+
+    let citynum_to_insert = next_city_num_first_not_inserted(&ordered_visits, &weights);
+    let n = if ordered_visits.len() > 3 { 3 } else { 2 };
+    ordered_visits = next_step_n_deep(
+      ordered_visits,
+      &node_coordinates,
+      &weights,
+      citynum_to_insert,
+      n,
+      //vec![],
+      0.0,
+      vec![],
+    );
   }
 
   // Store solution
@@ -48,55 +61,6 @@ pub fn solve(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>, weight
   
   return ordered_visits;
 }
-
-
-// Crummy hacks
-/*
-pub fn solve(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>, weights: &Vec<Vec<CityWeight>>, save_run_prefix: Option<String>) -> Vec<usize> {
-  let mut ordered_visits_strat_a = compute_largest_triangle(node_coordinates, weights);
-  let mut ordered_visits_strat_b = compute_largest_triangle(node_coordinates, weights);
-  let mut ordered_visits_strat_c = compute_smallest_triangle(node_coordinates, weights);
-  let mut ordered_visits_strat_d = compute_smallest_triangle(node_coordinates, weights);
-
-
-  while ordered_visits_strat_a.len() < weights.len() {
-    //ordered_visits = next_step(&ordered_visits, &node_coordinates, &weights, &save_run_prefix);
-
-    //ordered_visits = next_step(&ordered_visits, &node_coordinates, &weights, &next_city_num_first_not_inserted);
-
-    ordered_visits_strat_a = next_step(&ordered_visits_strat_a, &node_coordinates, &weights, &next_city_num_first_not_inserted);
-
-    ordered_visits_strat_b = next_step(&ordered_visits_strat_b, &node_coordinates, &weights, &next_city_num_last_not_inserted);
-
-    ordered_visits_strat_c = next_step(&ordered_visits_strat_c, &node_coordinates, &weights, &next_city_num_first_not_inserted);
-
-    ordered_visits_strat_d = next_step(&ordered_visits_strat_d, &node_coordinates, &weights, &next_city_num_last_not_inserted);
-    
-    // ordered_visits = next_step(&ordered_visits, &node_coordinates, &weights, &next_city_num_last_not_inserted);
-    // ordered_visits = best_of(weights,
-    //   next_step(&ordered_visits, &node_coordinates, &weights, &next_city_num_first_not_inserted),
-    //   next_step(&ordered_visits, &node_coordinates, &weights, &next_city_num_last_not_inserted)
-    // );
-
-  }
-
-  let ordered_visits = best_of(weights, best_of(weights, ordered_visits_strat_a, ordered_visits_strat_b), best_of(weights, ordered_visits_strat_c, ordered_visits_strat_d));
-
-  // Store solution
-  match &save_run_prefix {
-    Some(prefix) => {
-      save_state_image(format!("{}/jalgo-{:03}.png", prefix, ordered_visits.len()), &ordered_visits, &node_coordinates);
-      fs::write(
-        format!("{}/jalgo-path.txt", prefix),
-        format!("{:?}\nDistance:{}", ordered_visits, compute_dist(weights, &ordered_visits))
-      ).expect("Unable to write file");
-    }
-    None => { }
-  }
-  
-  return ordered_visits;
-}
-*/
 
 fn next_city_num_first_not_inserted(ordered_visits: &Vec<CityNum>, weights: &Vec<Vec<CityWeight>>) -> CityNum {
   let mut citynum_to_insert = 0;
@@ -371,11 +335,109 @@ pub fn next_step_3_deep(
 }
 
 
+pub fn next_step_n_deep(
+  mut ordered_visits: Vec<CityNum>,
+  node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>,
+  weights: &Vec<Vec<CityWeight>>,
+  
+  citynum_to_insert: CityNum,
+  
+  num_steps: usize,
+  //mut inner_ordered_visits: Vec<CityNum>,
+  this_delta: fp, // tracks per-recursive-call deltas as edges are inserted/removed
+  mut indicies_removed_so_far: Vec<usize>,
+) -> Vec<CityNum>
+{
+  if num_steps < 1 {
+    // Apply the collected insert point step numbers
+    // insert_all_point_steps(inner_ordered_visits, );
+    
+    insert_all_point_steps(&mut ordered_visits, node_coordinates, weights, &indicies_removed_so_far);
+
+    return ordered_visits;
+  }
+  else {
+    let mut best_tour_delta = fp::INFINITY;
+    let mut best_tour_n = 0;
+
+    for n in 0..ordered_visits.len() {
+      let removed_citynum_n = ordered_visits.remove(n);
+
+      let n_left_citynum = ordered_visits[ (n + ordered_visits.len() - 1) % ordered_visits.len() ];
+      let n_right_citynum = ordered_visits[ (n) % ordered_visits.len() ];
+
+      // Delta must begin with the removal of 2 edges above
+      let mut this_delta: fp = (-weights[n_left_citynum][removed_citynum_n]) + (-weights[removed_citynum_n][n_right_citynum]) + weights[n_left_citynum][n_right_citynum];
+      
+      this_delta += insert_point_step(&mut ordered_visits, node_coordinates, weights, citynum_to_insert);
+      this_delta += insert_all_point_steps(&mut ordered_visits, node_coordinates, weights, &indicies_removed_so_far);
+
+      if this_delta < best_tour_delta {
+        // Keep changes, update best_tour_delta
+        best_tour_delta = this_delta;
+        best_tour_n = n;
+      }
+
+      // Undo changes so ordered_visits is identical to the beginning
+      remove_all_point_steps(&mut ordered_visits, node_coordinates, weights, &indicies_removed_so_far);
+      remove_point_step(&mut ordered_visits, node_coordinates, weights, citynum_to_insert);
+      ordered_visits.insert(n, removed_citynum_n);
+
+    }
+
+    return ordered_visits;
+  }
+}
+
+pub fn insert_all_point_steps(
+  ordered_visits: &mut Vec<CityNum>,
+  node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>,
+  weights: &Vec<Vec<CityWeight>>,
+  indicies_removed_so_far: &Vec<usize>) -> CityWeight
+{
+  let mut removed_city_nums = vec![];
+  for index in indicies_removed_so_far {
+    removed_city_nums.push(
+      ordered_visits.remove( *index )
+    );
+  }
+  let mut this_delta = 0.0;
+  for removed_city_num in removed_city_nums.iter().rev() { // must iterate in reverse order!
+    this_delta += insert_point_step(ordered_visits, node_coordinates, weights, *removed_city_num );
+  }
+  this_delta
+}
+
+pub fn remove_all_point_steps(
+  ordered_visits: &mut Vec<CityNum>,
+  node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>,
+  weights: &Vec<Vec<CityWeight>>,
+  indicies_removed_so_far: &Vec<usize>) -> CityWeight
+{
+  let mut removed_city_nums = vec![];
+  for index in indicies_removed_so_far {
+    removed_city_nums.push(
+      ordered_visits.remove( *index )
+    );
+  }
+  let mut this_delta = 0.0;
+  for removed_city_num in removed_city_nums.iter() { // iterates in reverse of insert point steps
+    this_delta += remove_point_step(ordered_visits, node_coordinates, weights, *removed_city_num );
+  }
+  this_delta
+}
+
+
 
 
 // Modified args instead of returning a clone
 // returns the delta from this modification (aka how much did len(ordered_visits) change, smaller is better.)
-fn insert_point_step(ordered_visits: &mut Vec<CityNum>, node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>, weights: &Vec<Vec<CityWeight>>, citynum_to_insert: CityNum) -> CityWeight {
+fn insert_point_step(
+  ordered_visits: &mut Vec<CityNum>,
+  node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>,
+  weights: &Vec<Vec<CityWeight>>,
+  citynum_to_insert: CityNum) -> CityWeight
+{
   let mut ideal_insert_dist_delta: CityWeight = fp::INFINITY;
   let mut ins_idx0 = 0; // 0 indicates a split of the edge that runs between 0 -> 1
   
@@ -406,7 +468,12 @@ fn insert_point_step(ordered_visits: &mut Vec<CityNum>, node_coordinates: &Vec<(
 }
 
 // undoes insert_point_step given the same citynum_to_insert and returns the delta
-fn remove_point_step(ordered_visits: &mut Vec<CityNum>, node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>, weights: &Vec<Vec<CityWeight>>, citynum_to_insert: CityNum) -> CityWeight {
+fn remove_point_step(
+  ordered_visits: &mut Vec<CityNum>,
+  node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>,
+  weights: &Vec<Vec<CityWeight>>,
+  citynum_to_insert: CityNum) -> CityWeight
+{
   let from_i = ordered_visits.iter().position(|&val| val == citynum_to_insert).unwrap();
 
   ordered_visits.remove(from_i); // returns citynum_to_insert
