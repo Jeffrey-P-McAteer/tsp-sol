@@ -25,6 +25,8 @@ type CityXYCoord = fp;
 pub fn solve(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>, weights: &Vec<Vec<CityWeight>>, save_run_prefix: Option<String>) -> Vec<usize> {
   let mut ordered_visits = compute_largest_triangle(node_coordinates, weights);
   
+  let mut indicies_removed_so_far = vec![];
+
   while ordered_visits.len() < weights.len() {
     // if ordered_visits.len() > 3 {
     //   ordered_visits = next_step_3_deep(&ordered_visits, &node_coordinates, &weights, &next_city_num_first_not_inserted);
@@ -34,16 +36,16 @@ pub fn solve(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>, weight
     // }
 
     let citynum_to_insert = next_city_num_first_not_inserted(&ordered_visits, &weights);
-    let n = if ordered_visits.len() > 3 { 3 } else { 2 };
-    ordered_visits = next_step_n_deep(
-      ordered_visits,
+    let num_steps = if ordered_visits.len() > 3 { 1 } else { 0 };
+    indicies_removed_so_far.clear();
+    next_step_n_deep(
+      &mut ordered_visits,
       &node_coordinates,
       &weights,
       citynum_to_insert,
-      n,
-      //vec![],
+      num_steps,
       0.0,
-      vec![],
+      &mut indicies_removed_so_far,
     );
   }
 
@@ -336,7 +338,7 @@ pub fn next_step_3_deep(
 
 
 pub fn next_step_n_deep(
-  mut ordered_visits: Vec<CityNum>,
+  ordered_visits: &mut Vec<CityNum>,
   node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>,
   weights: &Vec<Vec<CityWeight>>,
   
@@ -344,34 +346,39 @@ pub fn next_step_n_deep(
   
   num_steps: usize,
   //mut inner_ordered_visits: Vec<CityNum>,
-  this_delta: fp, // tracks per-recursive-call deltas as edges are inserted/removed
-  mut indicies_removed_so_far: Vec<usize>,
-) -> Vec<CityNum>
+  mut this_delta: fp, // tracks per-recursive-call deltas as edges are inserted/removed
+  indicies_removed_so_far: &mut Vec<usize>,
+) -> fp
 {
-  if num_steps < 1 {
-    // Apply the collected insert point step numbers
-    // insert_all_point_steps(inner_ordered_visits, );
+  let mut best_tour_delta = fp::INFINITY;
+  let mut best_tour_n = 0;
+
+  indicies_removed_so_far.push(0); // last item will track value of N in the following loop
+  let indicies_removed_i = indicies_removed_so_far.len() - 1;
+
+  println!("next_step_n_deep ordered_visits={:?} indicies_removed_so_far={:?}", ordered_visits, indicies_removed_so_far);
+
+  for n in 0..ordered_visits.len() {
+    let removed_citynum_n = ordered_visits.remove(n);
+
+    println!("for n ... ordered_visits={:?}", ordered_visits);
+
+    indicies_removed_so_far[ indicies_removed_i ] = n;
     
-    insert_all_point_steps(&mut ordered_visits, node_coordinates, weights, &indicies_removed_so_far);
+    let n_left_citynum = ordered_visits[ (n + ordered_visits.len() - 1) % ordered_visits.len() ];
+    let n_right_citynum = ordered_visits[ (n) % ordered_visits.len() ];
 
-    return ordered_visits;
-  }
-  else {
-    let mut best_tour_delta = fp::INFINITY;
-    let mut best_tour_n = 0;
+    // Delta must begin with the removal of 2 edges above
+    this_delta += (-weights[n_left_citynum][removed_citynum_n]) + (-weights[removed_citynum_n][n_right_citynum]) + weights[n_left_citynum][n_right_citynum];
 
-    for n in 0..ordered_visits.len() {
-      let removed_citynum_n = ordered_visits.remove(n);
-
-      let n_left_citynum = ordered_visits[ (n + ordered_visits.len() - 1) % ordered_visits.len() ];
-      let n_right_citynum = ordered_visits[ (n) % ordered_visits.len() ];
-
-      // Delta must begin with the removal of 2 edges above
-      let mut this_delta: fp = (-weights[n_left_citynum][removed_citynum_n]) + (-weights[removed_citynum_n][n_right_citynum]) + weights[n_left_citynum][n_right_citynum];
+    if num_steps < 1 {
+      println!("PRE insert_point_step({:?} citynum_to_insert={})", ordered_visits, citynum_to_insert);
+      this_delta += insert_point_step(ordered_visits, node_coordinates, weights, citynum_to_insert);
+      println!("POST insert_point_step({:?} citynum_to_insert={})", ordered_visits, citynum_to_insert);
+      println!("PRE insert_all_point_steps({:?} indicies_removed_so_far={:?})", ordered_visits, indicies_removed_so_far);
+      this_delta += insert_all_point_steps(ordered_visits, node_coordinates, weights, &indicies_removed_so_far);
+      println!("POST insert_all_point_steps({:?} indicies_removed_so_far={:?})", ordered_visits, indicies_removed_so_far);
       
-      this_delta += insert_point_step(&mut ordered_visits, node_coordinates, weights, citynum_to_insert);
-      this_delta += insert_all_point_steps(&mut ordered_visits, node_coordinates, weights, &indicies_removed_so_far);
-
       if this_delta < best_tour_delta {
         // Keep changes, update best_tour_delta
         best_tour_delta = this_delta;
@@ -379,14 +386,41 @@ pub fn next_step_n_deep(
       }
 
       // Undo changes so ordered_visits is identical to the beginning
-      remove_all_point_steps(&mut ordered_visits, node_coordinates, weights, &indicies_removed_so_far);
-      remove_point_step(&mut ordered_visits, node_coordinates, weights, citynum_to_insert);
-      ordered_visits.insert(n, removed_citynum_n);
-
+      println!("PRE remove_all_point_steps({:?} indicies_removed_so_far={:?})", ordered_visits, indicies_removed_so_far);
+      this_delta += remove_all_point_steps(ordered_visits, node_coordinates, weights, &indicies_removed_so_far);
+      println!("POST remove_all_point_steps({:?} indicies_removed_so_far={:?})", ordered_visits, indicies_removed_so_far);
+      println!("PRE remove_point_step({:?} citynum_to_insert={})", ordered_visits, citynum_to_insert);
+      this_delta += remove_point_step(ordered_visits, node_coordinates, weights, citynum_to_insert);
+      println!("POST remove_point_step({:?} citynum_to_insert={})", ordered_visits, citynum_to_insert);
+      
+    }
+    else {
+      // Go one step lower, return value is meaningless here
+      next_step_n_deep(
+        ordered_visits,
+        node_coordinates,
+        weights,
+        citynum_to_insert,
+        num_steps - 1,
+        this_delta,
+        indicies_removed_so_far
+      );
     }
 
-    return ordered_visits;
+    ordered_visits.insert(n, removed_citynum_n);
+
   }
+
+  if num_steps < 1 {
+    // Actually do the change for all indicies_removed_so_far
+    
+    indicies_removed_so_far.push(best_tour_n);
+
+    insert_point_step(ordered_visits, node_coordinates, weights, citynum_to_insert);
+    insert_all_point_steps(ordered_visits, node_coordinates, weights, &indicies_removed_so_far);
+  }
+
+  return best_tour_delta;
 }
 
 pub fn insert_all_point_steps(
@@ -395,15 +429,16 @@ pub fn insert_all_point_steps(
   weights: &Vec<Vec<CityWeight>>,
   indicies_removed_so_far: &Vec<usize>) -> CityWeight
 {
+  let mut copy_of_ordered_visits = ordered_visits.clone();
   let mut removed_city_nums = vec![];
   for index in indicies_removed_so_far {
     removed_city_nums.push(
-      ordered_visits.remove( *index )
+      copy_of_ordered_visits.remove( *index )
     );
   }
   let mut this_delta = 0.0;
-  for removed_city_num in removed_city_nums.iter().rev() { // must iterate in reverse order!
-    this_delta += insert_point_step(ordered_visits, node_coordinates, weights, *removed_city_num );
+  for removed_city_num in removed_city_nums/*.iter().rev()*/ { // must iterate in reverse order!
+    this_delta += insert_point_step(ordered_visits, node_coordinates, weights, removed_city_num );
   }
   this_delta
 }
@@ -414,11 +449,11 @@ pub fn remove_all_point_steps(
   weights: &Vec<Vec<CityWeight>>,
   indicies_removed_so_far: &Vec<usize>) -> CityWeight
 {
+  let mut copy_of_ordered_visits = ordered_visits.clone();
   let mut removed_city_nums = vec![];
-  for index in indicies_removed_so_far {
-    removed_city_nums.push(
-      ordered_visits.remove( *index )
-    );
+  for index in indicies_removed_so_far.iter().rev() {
+    let removed_city_num = copy_of_ordered_visits.remove( *index ); // allows ordered indexes to be the same w/o removing twice
+    removed_city_nums.push(removed_city_num);
   }
   let mut this_delta = 0.0;
   for removed_city_num in removed_city_nums.iter() { // iterates in reverse of insert point steps
