@@ -25,28 +25,28 @@ type CityXYCoord = fp;
 pub fn solve(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>, weights: &Vec<Vec<CityWeight>>, save_run_prefix: Option<String>) -> Vec<usize> {
   let mut ordered_visits = compute_largest_triangle(node_coordinates, weights);
   
-  let mut indicies_removed_so_far = vec![];
+  //let mut indicies_removed_so_far: Vec<usize> = vec![];
 
   while ordered_visits.len() < weights.len() {
-    // if ordered_visits.len() > 3 {
-    //   ordered_visits = next_step_3_deep(&ordered_visits, &node_coordinates, &weights, &next_city_num_first_not_inserted);
-    // }
-    // else {
-    //   ordered_visits = next_step(&ordered_visits, &node_coordinates, &weights, &next_city_num_first_not_inserted);
-    // }
+    if ordered_visits.len() > 3 {
+      ordered_visits = next_step_3_deep(&ordered_visits, &node_coordinates, &weights, &next_city_num_first_not_inserted);
+    }
+    else {
+      ordered_visits = next_step(&ordered_visits, &node_coordinates, &weights, &next_city_num_first_not_inserted);
+    }
 
-    let citynum_to_insert = next_city_num_first_not_inserted(&ordered_visits, &weights);
-    let num_steps = if ordered_visits.len() > 3 { 1 } else { 0 };
-    indicies_removed_so_far.clear();
-    next_step_n_deep(
-      &mut ordered_visits,
-      &node_coordinates,
-      &weights,
-      citynum_to_insert,
-      num_steps,
-      0.0,
-      &mut indicies_removed_so_far,
-    );
+    // let citynum_to_insert = next_city_num_first_not_inserted(&ordered_visits, &weights);
+    // let num_steps = if ordered_visits.len() > 3 { 1 } else { 0 };
+    // indicies_removed_so_far.clear();
+    // next_step_n_deep(
+    //   &mut ordered_visits,
+    //   &node_coordinates,
+    //   &weights,
+    //   citynum_to_insert,
+    //   num_steps,
+    //   0.0,
+    //   &mut indicies_removed_so_far,
+    // );
   }
 
   // Store solution
