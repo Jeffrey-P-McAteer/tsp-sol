@@ -30,6 +30,8 @@ debug = 1
 lto = "fat"
 codegen-units = 1
 panic = "abort"
+debug-assertions = false
 
 # We have RUSTFLAGS="-C target-cpu=native" in our profile
+
 

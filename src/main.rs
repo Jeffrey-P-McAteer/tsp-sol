@@ -149,8 +149,11 @@ fn timed_main() {
   
   if file_arg == "selective" {
     // generate increasing city size until failure (jeff() != brute()), then go back and map a large range of points
+    let max_cities_to_test: usize = args.get(2).unwrap_or(&"11".to_string()).parse().unwrap();  // arg after "selective" OR 11
+    let num_to_test_before: usize = args.get(2).unwrap_or(&"2".to_string()).parse().unwrap();  // arg after "max_cities_to_test" OR 1
     selective(
-      args.get(2).unwrap_or(&"11".to_string()).parse().unwrap(), // arg after "selective" OR 11
+      max_cities_to_test - num_to_test_before,
+      max_cities_to_test,
       &thread_pool
     );
     return;
@@ -566,7 +569,7 @@ fn compute_weight_coords(node_coordinates: &Vec<(usize, fp, fp)>) -> Vec<Vec<fp>
   return weights;
 }
 
-fn selective(max_cities_to_test: usize, thread_pool: &ThreadPool) {
+fn selective(min_cities_to_ignore: usize, max_cities_to_test: usize, thread_pool: &ThreadPool) {
   println!("Performing selective failure...");
   // Bounding box for all points
   //let x_min_bound: fp = 0.0;
@@ -593,9 +596,21 @@ fn selective(max_cities_to_test: usize, thread_pool: &ThreadPool) {
     );
     node_coordinates.push(new_r_city);
   }
+
+  // Don't bother solving short tours which are highly likely to be correctly solved by jeff_algo
+  // We can always manually configure this parameter down if this discoveres a horrible failure and
+  // we want to find the first city where stuff blows up.
+  for city_num in 3..min_cities_to_ignore {
+    let new_r_city = (
+      city_num,
+      rng.gen_range(x_min, x_max),
+      rng.gen_range(y_min, y_max),
+    );
+    node_coordinates.push(new_r_city);
+  }
   
-  // If we hit 11 cities without a failure we'll recurse and start from 3 again.
-  for city_num in 3..max_cities_to_test {
+  // If we hit 11 cities without a failure we'll recurse and start from min_cities_to_ignore again.
+  for city_num in min_cities_to_ignore..max_cities_to_test {
     let new_r_city = (
       city_num,
       rng.gen_range(x_min, x_max),
@@ -634,7 +649,7 @@ fn selective(max_cities_to_test: usize, thread_pool: &ThreadPool) {
   }
   
   println!("Failed to break after {}, resetting...", max_cities_to_test);
-  selective(max_cities_to_test, thread_pool);
+  selective(min_cities_to_ignore, max_cities_to_test, thread_pool);
   
 }
 
