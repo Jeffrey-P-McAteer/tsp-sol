@@ -33,6 +33,9 @@ use rand::prelude::*;
 
 use permutohedron;
 
+use threadpool::ThreadPool;
+use num_cpus;
+
 use std::fs;
 use std::fs::{File,create_dir};
 use std::path::Path;
@@ -104,6 +107,8 @@ fn timed_main() {
     attempt_to_raise_priority();
   }
   
+  let thread_pool = ThreadPool::new( num_cpus::get_physical() );
+  
   let file_arg = args.get(1).unwrap();
 
   let mut use_jalgo = true;
@@ -136,13 +141,13 @@ fn timed_main() {
   
   if file_arg == "delta" {
     let num = 1000;
-    let num_failed = delta(num, 4, 8); // test the algorithm on a thousand generated cities, between 4-8 points each.
+    let num_failed = delta(num, 4, 8, &thread_pool); // test the algorithm on a thousand generated cities, between 4-8 points each.
     println!("Failed {} out of {}", num_failed, num);
     return;
   }
   
   if file_arg == "selective" {
-    selective(); // generate increasing city size until failure (jeff() != brute()), then go back and map a large range of points
+    selective(&thread_pool); // generate increasing city size until failure (jeff() != brute()), then go back and map a large range of points
     return;
   }
   
@@ -151,7 +156,8 @@ fn timed_main() {
     // results in a non-optimal path.
     spray(
       args.get(2).unwrap_or(&"5".to_string()).parse().unwrap(), // given number OR 5
-      args.get(3).unwrap_or(&"0.25".to_string()).parse().unwrap() // given number OR 0.25
+      args.get(3).unwrap_or(&"0.25".to_string()).parse().unwrap(), // given number OR 0.25
+      &thread_pool
     );
     return;
   }
@@ -176,10 +182,10 @@ fn timed_main() {
   
   if use_brute {
     let solution_p = if write_solution_out_to_views {
-      brute_algo::solve(&node_coordinates, &weights, Some( "./views/tsp_problem".to_string() ))
+      brute_algo::solve(&node_coordinates, &weights, Some( "./views/tsp_problem".to_string() ), &thread_pool)
     }
     else {
-      brute_algo::solve(&node_coordinates, &weights, None)
+      brute_algo::solve(&node_coordinates, &weights, None, &thread_pool)
     };
     println!("====== brute_algo::solve ======");
     print_path_metadata(&solution_p, &weights);
@@ -208,24 +214,24 @@ fn attempt_to_raise_priority() {
     .spawn();
 }
 
-fn delta(num_tests: usize, lower_city_size: usize, upper_city_size: usize) -> usize {
+fn delta(num_tests: usize, lower_city_size: usize, upper_city_size: usize, thread_pool: &ThreadPool) -> usize {
   let mut rng = thread_rng();
   let mut total_failed: usize = 0;
   for i in 0..num_tests {
     let city_size = rng.gen_range(lower_city_size, upper_city_size);
     println!("Delta testing {}/{}", i, num_tests);
-    if ! delta_test(city_size) {
+    if ! delta_test(city_size, thread_pool) {
       total_failed += 1;
     }
   }
   return total_failed;
 }
 
-fn delta_test(city_size: usize) -> bool {
+fn delta_test(city_size: usize, thread_pool: &ThreadPool) -> bool {
   let (node_coordinates, weights) = gen_tsp_problem(city_size, 0.0, 10.0, 0.0, 10.0);
   
   let jeff_sol = jeff_algo::solve(&node_coordinates, &weights, None);
-  let brute_sol = brute_algo::solve(&node_coordinates, &weights, None);
+  let brute_sol = brute_algo::solve(&node_coordinates, &weights, None, thread_pool);
   
   let jeff_sol_len = compute_dist(&weights, &jeff_sol);
   let brute_sol_len = compute_dist(&weights, &brute_sol);
@@ -238,7 +244,7 @@ fn delta_test(city_size: usize) -> bool {
     
     let prefix_dir = format!("./views/{:02}-{}/", weights.len(), r_test_num);
     jeff_algo::solve(&node_coordinates, &weights, Some(prefix_dir.clone()));
-    brute_algo::solve(&node_coordinates, &weights, Some(prefix_dir.clone()));
+    brute_algo::solve(&node_coordinates, &weights, Some(prefix_dir.clone()), thread_pool);
     return false;
   }
   return true;
@@ -555,7 +561,7 @@ fn compute_weight_coords(node_coordinates: &Vec<(usize, fp, fp)>) -> Vec<Vec<fp>
   return weights;
 }
 
-fn selective() {
+fn selective(thread_pool: &ThreadPool) {
   println!("Performing selective failure...");
   // Bounding box for all points
   //let x_min_bound: fp = 0.0;
@@ -595,7 +601,7 @@ fn selective() {
     let city_weights = compute_weight_coords(&node_coordinates);
     
     let jeff_sol = jeff_algo::solve(&node_coordinates, &city_weights, None);
-    let brute_sol = brute_algo::solve(&node_coordinates, &city_weights, None);
+    let brute_sol = brute_algo::solve(&node_coordinates, &city_weights, None, thread_pool);
     
     let jeff_sol_len = compute_dist(&city_weights, &jeff_sol);
     let brute_sol_len = compute_dist(&city_weights, &brute_sol);
@@ -610,7 +616,7 @@ fn selective() {
       // Now we have a city right before our failure.
       
       // Save the correct solution
-      brute_algo::solve(&node_coordinates, &city_weights, Some("./views/selective/".to_string()));
+      brute_algo::solve(&node_coordinates, &city_weights, Some("./views/selective/".to_string()), thread_pool);
       jeff_algo::solve(&node_coordinates, &city_weights, Some("./views/selective/".to_string()));
       
       // compute a 2d matrix of points and plot blue if they result in correct, red if they do not.
@@ -623,7 +629,7 @@ fn selective() {
   }
   
   println!("Failed to break after 11, resetting...");
-  selective();
+  selective(thread_pool);
   
 }
 
@@ -693,7 +699,7 @@ fn get_env_or_random_node_coordinates(n: usize, x_min: fp, x_max: fp, y_min: fp,
   return node_coordinates;
 }
 
-fn spray(n: usize, mut bound_granularity: fp) {
+fn spray(n: usize, mut bound_granularity: fp, thread_pool: &ThreadPool) {
   println!("Spraying {} cities...", n);
 
   if bound_granularity < 0.025 {
@@ -729,7 +735,7 @@ fn spray(n: usize, mut bound_granularity: fp) {
   let city_weights = compute_weight_coords(&node_coordinates);
   let first_ordered_visits = jeff_algo::solve(&node_coordinates, &city_weights, None);
 
-  let brute_sol = brute_algo::solve(&node_coordinates, &city_weights, None);
+  let brute_sol = brute_algo::solve(&node_coordinates, &city_weights, None, thread_pool);
   // If jeff disagrees w/ brute, the rest of the loop does not make sense!
   let first_ordered_visits_len = compute_dist(&city_weights, &first_ordered_visits);
   let brute_sol_len = compute_dist(&city_weights, &brute_sol);
@@ -773,7 +779,7 @@ fn spray(n: usize, mut bound_granularity: fp) {
       let jeff_sol = jeff_algo::solve(&node_coordinates, &city_weights, None);
       //println!("jeff_sol={:?}", &jeff_sol);
       
-      let brute_sol = brute_algo::solve(&node_coordinates, &city_weights, None);
+      let brute_sol = brute_algo::solve(&node_coordinates, &city_weights, None, thread_pool);
       
       let jeff_sol_len = compute_dist(&city_weights, &jeff_sol);
       let brute_sol_len = compute_dist(&city_weights, &brute_sol);
@@ -810,7 +816,7 @@ fn spray(n: usize, mut bound_granularity: fp) {
             }
             let city_weights = compute_weight_coords(&delta_node_coords);
             jeff_algo::solve(&delta_node_coords, &city_weights, Some(prefix_dir.clone()));
-            brute_algo::solve(&delta_node_coords, &city_weights, Some(prefix_dir.clone()));
+            brute_algo::solve(&delta_node_coords, &city_weights, Some(prefix_dir.clone()), thread_pool);
           }
           
         }

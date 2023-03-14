@@ -151,7 +151,7 @@ pub static PICKLE_DB: Lazy<MySyncUnsafeCell< PickleDb >> = Lazy::new(|| {
   MySyncUnsafeCell::new(pickle_db)
 });
 
-pub fn solve(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>, weights: &Vec<Vec<CityWeight>>, save_run_prefix: Option<String>) -> Vec<CityNum> {
+pub fn solve(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>, weights: &Vec<Vec<CityWeight>>, save_run_prefix: Option<String>, thread_pool: &ThreadPool) -> Vec<CityNum> {
   if let Some(cached_solution_vec) = get_cached_solution(node_coordinates) {
       // Store solution
       match &save_run_prefix {
@@ -187,7 +187,7 @@ pub fn solve(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>, weight
     solve_st(node_coordinates, weights, 0, get_num_permutations(weights) ) // avoid thread overhead
   }
   else {
-    solve_mt(node_coordinates, weights)
+    solve_mt(node_coordinates, weights, thread_pool)
   };
   
   // Store solution
@@ -368,8 +368,15 @@ pub fn solve_st(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>, wei
    return best_path;
 }
 
-pub fn solve_mt(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>, weights: &Vec<Vec<CityWeight>>) -> Vec<CityNum> {
-  let threads = num_cpus::get_physical();
+pub fn solve_mt(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>, weights: &Vec<Vec<CityWeight>>, thread_pool: &ThreadPool) -> Vec<CityNum> {
+  
+  // Screw being safe, these don't die until main() is done
+  // and any thread accessing them after main() deserves to crash.
+  let node_coordinates = unsafe { std::mem::transmute::<&Vec<(CityNum, CityXYCoord, CityXYCoord)>, &'static Vec<(CityNum, CityXYCoord, CityXYCoord)>>(node_coordinates) };
+  let weights = unsafe { std::mem::transmute::<&Vec<Vec<CityWeight>>, &'static Vec<Vec<CityWeight>>>(weights) };
+
+  
+  let threads = thread_pool.max_count();
   let num_permutations = get_num_permutations( weights );
   let permutations_per_t = num_permutations / threads;
 
@@ -414,39 +421,39 @@ pub fn solve_mt(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>, wei
   }
 
 
-  crossbeam::scope(|s| {
-    for t in 0..threads {
-      let thread_best_paths = thread_best_paths.clone(); // Each thread gets an atomic ref to the mutex
-      let a_thread_is_processing_remainder = a_thread_is_processing_remainder.clone(); // allow move of AtomicBool through our Arc
-      s.spawn(move |_| {
-        let begin_p = permutations_per_t * t;
-        let end_p = permutations_per_t * (t+1);
+  for t in 0..threads {
+    let thread_best_paths = thread_best_paths.clone(); // Each thread gets an atomic ref to the mutex
+    let a_thread_is_processing_remainder = a_thread_is_processing_remainder.clone(); // allow move of AtomicBool through our Arc
+    thread_pool.execute(move || {
+      let begin_p = permutations_per_t * t;
+      let end_p = permutations_per_t * (t+1);
 
-        let best_t_path = solve_st(node_coordinates, weights, begin_p, end_p );
-        // Finally get a lock & write our best path to the list
+      let best_t_path = solve_st(node_coordinates, weights, begin_p, end_p );
+      // Finally get a lock & write our best path to the list
+      loop {
+        if let Ok(ref mut thread_best_paths) = thread_best_paths.try_lock() {
+          thread_best_paths[t] = best_t_path;
+          break;
+        }
+      }
+
+      // Has someone already begun processing the remainder job?
+      if !a_thread_is_processing_remainder.load(Ordering::Relaxed) {
+        a_thread_is_processing_remainder.store(true, Ordering::Relaxed);
+        let best_t_path = solve_st(node_coordinates, weights, permutations_per_t * threads, num_permutations);
+        // Same deal, get lock & write to final index.
         loop {
           if let Ok(ref mut thread_best_paths) = thread_best_paths.try_lock() {
-            thread_best_paths[t] = best_t_path;
+            thread_best_paths[threads] = best_t_path;
             break;
           }
         }
+      }
 
-        // Has someone already begun processing the remainder job?
-        if !a_thread_is_processing_remainder.load(Ordering::Relaxed) {
-          a_thread_is_processing_remainder.store(true, Ordering::Relaxed);
-          let best_t_path = solve_st(node_coordinates, weights, permutations_per_t * threads, num_permutations);
-          // Same deal, get lock & write to final index.
-          loop {
-            if let Ok(ref mut thread_best_paths) = thread_best_paths.try_lock() {
-              thread_best_paths[threads] = best_t_path;
-              break;
-            }
-          }
-        }
+    });
+  }
 
-      });
-    }
-  }).expect("Error joining crossbeam threads!");
+  thread_pool.join();
 
   // Now we pick the best of each N threads best paths
   let thread_best_paths = thread_best_paths.lock().expect("Could not lock thread_best_paths");
