@@ -712,7 +712,7 @@ pub fn next_step_n_deep(
   if is_final_iter {
     // Actually do the change for all indicies_and_citynums_removed_so_far
     
-    // indicies_and_citynums_removed_so_far.push( (best_tour_n, ordered_visits[best_tour_n]) );
+    indicies_and_citynums_removed_so_far.push( (best_tour_n, ordered_visits[best_tour_n]) );
     println!("before insert_point_step ordered_visits={:?}", ordered_visits);
 
     insert_point_step(ordered_visits, node_coordinates, weights, citynum_to_insert);

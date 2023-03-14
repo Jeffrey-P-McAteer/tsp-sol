@@ -108,6 +108,7 @@ fn timed_main() {
   }
   
   let thread_pool = ThreadPool::new( num_cpus::get_physical() );
+  println!("Brute force algo thread pool size: {}", thread_pool.max_count());
   
   let file_arg = args.get(1).unwrap();
 
@@ -147,7 +148,11 @@ fn timed_main() {
   }
   
   if file_arg == "selective" {
-    selective(&thread_pool); // generate increasing city size until failure (jeff() != brute()), then go back and map a large range of points
+    // generate increasing city size until failure (jeff() != brute()), then go back and map a large range of points
+    selective(
+      args.get(2).unwrap_or(&"11".to_string()).parse().unwrap(), // arg after "selective" OR 11
+      &thread_pool
+    );
     return;
   }
   
@@ -561,7 +566,7 @@ fn compute_weight_coords(node_coordinates: &Vec<(usize, fp, fp)>) -> Vec<Vec<fp>
   return weights;
 }
 
-fn selective(thread_pool: &ThreadPool) {
+fn selective(max_cities_to_test: usize, thread_pool: &ThreadPool) {
   println!("Performing selective failure...");
   // Bounding box for all points
   //let x_min_bound: fp = 0.0;
@@ -590,7 +595,7 @@ fn selective(thread_pool: &ThreadPool) {
   }
   
   // If we hit 11 cities without a failure we'll recurse and start from 3 again.
-  for city_num in 3..10 {
+  for city_num in 3..max_cities_to_test {
     let new_r_city = (
       city_num,
       rng.gen_range(x_min, x_max),
@@ -628,8 +633,8 @@ fn selective(thread_pool: &ThreadPool) {
     }
   }
   
-  println!("Failed to break after 11, resetting...");
-  selective(thread_pool);
+  println!("Failed to break after {}, resetting...", max_cities_to_test);
+  selective(max_cities_to_test, thread_pool);
   
 }
 
