@@ -49,8 +49,8 @@ mod brute_algo;
 mod jeff_algo;
 
 #[allow(non_camel_case_types)]
-//pub type fp = f32;
-pub type fp = f64;
+pub type fp = f32;
+//pub type fp = f64;
 
 // fp numbers within this distance are considered equal
 #[allow(non_upper_case_globals)]

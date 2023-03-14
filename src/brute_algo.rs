@@ -404,21 +404,24 @@ pub fn solve_mt(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>, wei
        break;
      }
    }
-  for t in 0..(threads+1) {
-    let begin_p = permutations_per_t * t;
-    let end_p = permutations_per_t * (t+1);
+  
+   {
     let mut cache_ref = PERMUTATIONS_CACHE.lock().unwrap();
-    if let Some(cached_path) = cache_ref.get(&get_permutation_cache_key(begin_p, weights.len())) {
-      cache_current_path = cached_path.clone();
-    }
-    else {
-      cache_ref.insert(get_permutation_cache_key(begin_p, weights.len()), cache_current_path.clone() );
-      for _ in 0..permutations_per_t { // increase by permutations_per_t permutations & insert
-          cache_current_path.next_permutation();
+    for t in 0..(threads+1) {
+      let begin_p = permutations_per_t * t;
+      let end_p = permutations_per_t * (t+1);
+      if let Some(cached_path) = cache_ref.get(&get_permutation_cache_key(begin_p, weights.len())) {
+        cache_current_path = cached_path.clone();
       }
-      cache_ref.insert(get_permutation_cache_key(end_p, weights.len()), cache_current_path.clone() );
+      else {
+        cache_ref.insert(get_permutation_cache_key(begin_p, weights.len()), cache_current_path.clone() );
+        for _ in 0..permutations_per_t { // increase by permutations_per_t permutations & insert
+            cache_current_path.next_permutation();
+        }
+        cache_ref.insert(get_permutation_cache_key(end_p, weights.len()), cache_current_path.clone() );
+      }
     }
-  }
+  } // cache_ref is dropped 
 
 
   for t in 0..threads {
