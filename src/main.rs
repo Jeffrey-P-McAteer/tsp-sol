@@ -150,9 +150,14 @@ fn timed_main() {
   if file_arg == "selective" {
     // generate increasing city size until failure (jeff() != brute()), then go back and map a large range of points
     let max_cities_to_test: usize = args.get(2).unwrap_or(&"11".to_string()).parse().unwrap();  // arg after "selective" OR 11
-    let num_to_test_before: usize = args.get(2).unwrap_or(&"2".to_string()).parse().unwrap();  // arg after "max_cities_to_test" OR 1
+    let num_to_test_before: usize = args.get(3).unwrap_or(&"2".to_string()).parse().unwrap();  // arg after "max_cities_to_test" OR 1
+    let mut min_cities_to_ignore = max_cities_to_test - num_to_test_before;
+    if min_cities_to_ignore >= max_cities_to_test {
+      println!("Invalid num_to_test_before passed ({}), resetting min_cities_to_ignore from {} to {}", num_to_test_before, min_cities_to_ignore, max_cities_to_test - 1);
+      min_cities_to_ignore = max_cities_to_test - 1;
+    }
     selective(
-      max_cities_to_test - num_to_test_before,
+      min_cities_to_ignore,
       max_cities_to_test,
       &thread_pool
     );
@@ -570,7 +575,7 @@ fn compute_weight_coords(node_coordinates: &Vec<(usize, fp, fp)>) -> Vec<Vec<fp>
 }
 
 fn selective(min_cities_to_ignore: usize, max_cities_to_test: usize, thread_pool: &ThreadPool) {
-  println!("Performing selective failure...");
+  println!("Performing selective failure from {} points to {} points...", min_cities_to_ignore, max_cities_to_test);
   // Bounding box for all points
   //let x_min_bound: fp = 0.0;
   //let x_max_bound: fp = 15.0;
