@@ -25,31 +25,32 @@ type CityXYCoord = fp;
 pub fn solve(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>, weights: &Vec<Vec<CityWeight>>, save_run_prefix: Option<String>) -> Vec<usize> {
   let mut ordered_visits = compute_largest_triangle(node_coordinates, weights);
   
-  let mut indicies_and_citynums_removed_so_far: Vec<(usize, CityNum)> = vec![];
+  // let mut indicies_and_citynums_removed_so_far: Vec<(usize, CityNum)> = vec![];
 
   while ordered_visits.len() < weights.len() {
-    // if ordered_visits.len() > 4 {
-    //   ordered_visits = next_step_4_deep(&ordered_visits, &node_coordinates, &weights, &next_city_num_first_not_inserted);
-    // }
-    // else if ordered_visits.len() > 3 {
-    //   ordered_visits = next_step_3_deep(&ordered_visits, &node_coordinates, &weights, &next_city_num_first_not_inserted);
-    // }
-    // else {
-    //   ordered_visits = next_step(&ordered_visits, &node_coordinates, &weights, &next_city_num_first_not_inserted);
-    // }
+    if ordered_visits.len() > 4 {
+      ordered_visits = next_step_4_deep(&ordered_visits, &node_coordinates, &weights, &next_city_num_first_not_inserted);
+    }
+    else if ordered_visits.len() > 3 {
+      ordered_visits = next_step_3_deep(&ordered_visits, &node_coordinates, &weights, &next_city_num_first_not_inserted);
+    }
+    else {
+      ordered_visits = next_step(&ordered_visits, &node_coordinates, &weights, &next_city_num_first_not_inserted);
+    }
 
-    let citynum_to_insert = next_city_num_first_not_inserted(&ordered_visits, &weights);
-    let num_steps = if ordered_visits.len() > 3 { 1 } else { 0 };
-    indicies_and_citynums_removed_so_far.clear();
-    next_step_n_deep(
-      &mut ordered_visits,
-      &node_coordinates,
-      &weights,
-      citynum_to_insert,
-      num_steps,
-      0.0,
-      &mut indicies_and_citynums_removed_so_far,
-    );
+    // let citynum_to_insert = next_city_num_first_not_inserted(&ordered_visits, &weights);
+    // let num_steps = if ordered_visits.len() > 3 { 1 } else { 0 };
+    // indicies_and_citynums_removed_so_far.clear();
+    // next_step_n_deep(
+    //   &mut ordered_visits,
+    //   &node_coordinates,
+    //   &weights,
+    //   citynum_to_insert,
+    //   num_steps,
+    //   0.0,
+    //   &mut indicies_and_citynums_removed_so_far,
+    // );
+    // println!("\nsolve() end-of-while-loop\n");
   }
 
   // Store solution
@@ -476,17 +477,26 @@ pub fn next_step_n_deep(
   let mut best_tour_delta = fp::INFINITY;
   let mut best_tour_n = 0;
 
-  indicies_and_citynums_removed_so_far.push( (0, ordered_visits[0]) ); // last item will track value of N in the following loop
-  let indicies_removed_i = indicies_and_citynums_removed_so_far.len() - 1;
+  let is_final_iter = num_steps < 1;
 
-  //println!("next_step_n_deep ordered_visits={:?} indicies_and_citynums_removed_so_far={:?}", ordered_visits, indicies_and_citynums_removed_so_far);
+  let begin_ordered_visits_len = ordered_visits.len();
+
+  println!("next_step_n_deep ordered_visits={:?} indicies_and_citynums_removed_so_far={:?} is_final_iter={}", ordered_visits, indicies_and_citynums_removed_so_far, is_final_iter);
+
+  if !is_final_iter {
+    indicies_and_citynums_removed_so_far.push( (0, ordered_visits[0]) ); // last item will track value of N in the following loop
+  }
+  
+  let indicies_removed_i = indicies_and_citynums_removed_so_far.len() - 1;
 
   for n in 0..ordered_visits.len() {
     let removed_citynum_n = ordered_visits.remove(n);
 
-    //println!("for n ... ordered_visits={:?}", ordered_visits);
+    println!("for n ... ordered_visits={:?}", ordered_visits);
 
-    indicies_and_citynums_removed_so_far[ indicies_removed_i ] = (n, removed_citynum_n);
+    if !is_final_iter {
+      indicies_and_citynums_removed_so_far[ indicies_removed_i ] = (n, removed_citynum_n);
+    }
     
     let n_left_citynum = ordered_visits[ (n + ordered_visits.len() - 1) % ordered_visits.len() ];
     let n_right_citynum = ordered_visits[ (n) % ordered_visits.len() ];
@@ -494,7 +504,8 @@ pub fn next_step_n_deep(
     // Delta must begin with the removal of 2 edges above
     this_delta += (-weights[n_left_citynum][removed_citynum_n]) + (-weights[removed_citynum_n][n_right_citynum]) + weights[n_left_citynum][n_right_citynum];
 
-    if num_steps < 1 {
+    if is_final_iter {
+      
       //println!("PRE insert_point_step({:?} citynum_to_insert={})", ordered_visits, citynum_to_insert);
       this_delta += insert_point_step(ordered_visits, node_coordinates, weights, citynum_to_insert);
       //println!("POST insert_point_step({:?} citynum_to_insert={})", ordered_visits, citynum_to_insert);
@@ -519,6 +530,10 @@ pub fn next_step_n_deep(
     }
     else {
       // Go one step lower, return value is meaningless here
+      // if begin_ordered_visits_len-1 != ordered_visits.len() {
+      //   println!("ordered_visits={:?}", ordered_visits);
+      //   panic!("LOOP before next_step_n_deep: begin_ordered_visits_len={} and ordered_visits.len()={}, refusing to continue!", begin_ordered_visits_len, ordered_visits.len() );
+      // }
       next_step_n_deep(
         ordered_visits,
         node_coordinates,
@@ -532,16 +547,35 @@ pub fn next_step_n_deep(
 
     ordered_visits.insert(n, removed_citynum_n);
 
+    // if begin_ordered_visits_len != ordered_visits.len() {
+    //   println!("ordered_visits={:?}", ordered_visits);
+    //   panic!("LOOP: begin_ordered_visits_len={} and ordered_visits.len()={}, refusing to continue!", begin_ordered_visits_len, ordered_visits.len() );
+    // }
+
   }
 
-  if num_steps < 1 {
+  // if begin_ordered_visits_len != ordered_visits.len() {
+  //   println!("ordered_visits={:?}", ordered_visits);
+  //   panic!("begin_ordered_visits_len={} and ordered_visits.len()={}, refusing to continue!", begin_ordered_visits_len, ordered_visits.len() );
+  // }
+
+  if is_final_iter {
     // Actually do the change for all indicies_and_citynums_removed_so_far
     
-    indicies_and_citynums_removed_so_far.push( (best_tour_n, ordered_visits[best_tour_n]) );
+    // indicies_and_citynums_removed_so_far.push( (best_tour_n, ordered_visits[best_tour_n]) );
+    println!("before insert_point_step ordered_visits={:?}", ordered_visits);
 
     insert_point_step(ordered_visits, node_coordinates, weights, citynum_to_insert);
-    insert_all_point_steps(ordered_visits, node_coordinates, weights, &indicies_and_citynums_removed_so_far);
+
+    println!("after insert_point_step ordered_visits={:?}", ordered_visits);
+
+    // insert_all_point_steps(ordered_visits, node_coordinates, weights, &indicies_and_citynums_removed_so_far);
   }
+
+  // if begin_ordered_visits_len+1 != ordered_visits.len() {
+  //   println!("END ordered_visits={:?}", ordered_visits);
+  //   panic!("after final insert: begin_ordered_visits_len={} and ordered_visits.len()={}, refusing to continue!", begin_ordered_visits_len, ordered_visits.len() );
+  // }
 
   return best_tour_delta;
 }
