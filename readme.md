@@ -136,6 +136,8 @@ TSP_INITIAL_COORDS='3.0,3.0 3.0,12.0 6.0,8.50 9.0,8.50 12.0,3.0 12.0,12.0 7.5,6.
 # Move point 6 from x=3.0 to x=12.0
 TSP_INITIAL_COORDS='3.0,3.0 3.0,12.0 6.0,8.50 9.0,8.50 12.0,3.0 12.0,12.0 3.0,6.5' TSP_ENDING_COORDS='3.0,3.0 3.0,12.0 6.0,8.50 9.0,8.50 12.0,3.0 12.0,12.0 12.0,6.5' cargo run --release -- multi-pattern-scan 7 0.2 10 && mpv --loop-file=inf views/multi-pattern-scan.gif
 
+# More detailed version of the same
+TSP_INITIAL_COORDS='3.0,3.0 3.0,12.0 6.0,8.50 9.0,8.50 12.0,3.0 12.0,12.0 3.0,6.5' TSP_ENDING_COORDS='3.0,3.0 3.0,12.0 6.0,8.50 9.0,8.50 12.0,3.0 12.0,12.0 12.0,6.5' cargo run --release -- multi-pattern-scan 7 0.035 25 && mpv --loop-file=inf views/multi-pattern-scan.gif
 
 
 
@@ -167,7 +169,7 @@ firefox /tmp/graph.svg
 # Publishing/data sharing one-liners
 
 ```bash
-rsync -r --size-only --links --delete /j/proj/tsp-sol/views/ /mnt/machome/miscellaneous/jeff-tsp-views
+rsync -v -r --size-only --links --delete /j/proj/tsp-sol/views/ /mnt/machome/miscellaneous/jeff-tsp-views
 
 ```
 
