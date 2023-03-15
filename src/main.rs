@@ -1070,11 +1070,25 @@ fn multi_pattern_scan(n: usize, bound_granularity: fp, num_multi_steps_to_scan: 
   let node_coordinates_b: Vec<(usize, fp, fp)> = get_env_or_random_node_coordinates(n, "TSP_ENDING_COORDS", x_min, x_max, y_min, y_max);
   println!("Initial node_coordinates_b={:?}", &node_coordinates_b);
 
+  let output_scan_files = vec![];
   for multi_step_i in 0..num_multi_steps_to_scan {
     let converged_cities = converge_coordinates(&node_coordinates_a, &node_coordinates_b, multi_step_i, num_multi_steps_to_scan);
     let output_multiscan_file_path = format!("views/multi-pattern-scan-{}.png", multi_step_i);
     pattern_scan_coords(n, bound_granularity, &output_multiscan_file_path, converged_cities, thread_pool);
+    output_scan_files.push(output_multiscan_file_path);
   }
+
+  let gif_output_file = "views/multi-pattern-scan.gif";
+
+  let images = engiffen::load_images(&output_scan_files);
+  if let Ok(gif_data) = engiffen::engiffen(images, 5 /*fps*/, engiffen::Quantizer::Naive ) {
+    if let Ok(mut output_f) = File::create(gif_output_file) {
+      if let Err(e) = gif_data.write(&mut output_f) {
+        eprintln!("Error writing to {}: {:?}", gif_output_file, e);
+      }
+    }
+  }
+  println!("See {}", gif_output_file);
 
 }
 
