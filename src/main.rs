@@ -139,6 +139,19 @@ fn timed_main() {
       write_solution_out_to_views = false;
     }
   }
+
+  if file_arg == "pattern-scan" {
+    // Given a city of points, add one more in a grid and
+    // store a color based on the optimal point arrangement.
+    // Sections w/ the same ideal solution path will be grouped
+    // as the same color.
+    pattern_scan(
+      args.get(2).unwrap_or(&"5".to_string()).parse().unwrap(), // given number OR 5
+      args.get(3).unwrap_or(&"0.25".to_string()).parse().unwrap(), // given number OR 0.25
+      &thread_pool
+    );
+    return;
+  }
   
   if file_arg == "delta" {
     let num = 1000;
@@ -884,3 +897,164 @@ fn spray(n: usize, mut bound_granularity: fp, thread_pool: &ThreadPool) {
   println!("{} failures", num_failures);
   
 }
+
+fn pattern_scan(n: usize, mut bound_granularity: fp, thread_pool: &ThreadPool) {
+  println!("Pattern scanning {} cities...", n);
+  if bound_granularity < 0.010 {
+    println!("Resetting {} to 0.010 because that's the size of a single pixel...", bound_granularity);
+    bound_granularity = 0.010;
+  }
+  let bound_granularity = bound_granularity;
+  
+  // Bounding box for all points
+  let x_min_bound: fp = 0.0;
+  let x_max_bound: fp = 15.0;
+  let y_min_bound: fp = 0.0;
+  let y_max_bound: fp = 15.0;
+  
+  let x_min: fp = 4.0;
+  let x_max: fp = 11.0;
+  let y_min: fp = 4.0;
+  let y_max: fp = 11.0;
+  
+  let node_coordinates: Vec<(usize, fp, fp)> = get_env_or_random_node_coordinates(n, x_min, x_max, y_min, y_max);
+  println!("Initial node_coordinates={:?}", &node_coordinates);
+
+  // Generate partial image
+  let file_path = "views/pattern_scan.png";
+  let (width, height) = (900, 900);
+  let mut image = RgbImage::new(width + 15, height + 15); // width, height
+  
+  let (smallest_x, largest_y, largest_x, smallest_y) = (x_min_bound, y_max_bound, x_max_bound, y_min_bound);
+  let x_range: fp = largest_x - smallest_x;
+  let y_range: fp = largest_y - smallest_y;
+  
+  let city_weights = compute_weight_coords(&node_coordinates);
+
+  let mut point_y = y_min_bound;
+  loop {
+    if point_y > y_max_bound {
+      break;
+    }
+    
+    let mut point_x = x_min_bound;
+    loop {
+      if point_x > x_max_bound {
+        break;
+      }
+      
+      let mut node_coordinates = node_coordinates.clone(); // Prevent us from mutating the initial set of points
+      node_coordinates.push(
+        (node_coordinates.len(), point_x, point_y)
+      );
+      // Now add (point_x, point_y) and see if it breaks jalgo
+      
+      let city_weights = compute_weight_coords(&node_coordinates);
+      
+      let brute_sol = brute_algo::solve(&node_coordinates, &city_weights, None, thread_pool);
+      
+      let loc = (point_x, point_y);
+      let (loc_x,loc_y) = scale_xy(width, height, x_range as u32, y_range as u32, smallest_x, smallest_y, loc.0, loc.1);
+      
+      // Paint according to brute_sol order
+      let (r, g, b) = path_to_rgb(&brute_sol);
+      
+      // println!("RGB of {:?} is {}, {}, {}", brute_sol, r, g, b);
+
+      //*image.get_pixel_mut(loc_x, loc_y) = Rgb([r, g, b]);
+
+      // Larger 4x4 dots
+      *image.get_pixel_mut(loc_x, loc_y) = Rgb([r, g, b]);
+      {
+        *image.get_pixel_mut(loc_x+1, loc_y) = Rgb([r, g, b]);
+        *image.get_pixel_mut(loc_x+1, loc_y+1) = Rgb([r, g, b]);
+        *image.get_pixel_mut(loc_x, loc_y+1) = Rgb([r, g, b]);
+      }
+      
+      point_x += bound_granularity;
+    }
+    
+    point_y += bound_granularity;
+  }
+
+  let font = Font::try_from_bytes(include_bytes!("../resources/NotoSans-Bold.ttf")).unwrap();  
+  
+  for i in 0..node_coordinates.len() {
+    let loc = node_coordinates[i];
+    let (loc_x,loc_y) = scale_xy(width, height, x_range as u32, y_range as u32, smallest_x, smallest_y, loc.1, loc.2);
+    
+    // Set all location pixels to be red // r,g,b
+    //image.get_pixel_mut(loc_x, loc_y).data = [255, 0, 0];
+    //circle_it(&mut image, loc_x, loc_y, [255, 0, 0]);
+    draw_hollow_circle_mut(&mut image, (loc_x as i32, loc_y as i32), 10 /*radius*/, Rgb([255, 0, 0]));
+    
+    // Also draw an index number
+    
+    let font_height = 18.0;
+    let font_scale = Scale { x: font_height, y: font_height };
+    draw_text_mut(&mut image, Rgb([200, 200, 255]), loc_x as u32, loc_y as u32, font_scale, &font, format!("{}", i).as_str());
+  }
+
+  // Finally write image to views/pattern_scan.png
+  if let Err(e) = image.save(file_path) {
+    println!("Please create the directory ./views/ before running tests!");
+  }
+
+
+}
+
+fn path_to_rgb(path: &[usize]) -> (u8, u8, u8) {
+  let mut r = 128;
+  let mut g = 128;
+  let mut b = 128;
+
+  // First find the 0-value index, we will hash from that -> right direction
+  // so paths that are the same but rotated produce the same color.
+  let mut zero_i = 0;
+  for i in 0..path.len() {
+    if path[i] == 0 {
+      zero_i = i;
+    }
+  }
+
+  let end_i = (zero_i + (path.len() - 1) ) % path.len();
+  let mut i = zero_i;
+  loop {
+    if i == end_i {
+      break;
+    }
+    // Update colors according to value
+    let val = path[i];
+    
+    if val % 3 == 0 {
+      r = ((r as usize + val + 1) % 255) as u8;
+      r = ((r as usize * val) % 255) as u8;
+    }
+    else if val % 3 == 1 {
+      g = ((g as usize + val + 1) % 255) as u8;
+      g = ((g as usize * val) % 255) as u8;
+    }
+    else if val % 3 == 2 {
+      b = ((b as usize + val + 1) % 255) as u8;
+      b = ((b as usize * val) % 255) as u8;
+    }
+
+    i = (i+1) % path.len(); // increment w/ wrap
+  }
+
+  // Ugh possible collisions, but nicer scan image
+  if r < 127 {
+    r += 127;
+  }
+  if g < 127 {
+    g += 127;
+  }
+  if b < 127 {
+    b += 127;
+  }
+
+  (r, g, b)
+}
+
+
+
