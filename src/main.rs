@@ -36,10 +36,15 @@ use permutohedron;
 use threadpool::ThreadPool;
 use num_cpus;
 
+use once_cell::sync::Lazy;
+
 use std::fs;
 use std::fs::{File,create_dir};
 use std::path::Path;
 use std::io::{BufReader};
+use std::sync::{Mutex};
+use std::collections::HashMap;
+use std::hash::{Hash, Hasher};
 use std::env;
 //use std::io::prelude::*;
 use std::f32;
@@ -1003,11 +1008,11 @@ fn pattern_scan(n: usize, mut bound_granularity: fp, thread_pool: &ThreadPool) {
 
 }
 
-fn path_to_rgb(path: &[usize]) -> (u8, u8, u8) {
-  let mut r = 128;
-  let mut g = 128;
-  let mut b = 128;
+static PATH_TO_RGB_CACHE: Lazy<Mutex<HashMap<usize, (u8, u8, u8) >>> = Lazy::new(|| {
+  Mutex::new( HashMap::new() )
+});
 
+fn path_to_rgb(path: &[usize]) -> (u8, u8, u8) {
   // First find the 0-value index, we will hash from that -> right direction
   // so paths that are the same but rotated produce the same color.
   let mut zero_i = 0;
@@ -1019,6 +1024,8 @@ fn path_to_rgb(path: &[usize]) -> (u8, u8, u8) {
 
   let end_i = (zero_i + (path.len() - 1) ) % path.len();
   let mut i = zero_i;
+  let mut s = std::collections::hash_map::DefaultHasher::default();
+
   loop {
     if i == end_i {
       break;
@@ -1026,34 +1033,29 @@ fn path_to_rgb(path: &[usize]) -> (u8, u8, u8) {
     // Update colors according to value
     let val = path[i];
     
-    if val % 3 == 0 {
-      r = ((r as usize + val + 1) % 255) as u8;
-      r = ((r as usize * val) % 255) as u8;
-    }
-    else if val % 3 == 1 {
-      g = ((g as usize + val + 1) % 255) as u8;
-      g = ((g as usize * val) % 255) as u8;
-    }
-    else if val % 3 == 2 {
-      b = ((b as usize + val + 1) % 255) as u8;
-      b = ((b as usize * val) % 255) as u8;
-    }
+    val.hash(&mut s); // Hash the value into S, we only care about value and aligned ordering.
 
     i = (i+1) % path.len(); // increment w/ wrap
   }
 
-  // Ugh possible collisions, but nicer scan image
-  if r < 127 {
-    r += 127;
-  }
-  if g < 127 {
-    g += 127;
-  }
-  if b < 127 {
-    b += 127;
-  }
+  let hash_u64 = s.finish() as usize;
+  // If hash_u64 is in cache, re-use same color.
+  // Else generate something random but "nice" and store in cache.
 
-  (r, g, b)
+  let mut path_to_rgb_cache_ref = PATH_TO_RGB_CACHE.lock().unwrap();
+  if let Some(colors) = path_to_rgb_cache_ref.get(&hash_u64) {
+    return *colors;
+  }
+  else {
+    let r = rand::thread_rng().gen_range(50, 255) as u8;
+    let g = rand::thread_rng().gen_range(50, 255) as u8;
+    let b = rand::thread_rng().gen_range(50, 255) as u8;
+
+    // for all future hash_u64s in THIS process, re-use same color.
+    // Not deterministic across machines.
+    path_to_rgb_cache_ref.insert(hash_u64, (r, g, b));
+    return (r, g, b);
+  }
 }
 
 
