@@ -926,7 +926,7 @@ fn pattern_scan(n: usize, mut bound_granularity: fp, thread_pool: &ThreadPool) {
   println!("Initial node_coordinates={:?}", &node_coordinates);
 
   // Generate partial image
-  let file_path = "views/pattern_scan.png";
+  let file_path = "views/pattern-scan.png";
   let (width, height) = (900, 900);
   let mut image = RgbImage::new(width + 15, height + 15); // width, height
   
