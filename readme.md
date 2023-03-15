@@ -129,6 +129,15 @@ TSP_INITIAL_COORDS='4.0,9.0 10.0,9.0 7.0,4.0 ' cargo run --release -- pattern-sc
 TSP_INITIAL_COORDS='4.0,11.0 11.0,11.0 4.0,4.0 ' TSP_ENDING_COORDS='4.0,11.0 11.0,11.0 11.0,4.0 ' cargo run --release -- multi-pattern-scan 3 0.03 10 && mpv --loop-file=inf views/multi-pattern-scan.gif
 
 
+# More detailed puzzle, scaled using magnify_coords.py
+
+TSP_INITIAL_COORDS='3.0,3.0 3.0,12.0 6.0,8.27 9.0,8.27 12.0,3.0 12.0,12.0 7.5,6.96' cargo run --release -- pattern-scan 7 0.2
+
+TSP_INITIAL_COORDS='3.0,3.0 3.0,12.0 6.0,8.27 9.0,8.27 12.0,3.0 12.0,12.0 7.5,6.96 ' TSP_ENDING_COORDS='3.0,3.0 3.0,12.0 6.0,8.27 9.0,8.27 12.0,3.0 12.0,12.0 7.5,6.96 ' cargo run --release -- multi-pattern-scan 7 0.2 10 && mpv --loop-file=inf views/multi-pattern-scan.gif
+
+
+
+
 ```
 
 # Performance profiling

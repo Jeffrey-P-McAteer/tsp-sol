@@ -8,5 +8,7 @@ tsp/kaggle-2018.tsp
 perf.data
 perf.data.old
 flamegraph.svg
+__pycache__/
+*.pyc
 
 

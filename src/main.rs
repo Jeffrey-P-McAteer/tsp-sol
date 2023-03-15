@@ -1059,10 +1059,10 @@ fn multi_pattern_scan(n: usize, bound_granularity: fp, num_multi_steps_to_scan: 
   let y_min_bound: fp = 0.0;
   let y_max_bound: fp = 15.0;
   
-  let x_min: fp = 4.0;
-  let x_max: fp = 11.0;
-  let y_min: fp = 4.0;
-  let y_max: fp = 11.0;
+  let x_min: fp = 3.0;
+  let x_max: fp = 12.0;
+  let y_min: fp = 3.0;
+  let y_max: fp = 12.0;
 
   let node_coordinates_a: Vec<(usize, fp, fp)> = get_env_or_random_node_coordinates(n, "TSP_INITIAL_COORDS", x_min, x_max, y_min, y_max);
   println!("Initial node_coordinates_a={:?}", &node_coordinates_a);
