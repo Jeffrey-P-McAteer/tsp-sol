@@ -927,7 +927,23 @@ fn spray(n: usize, mut bound_granularity: fp, thread_pool: &ThreadPool) {
   
 }
 
-fn pattern_scan(n: usize, mut bound_granularity: fp, file_path: &str, thread_pool: &ThreadPool) {
+fn pattern_scan(n: usize, bound_granularity: fp, file_path: &str, thread_pool: &ThreadPool) {
+  // Bounding box for all points
+  let x_min_bound: fp = 0.0;
+  let x_max_bound: fp = 15.0;
+  let y_min_bound: fp = 0.0;
+  let y_max_bound: fp = 15.0;
+  
+  let x_min: fp = 4.0;
+  let x_max: fp = 11.0;
+  let y_min: fp = 4.0;
+  let y_max: fp = 11.0;
+
+  let node_coordinates: Vec<(usize, fp, fp)> = get_env_or_random_node_coordinates(n, "TSP_INITIAL_COORDS", x_min, x_max, y_min, y_max);
+  pattern_scan_coords(n, bound_granularity, file_path, node_coordinates, thread_pool);
+}
+
+fn pattern_scan_coords(n: usize, mut bound_granularity: fp, file_path: &str, node_coordinates: Vec<(usize, fp, fp)>, thread_pool: &ThreadPool) {
   println!("Pattern scanning {} cities...", n);
   if bound_granularity < 0.010 {
     println!("Resetting {} to 0.010 because that's the size of a single pixel...", bound_granularity);
@@ -946,7 +962,6 @@ fn pattern_scan(n: usize, mut bound_granularity: fp, file_path: &str, thread_poo
   let y_min: fp = 4.0;
   let y_max: fp = 11.0;
   
-  let node_coordinates: Vec<(usize, fp, fp)> = get_env_or_random_node_coordinates(n, "TSP_INITIAL_COORDS", x_min, x_max, y_min, y_max);
   println!("Initial node_coordinates={:?}", &node_coordinates);
 
   // Generate partial image
@@ -1036,6 +1051,8 @@ fn pattern_scan(n: usize, mut bound_granularity: fp, file_path: &str, thread_poo
 }
 
 fn multi_pattern_scan(n: usize, bound_granularity: fp, num_multi_steps_to_scan: usize, thread_pool: &ThreadPool) {
+  println!("Muti-pattern scanning {} cities...", n);
+  
   // Bounding box for all points
   let x_min_bound: fp = 0.0;
   let x_max_bound: fp = 15.0;
@@ -1050,16 +1067,38 @@ fn multi_pattern_scan(n: usize, bound_granularity: fp, num_multi_steps_to_scan: 
   let node_coordinates_a: Vec<(usize, fp, fp)> = get_env_or_random_node_coordinates(n, "TSP_INITIAL_COORDS", x_min, x_max, y_min, y_max);
   println!("Initial node_coordinates_a={:?}", &node_coordinates_a);
 
-  let node_coordinates_b: Vec<(usize, fp, fp)> = get_env_or_random_node_coordinates(n, "TSP_SECOND_COORDS", x_min, x_max, y_min, y_max);
+  let node_coordinates_b: Vec<(usize, fp, fp)> = get_env_or_random_node_coordinates(n, "TSP_ENDING_COORDS", x_min, x_max, y_min, y_max);
   println!("Initial node_coordinates_b={:?}", &node_coordinates_b);
 
-  // TODO 
+  for multi_step_i in 0..num_multi_steps_to_scan {
+    let converged_cities = converge_coordinates(&node_coordinates_a, &node_coordinates_b, multi_step_i, num_multi_steps_to_scan);
+    let output_multiscan_file_path = format!("views/multi-pattern-scan-{}.png", multi_step_i);
+    pattern_scan_coords(n, bound_granularity, &output_multiscan_file_path, converged_cities, thread_pool);
+  }
 
 }
 
 fn converge_coordinates(a: &Vec<(usize, fp, fp)>, b: &Vec<(usize, fp, fp)>, step_num: usize, total_steps: usize) -> Vec<(usize, fp, fp)> {
-  // TODO
-  a.clone()
+  if a.len() != b.len() {
+    panic!("a.len() = {} and b.len() = {}", a.len(), b.len());
+  }
+  let mut converged = vec![];
+  for i in 0..a.len() {
+    converged.push(
+      converge_coords(a[i], b[i], step_num, total_steps)
+    );
+  }
+  converged
+}
+
+fn converge_coords(a: (usize, fp, fp), b: (usize, fp, fp), step_num: usize, total_steps: usize) -> (usize, fp, fp) {
+  let a_weight = (total_steps - step_num) as fp / total_steps as fp;
+  let b_weight = step_num as fp / total_steps as fp;
+  (
+    a.0,
+    ((a.1 * a_weight) + (b.1 * b_weight)) / 2.0,
+    ((a.2 * a_weight) + (b.2 * b_weight)) / 2.0,
+  )
 }
 
 

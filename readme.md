@@ -122,6 +122,12 @@ TSP_INITIAL_COORDS='6.28,5.48 7.58,7.49 9.75,6.73 7.84,6.12 8.45,7.94 5.90,5.18 
 
 TSP_INITIAL_COORDS='4.00,4.00 4.00,6.00 5.00,5.17 6.00,5.17 7.00,4.00 7.00,6.00 5.50,4.88 ' cargo run --release -- pattern-scan 7 0.02
 
+# Triangle+1 or +2 multi-pattern-scan research
+TSP_INITIAL_COORDS='4.0,9.0 10.0,9.0 7.0,4.0 ' cargo run --release -- pattern-scan 3 0.03
+
+# Take 10 scans between the two cities (bottom 2 points stay, top point moves from left -> right)
+TSP_INITIAL_COORDS='4.0,9.0 10.0,9.0 3.0,4.0 ' TSP_ENDING_COORDS='4.0,9.0 10.0,9.0 11.0,4.0 ' cargo run --release -- multi-pattern-scan 3 0.03 10
+
 
 
 ```
