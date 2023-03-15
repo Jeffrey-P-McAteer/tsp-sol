@@ -1110,8 +1110,8 @@ fn converge_coords(a: (usize, fp, fp), b: (usize, fp, fp), step_num: usize, tota
   let b_weight = step_num as fp / total_steps as fp;
   (
     a.0,
-    ((a.1 * a_weight) + (b.1 * b_weight)) / 2.0,
-    ((a.2 * a_weight) + (b.2 * b_weight)) / 2.0,
+    ((a.1 * a_weight) + (b.1 * b_weight)),
+    ((a.2 * a_weight) + (b.2 * b_weight)),
   )
 }
 
