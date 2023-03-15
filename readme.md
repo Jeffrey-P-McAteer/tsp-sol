@@ -164,6 +164,13 @@ firefox /tmp/graph.svg
     - Possible low-level performance bump?
 
 
+# Publishing/data sharing one-liners
+
+```bash
+rsync -r --size-only --links --delete /j/proj/tsp-sol/views/ /mnt/machome/miscellaneous/jeff-tsp-views
+
+```
+
 
 # License
 
