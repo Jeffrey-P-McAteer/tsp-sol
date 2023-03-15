@@ -1016,6 +1016,9 @@ fn pattern_scan(n: usize, mut bound_granularity: fp, thread_pool: &ThreadPool) {
     println!("Please create the directory ./views/ before running tests!");
   }
 
+  let cache_ref = PATH_TO_RGB_CACHE.lock().unwrap();
+  let num_unique_paths = cache_ref.len();
+  println!("{} unique solutions found + plotted!", num_unique_paths);
 
 }
 
@@ -1109,7 +1112,8 @@ fn path_to_rgb(path: &[usize]) -> (u8, u8, u8) {
     path_to_rgb_cache_ref.insert(left_hash_u64, (r, g, b));
     path_to_rgb_cache_ref.insert(right_hash_u64, (r, g, b));
 
-    println!("Unique color ({}, {}, {}) allocated for paths = {:?} {:?}  hashes=({}, {})", r, g, b, left_path, right_path, left_hash_u64, right_hash_u64);
+    // Debugging
+    //println!("Unique color ({}, {}, {}) allocated for paths = {:?} {:?}  hashes=({}, {})", r, g, b, left_path, right_path, left_hash_u64, right_hash_u64);
 
     return (r, g, b);
   }
