@@ -155,6 +155,19 @@ fn timed_main() {
     pattern_scan(
       args.get(2).unwrap_or(&"5".to_string()).parse().unwrap(), // given number OR 5
       args.get(3).unwrap_or(&"0.25".to_string()).parse().unwrap(), // given number OR 0.25
+      "views/pattern-scan.png",
+      &thread_pool
+    );
+    return;
+  }
+
+  if file_arg == "multi-pattern-scan" {
+    // Same as pattern-scan, but take in 2 cities and perform
+    // pattern_scan in steps 
+    multi_pattern_scan(
+      args.get(2).unwrap_or(&"5".to_string()).parse().unwrap(), // given number OR 5 - number of cities
+      args.get(3).unwrap_or(&"0.25".to_string()).parse().unwrap(), // given number OR 0.25 - resolution to generate a SINGLE multi pattern at
+      args.get(4).unwrap_or(&"10".to_string()).parse().unwrap(), // number of steps to put between 2 cities, aka total number of pattern_scans to run.
       &thread_pool
     );
     return;
@@ -722,11 +735,11 @@ fn is_identical_path(path_a: &[usize], path_b: &[usize]) -> bool {
   return true; // identical b/c all path_a[i+] == path_b[i+]
 }
 
-fn get_env_or_random_node_coordinates(n: usize, x_min: fp, x_max: fp, y_min: fp, y_max: fp) -> Vec<(usize, fp, fp)> {
+fn get_env_or_random_node_coordinates(n: usize, env_var_name: &str, x_min: fp, x_max: fp, y_min: fp, y_max: fp) -> Vec<(usize, fp, fp)> {
   let mut rng = rand::thread_rng();
   let mut node_coordinates: Vec<(usize, fp, fp)> = vec![];
   // Create random set of points OR parse from env var
-  match env::var("TSP_INITIAL_COORDS") {
+  match env::var(env_var_name) {
     Ok(initial_coords_s) => {
       // initial_coords_s == "5.12,6.8 4.8,4.9, 1.2,1.3"
       let pairs: Vec<&str> = initial_coords_s.split(" ").collect();
@@ -774,7 +787,7 @@ fn spray(n: usize, mut bound_granularity: fp, thread_pool: &ThreadPool) {
   let y_min: fp = 4.0;
   let y_max: fp = 11.0;
   
-  let node_coordinates: Vec<(usize, fp, fp)> = get_env_or_random_node_coordinates(n, x_min, x_max, y_min, y_max);
+  let node_coordinates: Vec<(usize, fp, fp)> = get_env_or_random_node_coordinates(n, "TSP_INITIAL_COORDS", x_min, x_max, y_min, y_max);
   println!("Initial node_coordinates={:?}", &node_coordinates);
   
   // Generate partial image
@@ -914,7 +927,7 @@ fn spray(n: usize, mut bound_granularity: fp, thread_pool: &ThreadPool) {
   
 }
 
-fn pattern_scan(n: usize, mut bound_granularity: fp, thread_pool: &ThreadPool) {
+fn pattern_scan(n: usize, mut bound_granularity: fp, file_path: &str, thread_pool: &ThreadPool) {
   println!("Pattern scanning {} cities...", n);
   if bound_granularity < 0.010 {
     println!("Resetting {} to 0.010 because that's the size of a single pixel...", bound_granularity);
@@ -933,11 +946,11 @@ fn pattern_scan(n: usize, mut bound_granularity: fp, thread_pool: &ThreadPool) {
   let y_min: fp = 4.0;
   let y_max: fp = 11.0;
   
-  let node_coordinates: Vec<(usize, fp, fp)> = get_env_or_random_node_coordinates(n, x_min, x_max, y_min, y_max);
+  let node_coordinates: Vec<(usize, fp, fp)> = get_env_or_random_node_coordinates(n, "TSP_INITIAL_COORDS", x_min, x_max, y_min, y_max);
   println!("Initial node_coordinates={:?}", &node_coordinates);
 
   // Generate partial image
-  let file_path = "views/pattern-scan.png";
+  // let file_path = "views/pattern-scan.png";
   let (width, height) = (900, 900);
   let mut image = RgbImage::new(width + 15, height + 15); // width, height
   
@@ -1021,6 +1034,34 @@ fn pattern_scan(n: usize, mut bound_granularity: fp, thread_pool: &ThreadPool) {
   println!("{} unique solutions found + plotted!", num_unique_paths);
 
 }
+
+fn multi_pattern_scan(n: usize, bound_granularity: fp, num_multi_steps_to_scan: usize, thread_pool: &ThreadPool) {
+  // Bounding box for all points
+  let x_min_bound: fp = 0.0;
+  let x_max_bound: fp = 15.0;
+  let y_min_bound: fp = 0.0;
+  let y_max_bound: fp = 15.0;
+  
+  let x_min: fp = 4.0;
+  let x_max: fp = 11.0;
+  let y_min: fp = 4.0;
+  let y_max: fp = 11.0;
+
+  let node_coordinates_a: Vec<(usize, fp, fp)> = get_env_or_random_node_coordinates(n, "TSP_INITIAL_COORDS", x_min, x_max, y_min, y_max);
+  println!("Initial node_coordinates_a={:?}", &node_coordinates_a);
+
+  let node_coordinates_b: Vec<(usize, fp, fp)> = get_env_or_random_node_coordinates(n, "TSP_SECOND_COORDS", x_min, x_max, y_min, y_max);
+  println!("Initial node_coordinates_b={:?}", &node_coordinates_b);
+
+  // TODO 
+
+}
+
+fn converge_coordinates(a: &Vec<(usize, fp, fp)>, b: &Vec<(usize, fp, fp)>, step_num: usize, total_steps: usize) -> Vec<(usize, fp, fp)> {
+  // TODO
+  a.clone()
+}
+
 
 static PATH_TO_RGB_CACHE: Lazy<Mutex<HashMap<usize, (u8, u8, u8) >>> = Lazy::new(|| {
   Mutex::new( HashMap::new() )
