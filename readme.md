@@ -131,9 +131,10 @@ TSP_INITIAL_COORDS='4.0,11.0 11.0,11.0 4.0,4.0 ' TSP_ENDING_COORDS='4.0,11.0 11.
 
 # More detailed puzzle, scaled using magnify_coords.py
 
-TSP_INITIAL_COORDS='3.0,3.0 3.0,12.0 6.0,8.27 9.0,8.27 12.0,3.0 12.0,12.0 7.5,6.96' cargo run --release -- pattern-scan 7 0.2
+TSP_INITIAL_COORDS='3.0,3.0 3.0,12.0 6.0,8.50 9.0,8.50 12.0,3.0 12.0,12.0 7.5,6.5' cargo run --release -- pattern-scan 7 0.2
 
-TSP_INITIAL_COORDS='3.0,3.0 3.0,12.0 6.0,8.27 9.0,8.27 12.0,3.0 12.0,12.0 7.5,6.96 ' TSP_ENDING_COORDS='3.0,3.0 3.0,12.0 6.0,8.27 9.0,8.27 12.0,3.0 12.0,12.0 7.5,6.96 ' cargo run --release -- multi-pattern-scan 7 0.2 10 && mpv --loop-file=inf views/multi-pattern-scan.gif
+# Move point 6 from x=3.0 to x=12.0
+TSP_INITIAL_COORDS='3.0,3.0 3.0,12.0 6.0,8.50 9.0,8.50 12.0,3.0 12.0,12.0 3.0,6.5' TSP_ENDING_COORDS='3.0,3.0 3.0,12.0 6.0,8.50 9.0,8.50 12.0,3.0 12.0,12.0 12.0,6.5' cargo run --release -- multi-pattern-scan 7 0.2 10 && mpv --loop-file=inf views/multi-pattern-scan.gif
 
 
 
