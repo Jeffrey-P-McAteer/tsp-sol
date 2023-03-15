@@ -1073,7 +1073,7 @@ fn multi_pattern_scan(n: usize, bound_granularity: fp, num_multi_steps_to_scan: 
   let mut output_scan_files = vec![];
   for multi_step_i in 0..num_multi_steps_to_scan {
     let converged_cities = converge_coordinates(&node_coordinates_a, &node_coordinates_b, multi_step_i, num_multi_steps_to_scan);
-    let output_multiscan_file_path = format!("views/multi-pattern-scan-{}.png", multi_step_i);
+    let output_multiscan_file_path = format!("views/multi-pattern-scan-{:03}.png", multi_step_i);
     pattern_scan_coords(n, bound_granularity, &output_multiscan_file_path, converged_cities, thread_pool);
     output_scan_files.push(output_multiscan_file_path);
   }
