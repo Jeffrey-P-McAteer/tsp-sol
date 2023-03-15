@@ -1015,45 +1015,91 @@ static PATH_TO_RGB_CACHE: Lazy<Mutex<HashMap<usize, (u8, u8, u8) >>> = Lazy::new
 fn path_to_rgb(path: &[usize]) -> (u8, u8, u8) {
   // First find the 0-value index, we will hash from that -> right direction
   // so paths that are the same but rotated produce the same color.
+  // let mut zero_i = 0;
+  // for i in 0..path.len() {
+  //   if path[i] == 0 {
+  //     zero_i = i;
+  //   }
+  // }
+  // let zero_i = zero_i;
+
+  // Calc left_hash
+  let left_path = path.to_vec();
+
   let mut zero_i = 0;
-  for i in 0..path.len() {
-    if path[i] == 0 {
+  for i in 0..left_path.len() {
+    if left_path[i] == 0 {
       zero_i = i;
     }
   }
+  let zero_i = zero_i;
 
   let end_i = (zero_i + (path.len() - 1) ) % path.len();
   let mut i = zero_i;
   let mut s = std::collections::hash_map::DefaultHasher::default();
-
   loop {
+    // Update colors according to value
+    let val = left_path[i];
+    val.hash(&mut s); // Hash the value into S, we only care about value and aligned ordering.
+
+    i = (i+1) % left_path.len(); // increment w/ wrap
+
     if i == end_i {
       break;
     }
+  }
+  let left_hash_u64 = s.finish() as usize;
+  
+  // Calc right_hash
+  let mut right_path = path.to_vec();
+  right_path.reverse();
+
+  let mut zero_i = 0;
+  for i in 0..right_path.len() {
+    if right_path[i] == 0 {
+      zero_i = i;
+    }
+  }
+  let zero_i = zero_i;
+
+  let end_i = (zero_i + (path.len() - 1) ) % path.len();
+  let mut i = zero_i;
+  let mut s = std::collections::hash_map::DefaultHasher::default();
+  loop {
     // Update colors according to value
-    let val = path[i];
-    
+    let val = right_path[i];
     val.hash(&mut s); // Hash the value into S, we only care about value and aligned ordering.
 
-    i = (i+1) % path.len(); // increment w/ wrap
-  }
+    i = (i+1) % right_path.len(); // increment w/ wrap
 
-  let hash_u64 = s.finish() as usize;
+    if i == end_i {
+      break;
+    }
+  }
+  let right_hash_u64 = s.finish() as usize;
+
   // If hash_u64 is in cache, re-use same color.
   // Else generate something random but "nice" and store in cache.
 
   let mut path_to_rgb_cache_ref = PATH_TO_RGB_CACHE.lock().unwrap();
-  if let Some(colors) = path_to_rgb_cache_ref.get(&hash_u64) {
+  if let Some(colors) = path_to_rgb_cache_ref.get(&left_hash_u64) {
+    return *colors;
+  }
+  else if let Some(colors) = path_to_rgb_cache_ref.get(&right_hash_u64) {
     return *colors;
   }
   else {
-    let r = rand::thread_rng().gen_range(50, 255) as u8;
-    let g = rand::thread_rng().gen_range(50, 255) as u8;
-    let b = rand::thread_rng().gen_range(50, 255) as u8;
+    let r = rand::thread_rng().gen_range(40, 220) as u8;
+    let g = rand::thread_rng().gen_range(40, 220) as u8;
+    let b = rand::thread_rng().gen_range(40, 220) as u8;
 
     // for all future hash_u64s in THIS process, re-use same color.
     // Not deterministic across machines.
-    path_to_rgb_cache_ref.insert(hash_u64, (r, g, b));
+    path_to_rgb_cache_ref.insert(left_hash_u64, (r, g, b));
+    path_to_rgb_cache_ref.insert(right_hash_u64, (r, g, b));
+
+    println!("Unique color ({}, {}, {}) allocated for paths = {:?} {:?}  hashes=({}, {})", r, g, b, left_path, right_path, left_hash_u64, right_hash_u64);
+
     return (r, g, b);
   }
 }
