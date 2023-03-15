@@ -80,6 +80,8 @@ spray requires 2 numbers after it, the N-1 size of the city and a resolution to 
       if they do not match a red pixel is plotted. This may be used to graphically show where
       JeffAlgo fails to uphold the hamiltonian cycle invariant from city size N to N+1.
 
+  pattern-scan N granularity
+
 "#);
 }
 
@@ -199,6 +201,15 @@ fn timed_main() {
       return; // error message printed in open_tsp_problem
     }
   };
+
+  // First dump the environment variable we'd need to set to scan this city,
+  // useful for going from .tsp file -> research
+  let mut env_s = "TSP_INITIAL_COORDS='".to_string();
+  for (_i, x, y) in node_coordinates.iter() {
+    env_s += format!("{:.2},{:.2} ", x, y).as_str();
+  }
+  env_s += "'";
+  println!("{}", env_s);
   
   if use_jalgo {
     let solution_p = if write_solution_out_to_views {
