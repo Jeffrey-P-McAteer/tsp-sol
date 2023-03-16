@@ -1060,6 +1060,8 @@ fn pattern_scan_coords(n: usize, mut bound_granularity: fp, file_path: &str, nod
   let file_path_name = &file_path_name.to_str().unwrap();
   let file_path_name = file_path_name.replace(".png", "").replace(".jpg", "");
 
+  let mut space_label_y_coords = vec![];
+
   for (rgb_key, inserted_points) in unique_solution_spaces_points.iter() {
     let mut sum_x = 0.0;
     let mut sum_y = 0.0;
@@ -1075,8 +1077,33 @@ fn pattern_scan_coords(n: usize, mut bound_granularity: fp, file_path: &str, nod
     let rgb_text = format!("{:02x}{:02x}{:02x}", rgb_key.0, rgb_key.1, rgb_key.2 );
     let font_height = 18.0;
     let font_scale = Scale { x: font_height, y: font_height };
+    
     // Apply a random += y delta for the label to prevent labels from overlapping in outputs
-    let loc_y = ( loc_y as i32 + ( rand::thread_rng().gen_range(-32, 32) as i32 ) ) as u32;
+    //let loc_y = ( loc_y as i32 + ( rand::thread_rng().gen_range(-32, 32) as i32 ) ) as u32;
+
+    // Is loc_y within 18px of anything in space_label_y_coords?
+    // If so incremet by 6px until no longer overlapping anything
+    let mut loc_y = loc_y - 18;
+    loop {
+      let mut y_is_overlapping = false;
+
+      for existing_y_coord in space_label_y_coords.iter() {
+        let existing_y_coord_min = existing_y_coord - 2;
+        let existing_y_coord_max = existing_y_coord + 22;
+        if loc_y > existing_y_coord_min && loc_y < existing_y_coord_max {
+          y_is_overlapping = true;
+        }
+      }
+
+      if y_is_overlapping {
+        loc_y += 6;
+      }
+      else {
+        break; // done!
+      }
+    }
+
+    space_label_y_coords.push(loc_y as u32);
     draw_text_mut(&mut image, Rgb([225, 225, 255]), loc_x as u32, loc_y as u32, font_scale, &font, rgb_text.as_str());
 
     let mut node_coordinates = node_coordinates.clone(); // Prevent us from mutating the initial set of points
