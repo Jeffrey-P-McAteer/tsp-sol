@@ -1088,8 +1088,8 @@ fn pattern_scan_coords(n: usize, mut bound_granularity: fp, file_path: &str, nod
       let mut y_is_overlapping = false;
 
       for existing_y_coord in space_label_y_coords.iter() {
-        let existing_y_coord_min = existing_y_coord - 2;
-        let existing_y_coord_max = existing_y_coord + 20;
+        let existing_y_coord_min = existing_y_coord - 16;
+        let existing_y_coord_max = existing_y_coord + 16;
         if loc_y > existing_y_coord_min && loc_y < existing_y_coord_max {
           y_is_overlapping = true;
         }
