@@ -240,7 +240,8 @@ fn timed_main() {
   
   if use_brute {
     let solution_p = if write_solution_out_to_views {
-      brute_algo::solve_all(&node_coordinates, &weights, Some( "./views/tsp_problem".to_string() ), &thread_pool)[0]
+      let all_solutions = brute_algo::solve_all(&node_coordinates, &weights, Some( "./views/tsp_problem".to_string() ), &thread_pool);
+      all_solutions[0].clone()
     }
     else {
       brute_algo::solve(&node_coordinates, &weights, None, &thread_pool)
@@ -1075,7 +1076,7 @@ fn pattern_scan_coords(n: usize, mut bound_granularity: fp, file_path: &str, nod
     let font_height = 18.0;
     let font_scale = Scale { x: font_height, y: font_height };
     // Apply a random += y delta for the label to prevent labels from overlapping in outputs
-    let loc_y = loc_y + ( rand::thread_rng().gen_range(-32.0, 32.0) as fp );
+    let loc_y = ( loc_y as i32 + ( rand::thread_rng().gen_range(-32, 32) as i32 ) ) as u32;
     draw_text_mut(&mut image, Rgb([225, 225, 255]), loc_x as u32, loc_y as u32, font_scale, &font, rgb_text.as_str());
 
     let mut node_coordinates = node_coordinates.clone(); // Prevent us from mutating the initial set of points
