@@ -1082,14 +1082,14 @@ fn pattern_scan_coords(n: usize, mut bound_granularity: fp, file_path: &str, nod
     //let loc_y = ( loc_y as i32 + ( rand::thread_rng().gen_range(-32, 32) as i32 ) ) as u32;
 
     // Is loc_y within 18px of anything in space_label_y_coords?
-    // If so incremet by 6px until no longer overlapping anything
-    let mut loc_y = loc_y - 18;
+    // If so increment by 6px until no longer overlapping anything
+    let mut loc_y = loc_y - 46;
     loop {
       let mut y_is_overlapping = false;
 
       for existing_y_coord in space_label_y_coords.iter() {
         let existing_y_coord_min = existing_y_coord - 2;
-        let existing_y_coord_max = existing_y_coord + 22;
+        let existing_y_coord_max = existing_y_coord + 20;
         if loc_y > existing_y_coord_min && loc_y < existing_y_coord_max {
           y_is_overlapping = true;
         }
