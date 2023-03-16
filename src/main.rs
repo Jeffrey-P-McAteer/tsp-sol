@@ -1051,6 +1051,7 @@ fn pattern_scan_coords(n: usize, mut bound_granularity: fp, file_path: &str, nod
   // and draw / log brute path for the average point of a shared collection of solutions
   let file_path_name = std::path::Path::new(file_path).file_name().unwrap();
   let file_path_name = &file_path_name.to_str().unwrap();
+  let file_path_name = file_path_name.replace(".png", "").replace(".jpg", "");
 
   for (rgb_key, inserted_points) in unique_solution_spaces_points.iter() {
     let mut sum_x = 0.0;
@@ -1075,8 +1076,11 @@ fn pattern_scan_coords(n: usize, mut bound_granularity: fp, file_path: &str, nod
     );
 
     // Also compute brute force for avg_x, avg_y and store under views/pattern-scan-{rgb_text}-center/
+
+    let parent_prefix_dir = format!("views/{}", file_path_name);
+    std::fs::create_dir_all(&parent_prefix_dir).unwrap_or(());
     
-    let prefix_dir = format!("views/{}-{}-center", file_path_name, rgb_text);
+    let prefix_dir = format!("views/{}/{}-center", file_path_name, rgb_text);
     for i in 3..(node_coordinates.len()+1) {
       let mut delta_node_coords = vec![];
       for j in 0..i {
