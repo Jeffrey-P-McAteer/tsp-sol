@@ -1095,10 +1095,6 @@ fn pattern_scan_coords(n: usize, mut bound_granularity: fp, file_path: &str, nod
     println!("Please create the directory ./views/ before running tests!");
   }
 
-  // let cache_ref = PATH_TO_RGB_CACHE.lock().unwrap();
-  // let num_unique_paths = cache_ref.len() / 3; // we store 3 keys per "unique" path, see path_to_rgb
-  // println!("{} unique solutions found + plotted!", num_unique_paths);
-
   println!("{} unique solutions found + plotted!", unique_solution_spaces_points.len());
 
 }
@@ -1176,77 +1172,45 @@ static PATH_TO_RGB_CACHE: Lazy<Mutex<HashMap<usize, (u8, u8, u8) >>> = Lazy::new
 });
 
 fn path_to_rgb(path: &[usize], city_weights: &Vec<Vec<fp>>) -> (u8, u8, u8) {
-  // First find the 0-value index, we will hash from that -> right direction
-  // so paths that are the same but rotated produce the same color.
-  // let mut zero_i = 0;
-  // for i in 0..path.len() {
-  //   if path[i] == 0 {
-  //     zero_i = i;
-  //   }
-  // }
-  // let zero_i = zero_i;
-
-  // Calc left_hash
-  let left_path = path.to_vec();
-
+  
+  // Iterate city from zero_i to end_i, calculating a hash in both directions.
+  
   let mut zero_i = 0;
-  for i in 0..left_path.len() {
-    if left_path[i] == 0 {
+  for i in 0..path.len() {
+    if path[i] == 0 {
       zero_i = i;
     }
   }
   let zero_i = zero_i;
 
   let end_i = (zero_i + (path.len() - 1) ) % path.len();
-  let mut i = zero_i;
-  let mut s = std::collections::hash_map::DefaultHasher::default();
+  
+  let mut left_i = zero_i;
+  let mut right_i = end_i;
+  let mut left_hash = std::collections::hash_map::DefaultHasher::default();
+  let mut right_hash = std::collections::hash_map::DefaultHasher::default();
+  
+  path[zero_i].hash(&mut right_hash); // right hash must visit 0 first to prevent off-by-one during flipped path comparisons.
+
   loop {
-    // Update colors according to value
-    let val = left_path[i];
-    val.hash(&mut s); // Hash the value into S, we only care about value and aligned ordering.
+    // Hash the value into S, we only care about value and aligned ordering.
+    path[left_i].hash(&mut left_hash);
+    path[right_i].hash(&mut right_hash);
 
-    i = (i+1) % left_path.len(); // increment w/ wrap
+    left_i = (left_i+1) % path.len(); // increment w/ wrap
+    right_i = (right_i+(path.len()-1)) % path.len(); // decrement w/ wrap
 
-    if i == end_i {
+    if left_i == end_i { // if this is ever NOT the terminating case I'm fine w/ a loud process hang
+      if right_i != zero_i {
+        panic!("Invariant violation, expected when left_i={} == end_i that right_i ({}) == {}", left_i, right_i, zero_i);
+      }
+      path[left_i].hash(&mut left_hash);
+      //path[right_i].hash(&mut right_hash); // cannot hash here, see instruction directly above loop{}
       break;
     }
   }
-  let left_hash_u64 = s.finish() as usize;
-  
-  // Calc right_hash
-  let mut right_path = path.to_vec();
-  right_path.reverse();
-
-  let mut zero_i = 0;
-  for i in 0..right_path.len() {
-    if right_path[i] == 0 {
-      zero_i = i;
-    }
-  }
-  let zero_i = zero_i;
-
-  let end_i = (zero_i + (path.len() - 1) ) % path.len();
-  let mut i = zero_i;
-  let mut s = std::collections::hash_map::DefaultHasher::default();
-  loop {
-    // Update colors according to value
-    let val = right_path[i];
-    val.hash(&mut s); // Hash the value into S, we only care about value and aligned ordering.
-
-    i = (i+1) % right_path.len(); // increment w/ wrap
-
-    if i == end_i {
-      break;
-    }
-  }
-  let right_hash_u64 = s.finish() as usize;
-
-  // As an additional lookup key, we calculate the path's distance * 100000,
-  // under the assumption that 2 ideal-but-rotated paths will have identical distances
-  // for cases where a city can have N equal correct solutions.
-  let dist_hash = compute_dist(&city_weights, path);
-  let dist_hash: usize = (dist_hash * 100.0) as usize;
-  
+  let left_hash_u64 = left_hash.finish() as usize;
+  let right_hash_u64 = right_hash.finish() as usize;
 
   // If hash_u64 is in cache, re-use same color.
   // Else generate something random but "nice" and store in cache.
@@ -1258,9 +1222,6 @@ fn path_to_rgb(path: &[usize], city_weights: &Vec<Vec<fp>>) -> (u8, u8, u8) {
   else if let Some(colors) = path_to_rgb_cache_ref.get(&right_hash_u64) {
     return *colors;
   }
-  else if let Some(colors) = path_to_rgb_cache_ref.get(&dist_hash) {
-    return *colors;
-  }
   else {
     let r = rand::thread_rng().gen_range(40, 220) as u8;
     let g = rand::thread_rng().gen_range(40, 220) as u8;
@@ -1270,10 +1231,9 @@ fn path_to_rgb(path: &[usize], city_weights: &Vec<Vec<fp>>) -> (u8, u8, u8) {
     // Not deterministic across machines.
     path_to_rgb_cache_ref.insert(left_hash_u64, (r, g, b));
     path_to_rgb_cache_ref.insert(right_hash_u64, (r, g, b));
-    path_to_rgb_cache_ref.insert(dist_hash, (r, g, b));
 
     // Debugging
-    //println!("Unique color ({}, {}, {}) allocated for paths = {:?} {:?}  hashes=({}, {})", r, g, b, left_path, right_path, left_hash_u64, right_hash_u64);
+    //println!("Unique color ({:02x}{:02x}{:02x}) allocated for path = {:?} hashes=({}, {})", r, g, b, path, left_hash_u64, right_hash_u64);
 
     return (r, g, b);
   }
