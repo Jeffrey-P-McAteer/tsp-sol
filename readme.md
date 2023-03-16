@@ -139,6 +139,8 @@ TSP_INITIAL_COORDS='3.0,3.0 3.0,12.0 6.0,8.50 9.0,8.50 12.0,3.0 12.0,12.0 3.0,6.
 # More detailed version of the same
 TSP_INITIAL_COORDS='3.0,3.0 3.0,12.0 6.0,8.50 9.0,8.50 12.0,3.0 12.0,12.0 3.0,6.5' TSP_ENDING_COORDS='3.0,3.0 3.0,12.0 6.0,8.50 9.0,8.50 12.0,3.0 12.0,12.0 12.0,6.5' cargo run --release -- multi-pattern-scan 7 0.035 25 && mpv --loop-file=inf views/multi-pattern-scan.gif
 
+# square with 5th point passing through center going left -> right
+TSP_INITIAL_COORDS='3.0,3.0 3.0,12.0 12.0,12.0 12.0,3.0 3.0,7.5' TSP_ENDING_COORDS='3.0,3.0 3.0,12.0 12.0,12.0 12.0,3.0 12.0,7.5' cargo run --release -- multi-pattern-scan 5 0.035 25
 
 
 ```

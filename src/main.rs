@@ -1108,10 +1108,11 @@ fn converge_coordinates(a: &Vec<(usize, fp, fp)>, b: &Vec<(usize, fp, fp)>, step
 fn converge_coords(a: (usize, fp, fp), b: (usize, fp, fp), step_num: usize, total_steps: usize) -> (usize, fp, fp) {
   let a_weight = (total_steps - step_num) as fp / total_steps as fp;
   let b_weight = step_num as fp / total_steps as fp;
+  const rounded_decimals = 1000.0;
   (
     a.0,
-    ((a.1 * a_weight) + (b.1 * b_weight)),
-    ((a.2 * a_weight) + (b.2 * b_weight)),
+    (((a.1 * a_weight) + (b.1 * b_weight)) * rounded_decimals).round() / rounded_decimals,
+    (((a.2 * a_weight) + (b.2 * b_weight)) * rounded_decimals).round() / rounded_decimals,
   )
 }
 
