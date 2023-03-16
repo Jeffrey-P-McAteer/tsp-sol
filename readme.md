@@ -142,6 +142,9 @@ TSP_INITIAL_COORDS='3.0,3.0 3.0,12.0 6.0,8.50 9.0,8.50 12.0,3.0 12.0,12.0 3.0,6.
 # square with 5th point passing through center going left -> right
 TSP_INITIAL_COORDS='3.0,3.0 3.0,12.0 12.0,12.0 12.0,3.0 3.0,7.5' TSP_ENDING_COORDS='3.0,3.0 3.0,12.0 12.0,12.0 12.0,3.0 12.0,7.5' cargo run --release -- multi-pattern-scan 5 0.025 32
 
+# 5-point envelope w/ moving biased 6th point left->right along the bottom of the graph
+TSP_INITIAL_COORDS='3.0,3.0 3.0,12.0 12.0,12.0 12.0,3.0 7.5,7.5 3.0,9' TSP_ENDING_COORDS='3.0,3.0 3.0,12.0 12.0,12.0 12.0,3.0 7.5,7.5 12.0,9' cargo run --release -- multi-pattern-scan 6 0.025 32
+
 
 ```
 
