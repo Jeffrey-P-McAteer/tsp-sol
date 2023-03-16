@@ -151,6 +151,19 @@ pub static PICKLE_DB: Lazy<MySyncUnsafeCell< PickleDb >> = Lazy::new(|| {
   MySyncUnsafeCell::new(pickle_db)
 });
 
+pub static MULTI_PICKLE_DB: Lazy<MySyncUnsafeCell< PickleDb >> = Lazy::new(|| {
+  // Even more agressive: we only dump at the end of main(), manually
+  let pickle_db = match PickleDb::load("target/cached_multi_solutions.db", PickleDbDumpPolicy::DumpUponRequest, SerializationMethod::Cbor) {
+    Ok(db) => db,
+    Err(e) => {
+      eprintln!("Error loading target/cached_multi_solutions.db: {:?}", e);
+      PickleDb::new("target/cached_multi_solutions.db", PickleDbDumpPolicy::DumpUponRequest, SerializationMethod::Cbor)
+    }
+  };
+
+  MySyncUnsafeCell::new(pickle_db)
+});
+
 pub fn solve(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>, weights: &Vec<Vec<CityWeight>>, save_run_prefix: Option<String>, thread_pool: &ThreadPool) -> Vec<CityNum> {
   if let Some(cached_solution_vec) = get_cached_solution(node_coordinates) {
       // Store solution
@@ -222,6 +235,89 @@ pub fn solve(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>, weight
   return best_path;
 }
 
+
+pub fn solve_all(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>, weights: &Vec<Vec<CityWeight>>, save_run_prefix: Option<String>, thread_pool: &ThreadPool) -> Vec<Vec<CityNum>> {
+  if let Some(cached_solution_vecs) = get_cached_solutions(node_coordinates) {
+    // Store solution
+    match &save_run_prefix {
+      Some(prefix) => {
+        let mut i = 0;
+        for cached_solution_vec in cached_solution_vecs.iter() {
+          save_state_image(format!("{}/brute-{:03}_sol{:02}.png", prefix, cached_solution_vec.len(), i), &cached_solution_vec, &node_coordinates);
+          fs::write(
+            format!("{}/brute-path_sol{:02}.txt", prefix, i),
+            format!("{:?}\nDistance:{}", cached_solution_vec, compute_dist(weights, &cached_solution_vec))
+          ).expect("Unable to write file");
+          i += 1;
+        }
+  
+        fs::write(
+          format!("{}/node-coordinates.txt", prefix),
+          format!("{:?}", node_coordinates)
+        ).expect("Unable to write file");
+  
+        let mut env_s = "TSP_INITIAL_COORDS='".to_string();
+        for (_i, x, y) in node_coordinates.iter() {
+          env_s += format!("{:.2},{:.2} ", x, y).as_str();
+        }
+        env_s += "'";
+  
+        fs::write(
+          format!("{}/node-coordinates-env.txt", prefix),
+          env_s
+        ).expect("Unable to write file");
+      }
+      None => { }
+    }
+    
+    return cached_solution_vecs;
+  }
+
+  let best_paths = if weights.len() < 7 {
+    solve_st_all(node_coordinates, weights, 0, get_num_permutations(weights) ) // avoid thread overhead
+  }
+  else {
+    solve_mt_all(node_coordinates, weights, thread_pool)
+  };
+  
+  // Store solution
+  match &save_run_prefix {
+    Some(prefix) => {
+      let mut i = 0;
+      for solution_vec in best_paths.iter() {
+        save_state_image(format!("{}/brute-{:03}_sol{:02}.png", prefix, solution_vec.len(), i), &solution_vec, &node_coordinates);
+        fs::write(
+          format!("{}/brute-path_sol{:02}.txt", prefix, i),
+          format!("{:?}\nDistance:{}", solution_vec, compute_dist(weights, &solution_vec))
+        ).expect("Unable to write file");
+        i += 1;
+      }
+
+      fs::write(
+        format!("{}/node-coordinates.txt", prefix),
+        format!("{:?}", node_coordinates)
+      ).expect("Unable to write file");
+
+      let mut env_s = "TSP_INITIAL_COORDS='".to_string();
+      for (_i, x, y) in node_coordinates.iter() {
+        env_s += format!("{:.2},{:.2} ", x, y).as_str();
+      }
+      env_s += "'";
+
+      fs::write(
+        format!("{}/node-coordinates-env.txt", prefix),
+        env_s
+      ).expect("Unable to write file");
+    }
+    None => { }
+  }
+
+  cache_solutions(node_coordinates, &best_paths);
+
+  return best_paths;
+}
+
+
 #[inline(always)]
 fn cached_solution_key(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>) -> String {
   #[cfg(not(windows))]
@@ -277,6 +373,10 @@ fn get_cached_solution(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord
 
 }
 
+fn get_cached_solutions(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>) -> Option<Vec<Vec<CityNum>>> {
+  MULTI_PICKLE_DB.get_mut().get::<Vec<Vec<CityNum>>>( &cached_solution_key(node_coordinates) )
+}
+
 fn cache_solution(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>, solution_best_path: &Vec<CityNum>) -> Option<()> {
   // I hereby declare all u64 == usize for the machines running this code
   // let solution_best_path: &Vec<u64> = unsafe { std::mem::transmute::<&Vec<usize>, &Vec<u64>>(solution_best_path) };
@@ -304,7 +404,32 @@ fn cache_solution(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>, s
   Some(())
 }
 
+fn cache_solutions(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>, solution_best_paths: &Vec<Vec<CityNum>>) -> Option<()> {
+  // I hereby declare all u64 == usize for the machines running this code
+  // let solution_best_path: &Vec<u64> = unsafe { std::mem::transmute::<&Vec<usize>, &Vec<u64>>(solution_best_path) };
+  // let zero_vec = zerovec::ZeroVec::from_slice_or_alloc(&solution_best_path);
+  
+  // let zero_vec_bytes = zero_vec.into_bytes();
+  // let cache_file = cached_solution_file(node_coordinates);
+  
+  // let mut file = std::fs::OpenOptions::new()
+  //     .create(true) // To create a new file
+  //     .write(true)
+  //     // either use the ? operator or unwrap since it returns a Result
+  //     .open(&cache_file).ok()?;
 
+  // file.write_all( &zero_vec_bytes.to_vec() ).ok()?;
+
+  // Some(())
+
+  //PICKLE_DB.lock().unwrap().set::<Vec<CityNum>>( &cached_solution_key(node_coordinates), solution_best_path ).ok()?;
+  if let Err(e) = MULTI_PICKLE_DB.get_mut().set::<Vec<Vec<CityNum>>>( &cached_solution_key(node_coordinates), solution_best_paths ) {
+    eprintln!("Error setting: {:?}", e);
+    return None;
+  }
+
+  Some(())
+}
 
 // The mathematicians know num permutations == factorial of set, but I sure won't remember that.
 #[inline(always)]
@@ -366,6 +491,61 @@ pub fn solve_st(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>, wei
    }
    
    return best_path;
+}
+
+pub fn solve_st_all(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>, weights: &Vec<Vec<CityWeight>>, begin_permutation_num: CityNum, max_permutation_num: CityNum) -> Vec<Vec<CityNum>> {
+  let mut current_path = vec![];
+   if let Some(cached_path) = PERMUTATIONS_CACHE.lock().unwrap().get( &get_permutation_cache_key(begin_permutation_num, weights.len()) ) {
+      current_path = cached_path.clone();
+   }
+   else {
+     for i in 0..weights.len() {
+       current_path.push(i);
+     }
+     // We, uh... need to go backwards until we hit the "first ordered permutation".
+     // This was a bug in the original implementation which apparently just went from
+     // random permutation index -> last sorted permutation.
+     loop {
+       if !current_path.prev_permutation() {
+         break;
+       }
+     }
+
+     for _ in 0..begin_permutation_num { // move UP to the first permutation idx
+        current_path.next_permutation();
+     }
+   }
+   // Now current_path is the correct permutation for this range
+ 
+   let mut best_path = current_path.clone();
+   let mut best_paths = vec![ best_path.clone() ]; // If path lengths are equal we just add paths to here.
+   let mut best_path_dist = compute_dist(weights, &best_path);
+   
+   let mut permutation_num = begin_permutation_num;
+   loop {
+     let this_dist = compute_dist(weights, &current_path);
+     if (this_dist - best_path_dist).abs() < fp_epsilon { // path distances are equal
+        best_paths.push(
+          current_path.clone()
+        );
+     }
+     else if this_dist - best_path_dist < fp_epsilon { // definitely better
+        best_path = current_path.clone();
+        best_path_dist = this_dist;
+        best_paths = vec![ best_path.clone() ]; // erase best paths, we found something shorter!
+     }
+     permutation_num += 1;
+     if permutation_num > max_permutation_num {
+       break; // for multithreading purposes, this thread is done.
+     }
+     
+     if !current_path.next_permutation() {
+       break;
+     }
+ 
+   }
+   
+   return best_paths;
 }
 
 pub fn solve_mt(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>, weights: &Vec<Vec<CityWeight>>, thread_pool: &ThreadPool) -> Vec<CityNum> {
@@ -471,6 +651,118 @@ pub fn solve_mt(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>, wei
   }
   
   return best_path.to_vec();
+}
+
+
+pub fn solve_mt_all(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>, weights: &Vec<Vec<CityWeight>>, thread_pool: &ThreadPool) -> Vec<Vec<CityNum>> {
+  
+  // Screw being safe, these don't die until main() is done
+  // and any thread accessing them after main() deserves to crash.
+  let node_coordinates = unsafe { std::mem::transmute::<&Vec<(CityNum, CityXYCoord, CityXYCoord)>, &'static Vec<(CityNum, CityXYCoord, CityXYCoord)>>(node_coordinates) };
+  let weights = unsafe { std::mem::transmute::<&Vec<Vec<CityWeight>>, &'static Vec<Vec<CityWeight>>>(weights) };
+
+  
+  let threads = thread_pool.max_count();
+  let num_permutations = get_num_permutations( weights );
+  let permutations_per_t = num_permutations / threads;
+
+
+  let permutations_remainder = num_permutations - (permutations_per_t * threads); // we just do this at the end of other threads work
+  let a_thread_is_processing_remainder = Arc::new(AtomicBool::new(false));
+
+  let mut thread_best_paths: Vec<Vec<Vec<CityNum>>> = vec![];
+  for t in 0..(threads + 1) {
+    thread_best_paths.push(vec![]); // empty vec is sentinel value
+  }
+
+  let thread_best_paths = Arc::new(Mutex::new(thread_best_paths));
+
+  // Populate cache for all begin_p values plus the threads * permutations_per_t beginning.
+  let mut cache_current_path = vec![];
+   for i in 0..weights.len() {
+     cache_current_path.push(i);
+   }
+   // We, uh... need to go backwards until we hit the "first ordered permutation".
+   // This was a bug in the original implementation which apparently just went from
+   // random permutation index -> last sorted permutation.
+   loop {
+     if !cache_current_path.prev_permutation() {
+       break;
+     }
+   }
+  
+   {
+    let mut cache_ref = PERMUTATIONS_CACHE.lock().unwrap();
+    for t in 0..(threads+1) {
+      let begin_p = permutations_per_t * t;
+      let end_p = permutations_per_t * (t+1);
+      if let Some(cached_path) = cache_ref.get(&get_permutation_cache_key(begin_p, weights.len())) {
+        cache_current_path = cached_path.clone();
+      }
+      else {
+        cache_ref.insert(get_permutation_cache_key(begin_p, weights.len()), cache_current_path.clone() );
+        for _ in 0..permutations_per_t { // increase by permutations_per_t permutations & insert
+            cache_current_path.next_permutation();
+        }
+        cache_ref.insert(get_permutation_cache_key(end_p, weights.len()), cache_current_path.clone() );
+      }
+    }
+  } // cache_ref is dropped 
+
+
+  for t in 0..threads {
+    let thread_best_paths = thread_best_paths.clone(); // Each thread gets an atomic ref to the mutex
+    let a_thread_is_processing_remainder = a_thread_is_processing_remainder.clone(); // allow move of AtomicBool through our Arc
+    thread_pool.execute(move || {
+      let begin_p = permutations_per_t * t;
+      let end_p = permutations_per_t * (t+1);
+
+      let best_t_paths = solve_st_all(node_coordinates, weights, begin_p, end_p );
+      // Finally get a lock & write our best path to the list
+      loop {
+        if let Ok(ref mut thread_best_paths) = thread_best_paths.try_lock() {
+          thread_best_paths[t] = best_t_paths;
+          break;
+        }
+      }
+
+      // Has someone already begun processing the remainder job?
+      if !a_thread_is_processing_remainder.load(Ordering::Relaxed) {
+        a_thread_is_processing_remainder.store(true, Ordering::Relaxed);
+        let best_t_paths = solve_st_all(node_coordinates, weights, permutations_per_t * threads, num_permutations);
+        // Same deal, get lock & write to final index.
+        loop {
+          if let Ok(ref mut thread_best_paths) = thread_best_paths.try_lock() {
+            thread_best_paths[threads] = best_t_paths;
+            break;
+          }
+        }
+      }
+
+    });
+  }
+
+  thread_pool.join();
+
+  // Now we pick the best of each N threads best paths
+  let thread_best_paths = thread_best_paths.lock().expect("Could not lock thread_best_paths");
+  let mut all_best_paths = vec![];
+  // let best_paths = thread_best_paths[0].clone();
+  let mut best_dist = compute_dist(weights, &thread_best_paths[0][0]);
+  for t in 0..(threads+1) {
+    for thread_best_path in &thread_best_paths[t] {
+      let this_dist = compute_dist(weights, &thread_best_path);
+      if (this_dist - best_dist).abs() < fp_epsilon { // is within equality of last tour
+        all_best_paths.push( thread_best_path.clone() );
+      }
+      else if this_dist - best_dist < fp_epsilon { // is definitely smaller
+        best_dist = this_dist;
+        all_best_paths = vec![ thread_best_path.clone() ];
+      }
+    }
+  }
+  
+  return all_best_paths;
 }
 
 /*pub fn factorial<N: Num + Ord + NumCast + Copy>(num: N) -> N{

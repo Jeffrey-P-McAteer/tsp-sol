@@ -100,6 +100,9 @@ fn main() {
   if let Err(e) = brute_algo::PICKLE_DB.get_mut().dump() {
     eprintln!("Error saving brute cache: {:?}", e);
   }
+  if let Err(e) = brute_algo::MULTI_PICKLE_DB.get_mut().dump() {
+    eprintln!("Error saving multi brute cache: {:?}", e);
+  }
 
 }
 
@@ -237,7 +240,7 @@ fn timed_main() {
   
   if use_brute {
     let solution_p = if write_solution_out_to_views {
-      brute_algo::solve(&node_coordinates, &weights, Some( "./views/tsp_problem".to_string() ), &thread_pool)
+      brute_algo::solve_all(&node_coordinates, &weights, Some( "./views/tsp_problem".to_string() ), &thread_pool)[0]
     }
     else {
       brute_algo::solve(&node_coordinates, &weights, None, &thread_pool)
@@ -300,7 +303,7 @@ fn delta_test(city_size: usize, thread_pool: &ThreadPool) -> bool {
     
     let prefix_dir = format!("./views/{:02}-{}/", weights.len(), r_test_num);
     jeff_algo::solve(&node_coordinates, &weights, Some(prefix_dir.clone()));
-    brute_algo::solve(&node_coordinates, &weights, Some(prefix_dir.clone()), thread_pool);
+    brute_algo::solve_all(&node_coordinates, &weights, Some(prefix_dir.clone()), thread_pool);
     return false;
   }
   return true;
@@ -684,7 +687,7 @@ fn selective(min_cities_to_ignore: usize, max_cities_to_test: usize, thread_pool
       // Now we have a city right before our failure.
       
       // Save the correct solution
-      brute_algo::solve(&node_coordinates, &city_weights, Some("./views/selective/".to_string()), thread_pool);
+      brute_algo::solve_all(&node_coordinates, &city_weights, Some("./views/selective/".to_string()), thread_pool);
       jeff_algo::solve(&node_coordinates, &city_weights, Some("./views/selective/".to_string()));
       
       // compute a 2d matrix of points and plot blue if they result in correct, red if they do not.
@@ -884,7 +887,7 @@ fn spray(n: usize, mut bound_granularity: fp, thread_pool: &ThreadPool) {
             }
             let city_weights = compute_weight_coords(&delta_node_coords);
             jeff_algo::solve(&delta_node_coords, &city_weights, Some(prefix_dir.clone()));
-            brute_algo::solve(&delta_node_coords, &city_weights, Some(prefix_dir.clone()), thread_pool);
+            brute_algo::solve_all(&delta_node_coords, &city_weights, Some(prefix_dir.clone()), thread_pool);
           }
           
         }
@@ -997,7 +1000,10 @@ fn pattern_scan_coords(n: usize, mut bound_granularity: fp, file_path: &str, nod
       
       let city_weights = compute_weight_coords(&node_coordinates);
       
-      let brute_sol = brute_algo::solve(&node_coordinates, &city_weights, None, thread_pool);
+      let brute_sol = brute_algo::solve_all(&node_coordinates, &city_weights, None, thread_pool);
+      let num_sols: i32 = brute_sol.len() as i32;
+      let rand_idx: i32 = rand::thread_rng().gen_range(0, num_sols);
+      let brute_sol: Vec<usize> = brute_sol[ rand_idx as usize ].clone(); // Vec<CityNum>
       
       let loc = (point_x, point_y);
       let (loc_x,loc_y) = scale_xy(width, height, x_range as u32, y_range as u32, smallest_x, smallest_y, loc.0, loc.1);
@@ -1068,6 +1074,8 @@ fn pattern_scan_coords(n: usize, mut bound_granularity: fp, file_path: &str, nod
     let rgb_text = format!("{:02x}{:02x}{:02x}", rgb_key.0, rgb_key.1, rgb_key.2 );
     let font_height = 18.0;
     let font_scale = Scale { x: font_height, y: font_height };
+    // Apply a random += y delta for the label to prevent labels from overlapping in outputs
+    let loc_y = loc_y + ( rand::thread_rng().gen_range(-32.0, 32.0) as fp );
     draw_text_mut(&mut image, Rgb([225, 225, 255]), loc_x as u32, loc_y as u32, font_scale, &font, rgb_text.as_str());
 
     let mut node_coordinates = node_coordinates.clone(); // Prevent us from mutating the initial set of points
@@ -1087,7 +1095,7 @@ fn pattern_scan_coords(n: usize, mut bound_granularity: fp, file_path: &str, nod
         delta_node_coords.push( node_coordinates[j] );
       }
       let city_weights = compute_weight_coords(&delta_node_coords);
-      brute_algo::solve(&delta_node_coords, &city_weights, Some(prefix_dir.clone()), thread_pool);
+      brute_algo::solve_all(&delta_node_coords, &city_weights, Some(prefix_dir.clone()), thread_pool);
     }
 
   }
