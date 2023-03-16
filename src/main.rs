@@ -1184,7 +1184,7 @@ static PATH_TO_RGB_CACHE: Lazy<Mutex<HashMap<usize, (u8, u8, u8) >>> = Lazy::new
   Mutex::new( HashMap::new() )
 });
 
-fn path_to_rgb(path: &[usize], city_weights: &Vec<Vec<fp>>) -> (u8, u8, u8) {
+pub fn path_to_rgb(path: &[usize], city_weights: &Vec<Vec<fp>>) -> (u8, u8, u8) {
   
   // Iterate city from zero_i to end_i, calculating a hash in both directions.
   

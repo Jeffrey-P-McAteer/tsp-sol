@@ -279,6 +279,20 @@ pub fn solve_all(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>, we
   else {
     solve_mt_all(node_coordinates, weights, thread_pool)
   };
+
+  // Filter best_paths to just the DISTINCT best paths, we don't care if one starts at city 0 and another has identical tour beginning at city 2
+  let mut unique_best_paths = vec![];
+  let mut seen_path_colors: Vec<(u8, u8, u8)> = vec![];
+  for path in &best_paths {
+    let exists = false;
+    let path_color = path_to_rgb(&path, weights);
+    if !seen_path_colors.contains(&path_color) {
+      seen_path_colors.push(path_color);
+      unique_best_paths.push(path.clone());
+    }
+  }
+  let best_paths = unique_best_paths;
+
   
   // Store solution
   match &save_run_prefix {
