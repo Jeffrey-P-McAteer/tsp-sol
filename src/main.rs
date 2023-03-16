@@ -472,7 +472,7 @@ fn save_state_image<I: Into<String>>(file_path: I, path: &Vec<usize>, locations:
     // Also draw an index number
     let font_height = 18.0;
     let font_scale = Scale { x: font_height, y: font_height };
-    draw_text_mut(&mut image, Rgb([200, 200, 255]), loc_x as u32, loc_y as u32, font_scale, &font, format!("{}", i).as_str());
+    draw_text_mut(&mut image, Rgb([225, 225, 255]), loc_x as u32, loc_y as u32, font_scale, &font, format!("{}", i).as_str());
   }
   
   for i in 0..path.len() {
@@ -525,7 +525,7 @@ fn save_state_image_center<I: Into<String>>(file_path: I, path: &Vec<usize>, loc
     // Also draw an index number
     let font_height = 14.0;
     let font_scale = Scale { x: font_height, y: font_height };
-    draw_text_mut(&mut image, Rgb([200, 200, 255]), loc_x as u32, loc_y as u32, font_scale, &font, format!("{}", i).as_str());
+    draw_text_mut(&mut image, Rgb([225, 225, 255]), loc_x as u32, loc_y as u32, font_scale, &font, format!("{}", i).as_str());
   }
   
   for i in 0..path.len() {
@@ -782,10 +782,10 @@ fn spray(n: usize, mut bound_granularity: fp, thread_pool: &ThreadPool) {
   let y_min_bound: fp = 0.0;
   let y_max_bound: fp = 15.0;
   
-  let x_min: fp = 4.0;
-  let x_max: fp = 11.0;
-  let y_min: fp = 4.0;
-  let y_max: fp = 11.0;
+  let x_min: fp = 3.0;
+  let x_max: fp = 12.0;
+  let y_min: fp = 3.0;
+  let y_max: fp = 12.0;
   
   let node_coordinates: Vec<(usize, fp, fp)> = get_env_or_random_node_coordinates(n, "TSP_INITIAL_COORDS", x_min, x_max, y_min, y_max);
   println!("Initial node_coordinates={:?}", &node_coordinates);
@@ -915,7 +915,7 @@ fn spray(n: usize, mut bound_granularity: fp, thread_pool: &ThreadPool) {
     
     let font_height = 18.0;
     let font_scale = Scale { x: font_height, y: font_height };
-    draw_text_mut(&mut image, Rgb([200, 200, 255]), loc_x as u32, loc_y as u32, font_scale, &font, format!("{}", i).as_str());
+    draw_text_mut(&mut image, Rgb([225, 225, 255]), loc_x as u32, loc_y as u32, font_scale, &font, format!("{}", i).as_str());
   }
 
   // Finally write image to views/spray.png
@@ -934,10 +934,10 @@ fn pattern_scan(n: usize, bound_granularity: fp, file_path: &str, thread_pool: &
   let y_min_bound: fp = 0.0;
   let y_max_bound: fp = 15.0;
   
-  let x_min: fp = 4.0;
-  let x_max: fp = 11.0;
-  let y_min: fp = 4.0;
-  let y_max: fp = 11.0;
+  let x_min: fp = 3.0;
+  let x_max: fp = 12.0;
+  let y_min: fp = 3.0;
+  let y_max: fp = 12.0;
 
   let node_coordinates: Vec<(usize, fp, fp)> = get_env_or_random_node_coordinates(n, "TSP_INITIAL_COORDS", x_min, x_max, y_min, y_max);
   pattern_scan_coords(n, bound_granularity, file_path, node_coordinates, thread_pool);
@@ -957,10 +957,10 @@ fn pattern_scan_coords(n: usize, mut bound_granularity: fp, file_path: &str, nod
   let y_min_bound: fp = 0.0;
   let y_max_bound: fp = 15.0;
   
-  let x_min: fp = 4.0;
-  let x_max: fp = 11.0;
-  let y_min: fp = 4.0;
-  let y_max: fp = 11.0;
+  let x_min: fp = 3.0;
+  let x_max: fp = 12.0;
+  let y_min: fp = 3.0;
+  let y_max: fp = 12.0;
   
   println!("Initial node_coordinates={:?}", &node_coordinates);
 
@@ -974,6 +974,8 @@ fn pattern_scan_coords(n: usize, mut bound_granularity: fp, file_path: &str, nod
   let y_range: fp = largest_y - smallest_y;
   
   let city_weights = compute_weight_coords(&node_coordinates);
+
+  let mut unique_solution_spaces_points: HashMap<(u8, u8, u8), Vec<(fp, fp)>> = HashMap::new();
 
   let mut point_y = y_min_bound;
   loop {
@@ -1001,7 +1003,13 @@ fn pattern_scan_coords(n: usize, mut bound_granularity: fp, file_path: &str, nod
       let (loc_x,loc_y) = scale_xy(width, height, x_range as u32, y_range as u32, smallest_x, smallest_y, loc.0, loc.1);
       
       // Paint according to brute_sol order
-      let (r, g, b) = path_to_rgb(&brute_sol);
+      let (r, g, b) = path_to_rgb(&brute_sol, &city_weights);
+
+      let rgb_key = (r, g, b);
+      if !unique_solution_spaces_points.contains_key(&rgb_key) {
+        unique_solution_spaces_points.insert(rgb_key, vec![]);
+      }
+      unique_solution_spaces_points.get_mut(&rgb_key).map(|key_vec| { key_vec.push( (point_x, point_y) ); });
       
       // println!("RGB of {:?} is {}, {}, {}", brute_sol, r, g, b);
 
@@ -1036,17 +1044,62 @@ fn pattern_scan_coords(n: usize, mut bound_granularity: fp, file_path: &str, nod
     
     let font_height = 18.0;
     let font_scale = Scale { x: font_height, y: font_height };
-    draw_text_mut(&mut image, Rgb([200, 200, 255]), loc_x as u32, loc_y as u32, font_scale, &font, format!("{}", i).as_str());
+    draw_text_mut(&mut image, Rgb([225, 225, 255]), loc_x as u32, loc_y as u32, font_scale, &font, format!("{}", i).as_str());
   }
+
+  // Get average of all points over unique_solution_spaces_points
+  // and draw / log brute path for the average point of a shared collection of solutions
+  let file_path_name = std::path::Path::new(file_path).file_name().unwrap();
+  let file_path_name = &file_path_name.to_str().unwrap();
+
+  for (rgb_key, inserted_points) in unique_solution_spaces_points.iter() {
+    let mut sum_x = 0.0;
+    let mut sum_y = 0.0;
+    for (x, y) in inserted_points.iter() {
+      sum_x += x;
+      sum_y += y;
+    }
+    let avg_x = sum_x / (inserted_points.len() as fp);
+    let avg_y = sum_y / (inserted_points.len() as fp);
+    
+    // Draw text
+    let (loc_x,loc_y) = scale_xy(width, height, x_range as u32, y_range as u32, smallest_x, smallest_y, avg_x, avg_y);
+    let rgb_text = format!("{:02x}{:02x}{:02x}", rgb_key.0, rgb_key.1, rgb_key.2 );
+    let font_height = 18.0;
+    let font_scale = Scale { x: font_height, y: font_height };
+    draw_text_mut(&mut image, Rgb([225, 225, 255]), loc_x as u32, loc_y as u32, font_scale, &font, rgb_text.as_str());
+
+    let mut node_coordinates = node_coordinates.clone(); // Prevent us from mutating the initial set of points
+    node_coordinates.push(
+      (node_coordinates.len(), avg_x, avg_y)
+    );
+
+    // Also compute brute force for avg_x, avg_y and store under views/pattern-scan-{rgb_text}-center/
+    
+    let prefix_dir = format!("views/{}-{}-center", file_path_name, rgb_text);
+    for i in 3..(node_coordinates.len()+1) {
+      let mut delta_node_coords = vec![];
+      for j in 0..i {
+        delta_node_coords.push( node_coordinates[j] );
+      }
+      let city_weights = compute_weight_coords(&delta_node_coords);
+      brute_algo::solve(&delta_node_coords, &city_weights, Some(prefix_dir.clone()), thread_pool);
+    }
+
+  }
+
+
 
   // Finally write image to views/pattern_scan.png
   if let Err(e) = image.save(file_path) {
     println!("Please create the directory ./views/ before running tests!");
   }
 
-  let cache_ref = PATH_TO_RGB_CACHE.lock().unwrap();
-  let num_unique_paths = cache_ref.len();
-  println!("{} unique solutions found + plotted!", num_unique_paths);
+  // let cache_ref = PATH_TO_RGB_CACHE.lock().unwrap();
+  // let num_unique_paths = cache_ref.len() / 3; // we store 3 keys per "unique" path, see path_to_rgb
+  // println!("{} unique solutions found + plotted!", num_unique_paths);
+
+  println!("{} unique solutions found + plotted!", unique_solution_spaces_points.len());
 
 }
 
@@ -1071,7 +1124,7 @@ fn multi_pattern_scan(n: usize, bound_granularity: fp, num_multi_steps_to_scan: 
   println!("Initial node_coordinates_b={:?}", &node_coordinates_b);
 
   let mut output_scan_files = vec![];
-  for multi_step_i in 0..num_multi_steps_to_scan {
+  for multi_step_i in 0..=num_multi_steps_to_scan {
     let converged_cities = converge_coordinates(&node_coordinates_a, &node_coordinates_b, multi_step_i, num_multi_steps_to_scan);
     let output_multiscan_file_path = format!("views/multi-pattern-scan-{:03}.png", multi_step_i);
     pattern_scan_coords(n, bound_granularity, &output_multiscan_file_path, converged_cities, thread_pool);
@@ -1122,7 +1175,7 @@ static PATH_TO_RGB_CACHE: Lazy<Mutex<HashMap<usize, (u8, u8, u8) >>> = Lazy::new
   Mutex::new( HashMap::new() )
 });
 
-fn path_to_rgb(path: &[usize]) -> (u8, u8, u8) {
+fn path_to_rgb(path: &[usize], city_weights: &Vec<Vec<fp>>) -> (u8, u8, u8) {
   // First find the 0-value index, we will hash from that -> right direction
   // so paths that are the same but rotated produce the same color.
   // let mut zero_i = 0;
@@ -1188,6 +1241,13 @@ fn path_to_rgb(path: &[usize]) -> (u8, u8, u8) {
   }
   let right_hash_u64 = s.finish() as usize;
 
+  // As an additional lookup key, we calculate the path's distance * 100000,
+  // under the assumption that 2 ideal-but-rotated paths will have identical distances
+  // for cases where a city can have N equal correct solutions.
+  let dist_hash = compute_dist(&city_weights, path);
+  let dist_hash: usize = (dist_hash * 100.0) as usize;
+  
+
   // If hash_u64 is in cache, re-use same color.
   // Else generate something random but "nice" and store in cache.
 
@@ -1196,6 +1256,9 @@ fn path_to_rgb(path: &[usize]) -> (u8, u8, u8) {
     return *colors;
   }
   else if let Some(colors) = path_to_rgb_cache_ref.get(&right_hash_u64) {
+    return *colors;
+  }
+  else if let Some(colors) = path_to_rgb_cache_ref.get(&dist_hash) {
     return *colors;
   }
   else {
@@ -1207,6 +1270,7 @@ fn path_to_rgb(path: &[usize]) -> (u8, u8, u8) {
     // Not deterministic across machines.
     path_to_rgb_cache_ref.insert(left_hash_u64, (r, g, b));
     path_to_rgb_cache_ref.insert(right_hash_u64, (r, g, b));
+    path_to_rgb_cache_ref.insert(dist_hash, (r, g, b));
 
     // Debugging
     //println!("Unique color ({}, {}, {}) allocated for paths = {:?} {:?}  hashes=({}, {})", r, g, b, left_path, right_path, left_hash_u64, right_hash_u64);
