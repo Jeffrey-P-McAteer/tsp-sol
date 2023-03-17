@@ -1282,12 +1282,18 @@ pub fn path_to_rgb(path: &[usize], city_weights: &Vec<Vec<fp>>) -> (u8, u8, u8) 
 fn spray_pattern_search(n: usize, bound_granularity: fp, num_sprays_to_perform: usize, thread_pool: &ThreadPool) {
   println!("Spray pattern searching {} cities for {} sprays...", n, num_sprays_to_perform);
 
+  if brute_algo::use_brute_cache_env_val() {
+    println!("Refusing to run w/ brute cache enabled, this will generate a ton of un-used entries. Set USE_BRUTE_CACHE=f before running");
+    return;
+  }
+
   for spray_i in 0..num_sprays_to_perform {
     // Generate random N-city
     let node_coordinates: Vec<(usize, fp, fp)> = get_env_or_random_node_coordinates(n, "SHOULD_NEVER_BE_COORDS_HERE!!__$%@!#@#!#&(*#@_INVALID_CHARS", x_min, x_max, y_min, y_max);
     println!("node_coordinates={:?}", node_coordinates);
 
-    //pattern_scan_coords(n, bound_granularity, file_path, node_coordinates, thread_pool);
+    let file_path = format!("views/spray-pattern-search-{:03}.png", spray_i);
+    pattern_scan_coords(n, bound_granularity, &file_path, node_coordinates, thread_pool);
 
   }
 
