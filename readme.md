@@ -171,7 +171,7 @@ find views -mindepth 1 -maxdepth 1 -type d -exec sh -c "ls {} | wc -l " \;
 find views -mindepth 1 -maxdepth 1 -type d -print -exec sh -c "ls {} | wc -l " \; 
 
 # Print max(numbers) for the lazy researcher
-find views -mindepth 1 -maxdepth 1 -type d -exec sh -c "ls {} | wc -l " \; | sort | tail -n 1
+find views -mindepth 1 -maxdepth 1 -type d -exec sh -c "ls {} | wc -l " \; | sort -n | tail -n 1
 
 ```
 
@@ -180,7 +180,7 @@ city size, maximum optimal solutions seen (of >=100 random cities searched)
 3          3
 4          6
 5          9
-6          9 !!! WAT why so similar to max(5) city solution space? more scans needed...
+6          12
 
 
 ```
