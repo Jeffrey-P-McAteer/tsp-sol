@@ -996,13 +996,16 @@ fn pattern_scan_coords(n: usize, mut bound_granularity: fp, file_path: &str, nod
   // the same color in this map so it can function as a quick skip-list
   let mut space_colors: HashMap<(u32, u32), (u8, u8, u8)> = HashMap::new();
 
+  let level_scale_multiplier: fp = 2.0;
+  //const level_scale_multiplier: i32 = 3;
+
   let mut level_num: i32 = 0;
   let mut tmp = bound_granularity;
   loop {
     if tmp >= 2.0 as fp { // this is the largest step we'll allow
       break;
     }
-    tmp *= 2.0 as fp;
+    tmp *= level_scale_multiplier as fp;
     level_num += 1;
   }
   let top_level_num = level_num;
@@ -1013,9 +1016,10 @@ fn pattern_scan_coords(n: usize, mut bound_granularity: fp, file_path: &str, nod
   // have the same RGB color.
   let mut step_bound_granularity: fp;
   loop {
-    step_bound_granularity = bound_granularity * i32::pow(2, level_num as u32) as fp;
+    step_bound_granularity = bound_granularity * fp::powi(level_scale_multiplier, level_num as i32) as fp;
 
-    println!("level_num={} step_bound_granularity={} space_colors.len()={}", level_num, step_bound_granularity, space_colors.len());
+    // Debugging perf issues w/ space_colors
+    //println!("level_num={} step_bound_granularity={} space_colors.len()={}", level_num, step_bound_granularity, space_colors.len());
 
     let mut point_y = y_min_bound;
     loop {
@@ -1045,36 +1049,69 @@ fn pattern_scan_coords(n: usize, mut bound_granularity: fp, file_path: &str, nod
         if level_num < top_level_num {
           // get all space_colors keys within metropolitan distance (step_bound_granularity * 2.5)  (+1 level and then some)
           // If they are _all_ the same color, this one is that color too.
-          let search_city_dist = step_bound_granularity * 1.1 as fp;
-          let (space_color_loc_x_min, space_color_loc_y_min) = scale_xy(width, height, x_range as u32, y_range as u32, smallest_x, smallest_y, loc.0 - search_city_dist, loc.1 - search_city_dist);
-          let (space_color_loc_x_max, space_color_loc_y_max) = scale_xy(width, height, x_range as u32, y_range as u32, smallest_x, smallest_y, loc.0 + search_city_dist, loc.1 + search_city_dist);
-          
           let mut all_space_colors_same = true;
           let mut first_space_color: Option<(u8, u8, u8)> = None;
-          for ((space_color_loc_x, space_color_loc_y), space_color_rgb) in space_colors.iter() {
-            if *space_color_loc_x >= space_color_loc_x_min && *space_color_loc_x <= space_color_loc_x_max && *space_color_loc_y >= space_color_loc_y_min && *space_color_loc_y <= space_color_loc_y_max {
-              // space_color_rgb is within search_city_dist of us!
-              if first_space_color.is_none() {
-                first_space_color = Some(space_color_rgb.clone());
-              }
-              else {
-                // Not the first, are these colors equal?
-                let first_space_color = first_space_color.unwrap();
-                if first_space_color != *space_color_rgb {
-                  all_space_colors_same = false;
-                  break;
+          for search_city_dist in [step_bound_granularity, step_bound_granularity * 2 as fp, step_bound_granularity * 4 as fp] {
+            let (space_color_loc_x_min, space_color_loc_y_min) = scale_xy(width, height, x_range as u32, y_range as u32, smallest_x, smallest_y, loc.0 - search_city_dist, loc.1 - search_city_dist);
+            let (space_color_loc_x_max, space_color_loc_y_max) = scale_xy(width, height, x_range as u32, y_range as u32, smallest_x, smallest_y, loc.0 + search_city_dist, loc.1 + search_city_dist);
+            
+            // for ((space_color_loc_x, space_color_loc_y), space_color_rgb) in space_colors.iter() {
+            //   if *space_color_loc_x >= space_color_loc_x_min && *space_color_loc_x <= space_color_loc_x_max && *space_color_loc_y >= space_color_loc_y_min && *space_color_loc_y <= space_color_loc_y_max {
+            //     // space_color_rgb is within search_city_dist of us!
+            //     if first_space_color.is_none() {
+            //       first_space_color = Some(space_color_rgb.clone());
+            //     }
+            //     else {
+            //       // Not the first, are these colors equal?
+            //       let first_space_color = first_space_color.unwrap();
+            //       if first_space_color != *space_color_rgb {
+            //         all_space_colors_same = false;
+            //         break;
+            //       }
+            //     }
+            //   }
+            // }
+
+            let offsets = &[
+              (-1, -1),
+              (-1, 0),
+              (-1, 1),
+              (0, -1),
+              (0, 0),
+              (0, 1),
+              (1, -1),
+              (1, 0),
+              (1, 1),
+            ];
+
+            let mut num_colors_seen = 0;
+            for (x_offset, y_offset) in offsets {
+              let q1_space_color = space_colors.get(&( (space_color_loc_x_min as i32+x_offset) as u32, (space_color_loc_y_min as i32+y_offset) as u32 ));
+              let q2_space_color = space_colors.get(&( (space_color_loc_x_min as i32+x_offset) as u32, (space_color_loc_y_max as i32+y_offset) as u32 ));
+              let q3_space_color = space_colors.get(&( (space_color_loc_x_max as i32+x_offset) as u32, (space_color_loc_y_max as i32+y_offset) as u32 ));
+              let q4_space_color = space_colors.get(&( (space_color_loc_x_max as i32+x_offset) as u32, (space_color_loc_y_min as i32+y_offset) as u32 ));
+
+              for maybe_space_color in [q1_space_color, q2_space_color, q3_space_color, q4_space_color] {
+                if let Some(a_space_color) = maybe_space_color {
+                  num_colors_seen += 1;
+                  if let Some(existing_color) = first_space_color {
+                    if existing_color != *a_space_color {
+                      all_space_colors_same = false;
+                    }
+                  }
+                  else {
+                    first_space_color = Some(a_space_color.clone());
+                  }
                 }
               }
             }
           }
-          // handle case where there are no other space colors!
-          if first_space_color.is_none() {
-            all_space_colors_same = false;
-          }
 
           // If all the same, set us as first_space_color, increment x, and keep going.
-          if all_space_colors_same {
-            let (log_r, log_g, log_b) = first_space_color.clone().unwrap();
+          //if num_colors_seen > 0 && all_space_colors_same {
+          if all_space_colors_same { // assume 0 colors means... we can safely continue?
+
+            // let (log_r, log_g, log_b) = first_space_color.clone().unwrap();
             //println!("Skipping b/c all colors near ({}, {}) are {:02x}{:02x}{:02x}", loc_x,loc_y, log_r, log_g, log_b);
 
             if let Some(first_space_color) = first_space_color {
@@ -1084,6 +1121,7 @@ fn pattern_scan_coords(n: usize, mut bound_granularity: fp, file_path: &str, nod
               space_colors.insert((loc_x, loc_y), first_space_color );
               // Also lookup & add ourselves to the list of points for average label placement logic
             }
+
             point_x += step_bound_granularity;
             continue;
           }
