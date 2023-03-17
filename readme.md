@@ -176,12 +176,16 @@ find views -mindepth 1 -maxdepth 1 -type d -exec sh -c "ls {} | wc -l " \; | sor
 ```
 
 ```
-city size, maximum optimal solutions seen (of >=100 random cities searched)
+city size, maximum optimal solutions seen (of >=100 random cities searched to detail 0.06)
 3          3
 4          6
 5          9
 6          12
-
+7          15
+8          ??
+9          ??
+10         ??
+11         ??
 
 ```
 
