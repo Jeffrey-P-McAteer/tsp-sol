@@ -153,6 +153,9 @@ TSP_INITIAL_COORDS='3.0,7.5 12.0,7.5 7.5,3.0 ' TSP_ENDING_COORDS='3.0,7.5 12.0,7
 
 USE_BRUTE_CACHE=f cargo run --release -- spray-pattern-search 3 0.025 500
 
+USE_BRUTE_CACHE=f cargo run --release -- spray-pattern-search 4 0.05 100
+
+
 
 ```
 
