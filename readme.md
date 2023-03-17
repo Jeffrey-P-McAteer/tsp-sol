@@ -182,12 +182,15 @@ city size, maximum optimal solutions seen (of >=100 random cities searched to de
 5          9
 6          12
 7          15
-8          ??
+8          20
 9          ??
 10         ??
 11         ??
 
 ```
+
+
+
 
 
 # Performance profiling
