@@ -1015,6 +1015,8 @@ fn pattern_scan_coords(n: usize, mut bound_granularity: fp, file_path: &str, nod
   loop {
     step_bound_granularity = bound_granularity * i32::pow(2, level_num as u32) as fp;
 
+    println!("level_num={} step_bound_granularity={} space_colors.len()={}", level_num, step_bound_granularity, space_colors.len());
+
     let mut point_y = y_min_bound;
     loop {
       if point_y > y_max_bound {
@@ -1035,13 +1037,15 @@ fn pattern_scan_coords(n: usize, mut bound_granularity: fp, file_path: &str, nod
         // Skip an exact duplicate test case
         if space_colors.contains_key(&space_colors_loc_key) {
           point_x += step_bound_granularity;
+          //println!("Skipping b/c we already know the color at ({}, {})", loc_x,loc_y);
           continue;
         }
 
+        // The following checks are only valid AFTER the top-most level has been sprayed
         if level_num < top_level_num {
           // get all space_colors keys within metropolitan distance (step_bound_granularity * 2.5)  (+1 level and then some)
           // If they are _all_ the same color, this one is that color too.
-          let search_city_dist = step_bound_granularity * 2.5 as fp;
+          let search_city_dist = step_bound_granularity * 1.1 as fp;
           let (space_color_loc_x_min, space_color_loc_y_min) = scale_xy(width, height, x_range as u32, y_range as u32, smallest_x, smallest_y, loc.0 - search_city_dist, loc.1 - search_city_dist);
           let (space_color_loc_x_max, space_color_loc_y_max) = scale_xy(width, height, x_range as u32, y_range as u32, smallest_x, smallest_y, loc.0 + search_city_dist, loc.1 + search_city_dist);
           
@@ -1070,6 +1074,9 @@ fn pattern_scan_coords(n: usize, mut bound_granularity: fp, file_path: &str, nod
 
           // If all the same, set us as first_space_color, increment x, and keep going.
           if all_space_colors_same {
+            let (log_r, log_g, log_b) = first_space_color.clone().unwrap();
+            //println!("Skipping b/c all colors near ({}, {}) are {:02x}{:02x}{:02x}", loc_x,loc_y, log_r, log_g, log_b);
+
             if let Some(first_space_color) = first_space_color {
               if unique_solution_spaces_points.contains_key(&first_space_color) {
                 unique_solution_spaces_points.get_mut(&first_space_color).map(|key_vec| { key_vec.push( (point_x, point_y) ); });
@@ -1081,6 +1088,8 @@ fn pattern_scan_coords(n: usize, mut bound_granularity: fp, file_path: &str, nod
             continue;
           }
         }
+
+        //println!("Brute Testing {},{}", point_x, point_y);
 
         // We can't prove skipping is OK, so brute force this pixel
         
@@ -1131,8 +1140,6 @@ fn pattern_scan_coords(n: usize, mut bound_granularity: fp, file_path: &str, nod
       break;
     }
   }
-
-
 
   /* // Original heavy test-everything loops
   let mut point_y = y_min_bound;
