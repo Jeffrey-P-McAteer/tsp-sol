@@ -80,7 +80,29 @@ spray requires 2 numbers after it, the N-1 size of the city and a resolution to 
       if they do not match a red pixel is plotted. This may be used to graphically show where
       JeffAlgo fails to uphold the hamiltonian cycle invariant from city size N to N+1.
 
-  pattern-scan N granularity
+pattern-scan N granularity
+  pattern-scan needs the number of cities to consider and the granularity of the grid of
+  N+1 points to lay on top; produces a graph showing all identical tours in the same color.
+
+multi-pattern-scan N pattern-granularity num-steps-to-interop
+  multi-pattern-scan needs the number of cities to consider, the granularity of the grid of
+  N+1 points to lay on top, and a step number.
+  The step number is how many steps we use to move a city from its arrangement
+  defined by TSP_INITIAL_COORDS to TSP_ENDING_COORDS, for example a value of 3
+  would produce 1 pattern-scan result considering TSP_INITIAL_COORDS,
+  1 pattern-scan result for a city w/ points at the midpoint of each of the 2 arrangements,
+  and finally 1 pattern-scan result considering TSP_ENDING_COORDS.
+
+spray-pattern-search N pattern-granularity max-sprays-to-perform
+  spray-pattern-search needs the number of cities to consider, the granularity of the grid of
+  N+1 points to lay on top, and the number of sprays to perform.
+  For each spray, generates a random N-sized city and performs pattern-scan of the given pattern-granularity,
+  recording additional details along the way.
+
+  The goal of this operation is to test conjectures about relationships between edge weights and
+  optimal tour patterns, which get written in spray_pattern_search().
+
+
 
 "#);
 }
@@ -171,6 +193,16 @@ fn timed_main() {
       args.get(2).unwrap_or(&"5".to_string()).parse().unwrap(), // given number OR 5 - number of cities
       args.get(3).unwrap_or(&"0.25".to_string()).parse().unwrap(), // given number OR 0.25 - resolution to generate a SINGLE multi pattern at
       args.get(4).unwrap_or(&"10".to_string()).parse().unwrap(), // number of steps to put between 2 cities, aka total number of pattern_scans to run.
+      &thread_pool
+    );
+    return;
+  }
+
+  if file_arg == "spray-pattern-search" {
+    spray_pattern_search(
+      args.get(2).unwrap_or(&"5".to_string()).parse().unwrap(), // given number OR 5 - number of cities
+      args.get(3).unwrap_or(&"0.25".to_string()).parse().unwrap(), // given number OR 0.25 - resolution to generate a SINGLE multi pattern at
+      args.get(4).unwrap_or(&"100".to_string()).parse().unwrap(), // number of sprays to perform
       &thread_pool
     );
     return;
@@ -1277,6 +1309,15 @@ pub fn path_to_rgb(path: &[usize], city_weights: &Vec<Vec<fp>>) -> (u8, u8, u8) 
 
     return (r, g, b);
   }
+}
+
+
+
+fn spray_pattern_search(n: usize, bound_granularity: fp, num_sprays_to_perform: usize, thread_pool: &ThreadPool) {
+  println!("Spray pattern searching {} cities for {} sprays...", n, num_sprays_to_perform);
+
+  // TODO
+
 }
 
 
