@@ -180,6 +180,8 @@ city size, maximum optimal solutions seen (of >=100 random cities searched)
 3          3
 4          6
 5          9
+6          9 !!! WAT why so similar to max(5) city solution space? more scans needed...
+
 
 ```
 
