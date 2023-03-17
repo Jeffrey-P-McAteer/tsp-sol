@@ -990,6 +990,151 @@ fn pattern_scan_coords(n: usize, mut bound_granularity: fp, file_path: &str, nod
 
   let mut unique_solution_spaces_points: HashMap<(u8, u8, u8), Vec<(fp, fp)>> = HashMap::new();
 
+  // We take the scaled pixel locations of the TSP floating-point coords and store them as keys here.
+  // This gives us fast lookups for points -> colors, or None if unknown.
+  // Even when we don't put a pixel on the image, we'll fake one by placing
+  // the same color in this map so it can function as a quick skip-list
+  let mut space_colors: HashMap<(u32, u32), (u8, u8, u8)> = HashMap::new();
+
+  let mut level_num: i32 = 0;
+  let mut tmp = bound_granularity;
+  loop {
+    if tmp >= 2.0 as fp { // this is the largest step we'll allow
+      break;
+    }
+    tmp *= 2.0 as fp;
+    level_num += 1;
+  }
+  let top_level_num = level_num;
+
+  // We now iterate from level_num == 5 (aka new bound_granularity = bound_granularity * (2.0 * level_num) )
+  // down to level_num == 0 ( bound_granularity * (2.0 * 0) == bound_granularity * 1.0 == bound_granularity ),
+  // at each level removing more and more squares from needing to be tested IF all surrounding squares
+  // have the same RGB color.
+  let mut step_bound_granularity: fp;
+  loop {
+    step_bound_granularity = bound_granularity * i32::pow(2, level_num as u32) as fp;
+
+    let mut point_y = y_min_bound;
+    loop {
+      if point_y > y_max_bound {
+        break;
+      }
+      
+      let mut point_x = x_min_bound;
+      loop {
+        if point_x > x_max_bound {
+          break;
+        }
+
+        // First check to see if this is _worth_ computing; are all our neighbors one level above the same color?
+        let loc = (point_x, point_y);
+        let (loc_x,loc_y) = scale_xy(width, height, x_range as u32, y_range as u32, smallest_x, smallest_y, loc.0, loc.1);
+        let space_colors_loc_key = (loc_x, loc_y);
+
+        // Skip an exact duplicate test case
+        if space_colors.contains_key(&space_colors_loc_key) {
+          point_x += step_bound_granularity;
+          continue;
+        }
+
+        if level_num < top_level_num {
+          // get all space_colors keys within metropolitan distance (step_bound_granularity * 2.5)  (+1 level and then some)
+          // If they are _all_ the same color, this one is that color too.
+          let search_city_dist = step_bound_granularity * 2.5 as fp;
+          let (space_color_loc_x_min, space_color_loc_y_min) = scale_xy(width, height, x_range as u32, y_range as u32, smallest_x, smallest_y, loc.0 - search_city_dist, loc.1 - search_city_dist);
+          let (space_color_loc_x_max, space_color_loc_y_max) = scale_xy(width, height, x_range as u32, y_range as u32, smallest_x, smallest_y, loc.0 + search_city_dist, loc.1 + search_city_dist);
+          
+          let mut all_space_colors_same = true;
+          let mut first_space_color: Option<(u8, u8, u8)> = None;
+          for ((space_color_loc_x, space_color_loc_y), space_color_rgb) in space_colors.iter() {
+            if *space_color_loc_x >= space_color_loc_x_min && *space_color_loc_x <= space_color_loc_x_max && *space_color_loc_y >= space_color_loc_y_min && *space_color_loc_y <= space_color_loc_y_max {
+              // space_color_rgb is within search_city_dist of us!
+              if first_space_color.is_none() {
+                first_space_color = Some(space_color_rgb.clone());
+              }
+              else {
+                // Not the first, are these colors equal?
+                let first_space_color = first_space_color.unwrap();
+                if first_space_color != *space_color_rgb {
+                  all_space_colors_same = false;
+                  break;
+                }
+              }
+            }
+          }
+          // handle case where there are no other space colors!
+          if first_space_color.is_none() {
+            all_space_colors_same = false;
+          }
+
+          // If all the same, set us as first_space_color, increment x, and keep going.
+          if all_space_colors_same {
+            if let Some(first_space_color) = first_space_color {
+              if unique_solution_spaces_points.contains_key(&first_space_color) {
+                unique_solution_spaces_points.get_mut(&first_space_color).map(|key_vec| { key_vec.push( (point_x, point_y) ); });
+              }
+              space_colors.insert((loc_x, loc_y), first_space_color );
+              // Also lookup & add ourselves to the list of points for average label placement logic
+            }
+            point_x += step_bound_granularity;
+            continue;
+          }
+        }
+
+        // We can't prove skipping is OK, so brute force this pixel
+        
+        let mut node_coordinates = node_coordinates.clone(); // Prevent us from mutating the initial set of points
+        node_coordinates.push(
+          (node_coordinates.len(), point_x, point_y)
+        );
+        
+        let city_weights = compute_weight_coords(&node_coordinates);
+        
+        let brute_solutions = brute_algo::solve_all(&node_coordinates, &city_weights, None, thread_pool);
+        let num_sols: i32 = brute_solutions.len() as i32;
+        let rand_idx: i32 = rand::thread_rng().gen_range(0, num_sols);
+        let brute_sol: Vec<usize> = brute_solutions[ rand_idx as usize ].clone(); // Vec<CityNum>
+        
+        // Paint according to brute_sol order
+        let (r, g, b) = path_to_rgb(&brute_sol, &city_weights);
+
+        let rgb_key = (r, g, b);
+        if !unique_solution_spaces_points.contains_key(&rgb_key) {
+          unique_solution_spaces_points.insert(rgb_key, vec![]);
+        }
+        unique_solution_spaces_points.get_mut(&rgb_key).map(|key_vec| { key_vec.push( (point_x, point_y) ); });
+
+        // Record this RGB in this location
+        space_colors.insert((loc_x, loc_y), rgb_key);
+
+        // println!("RGB of {:?} is {}, {}, {}", brute_sol, r, g, b);
+
+        //*image.get_pixel_mut(loc_x, loc_y) = Rgb([r, g, b]);
+
+        // Larger 4x4 dots
+        *image.get_pixel_mut(loc_x, loc_y) = Rgb([r, g, b]);
+        {
+          *image.get_pixel_mut(loc_x+1, loc_y) = Rgb([r, g, b]);
+          *image.get_pixel_mut(loc_x+1, loc_y+1) = Rgb([r, g, b]);
+          *image.get_pixel_mut(loc_x, loc_y+1) = Rgb([r, g, b]);
+        }
+        
+        point_x += step_bound_granularity;
+      }
+      
+      point_y += step_bound_granularity;
+    }
+
+    level_num -= 1;
+    if level_num < 0 {
+      break;
+    }
+  }
+
+
+
+  /* // Original heavy test-everything loops
   let mut point_y = y_min_bound;
   loop {
     if point_y > y_max_bound {
@@ -1029,7 +1174,7 @@ fn pattern_scan_coords(n: usize, mut bound_granularity: fp, file_path: &str, nod
       
       // println!("RGB of {:?} is {}, {}, {}", brute_sol, r, g, b);
 
-      //*image.get_pixel_mut(loc_x, loc_y) = Rgb([r, g, b]);
+      // *image.get_pixel_mut(loc_x, loc_y) = Rgb([r, g, b]);
 
       // Larger 4x4 dots
       *image.get_pixel_mut(loc_x, loc_y) = Rgb([r, g, b]);
@@ -1044,6 +1189,7 @@ fn pattern_scan_coords(n: usize, mut bound_granularity: fp, file_path: &str, nod
     
     point_y += bound_granularity;
   }
+  */
 
   let font = Font::try_from_bytes(include_bytes!("../resources/NotoSans-Bold.ttf")).unwrap();  
   

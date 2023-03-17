@@ -183,7 +183,7 @@ city size, maximum optimal solutions seen (of >=100 random cities searched to de
 6          12
 7          15
 8          20
-9          ??
+9          17+(only 2 tested so far)
 10         ??
 11         ??
 
