@@ -159,6 +159,31 @@ USE_BRUTE_CACHE=f cargo run --release -- spray-pattern-search 4 0.05 100
 
 ```
 
+# Research on city size & total optimal solutions observed
+
+This was collected by running `spray-pattern-search` of size `city size` and scanning results for
+the largest number of distinct tours with:
+
+```bash
+find views -mindepth 1 -maxdepth 1 -type d -exec sh -c "ls {} | wc -l " \; 
+
+# Print folder names for detailed inspections
+find views -mindepth 1 -maxdepth 1 -type d -print -exec sh -c "ls {} | wc -l " \; 
+
+# Print max(numbers) for the lazy researcher
+find views -mindepth 1 -maxdepth 1 -type d -exec sh -c "ls {} | wc -l " \; | sort | tail -n 1
+
+```
+
+```
+city size, maximum optimal solutions seen (of >=100 random cities searched)
+3          3
+4          6
+5          9
+
+```
+
+
 # Performance profiling
 
  - Install `perf` (see your OS's package manager for details)
