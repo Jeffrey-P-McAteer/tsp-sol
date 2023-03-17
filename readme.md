@@ -151,7 +151,7 @@ TSP_INITIAL_COORDS='3.0,12.0 12.0,12.0 3.0,3.0 ' TSP_ENDING_COORDS='3.0,12.0 12.
 
 TSP_INITIAL_COORDS='3.0,7.5 12.0,7.5 7.5,3.0 ' TSP_ENDING_COORDS='3.0,7.5 12.0,7.5 7.5,12.0 ' cargo run --release -- multi-pattern-scan 3 0.025 32 && mpv --loop-file=inf views/multi-pattern-scan.gif
 
-cargo run --release -- spray-pattern-search 3 0.025 500
+USE_BRUTE_CACHE=f cargo run --release -- spray-pattern-search 3 0.025 500
 
 
 ```

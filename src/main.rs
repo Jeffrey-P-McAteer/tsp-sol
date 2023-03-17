@@ -61,6 +61,24 @@ pub type fp = f32;
 #[allow(non_upper_case_globals)]
 const fp_epsilon: fp = 0.0001;
 
+#[allow(non_upper_case_globals)]
+pub const x_min_bound: fp = 0.0;
+#[allow(non_upper_case_globals)]
+pub const x_max_bound: fp = 15.0;
+#[allow(non_upper_case_globals)]
+pub const y_min_bound: fp = 0.0;
+#[allow(non_upper_case_globals)]
+pub const y_max_bound: fp = 15.0;
+
+#[allow(non_upper_case_globals)]
+pub const x_min: fp = 3.0;
+#[allow(non_upper_case_globals)]
+pub const x_max: fp = 12.0;
+#[allow(non_upper_case_globals)]
+pub const y_min: fp = 3.0;
+#[allow(non_upper_case_globals)]
+pub const y_max: fp = 12.0;
+
 
 fn usage() {
   println!(r#"Usage: ./tsp-sol path/to/berlin52.tsp|delta|selective|spray
@@ -658,17 +676,6 @@ fn compute_weight_coords(node_coordinates: &Vec<(usize, fp, fp)>) -> Vec<Vec<fp>
 fn selective(min_cities_to_ignore: usize, max_cities_to_test: usize, thread_pool: &ThreadPool) {
   println!("Performing selective failure from {} points to {} points...", min_cities_to_ignore, max_cities_to_test);
   // Bounding box for all points
-  //let x_min_bound: fp = 0.0;
-  //let x_max_bound: fp = 15.0;
-  //let y_min_bound: fp = 0.0;
-  //let y_max_bound: fp = 15.0;
-  
-  //let bound_granularity = 0.25; // step size with which to make grid points after failure
-  
-  let x_min: fp = 5.0;
-  let x_max: fp = 10.0;
-  let y_min: fp = 5.0;
-  let y_max: fp = 10.0;
   
   let mut rng = rand::thread_rng();
   let mut node_coordinates: Vec<(usize, fp, fp)> = vec![];
@@ -773,7 +780,7 @@ fn is_identical_path(path_a: &[usize], path_b: &[usize]) -> bool {
   return true; // identical b/c all path_a[i+] == path_b[i+]
 }
 
-fn get_env_or_random_node_coordinates(n: usize, env_var_name: &str, x_min: fp, x_max: fp, y_min: fp, y_max: fp) -> Vec<(usize, fp, fp)> {
+fn get_env_or_random_node_coordinates(n: usize, env_var_name: &str, _x_min: fp, _x_max: fp, _y_min: fp, _y_max: fp) -> Vec<(usize, fp, fp)> {
   let mut rng = rand::thread_rng();
   let mut node_coordinates: Vec<(usize, fp, fp)> = vec![];
   // Create random set of points OR parse from env var
@@ -795,8 +802,8 @@ fn get_env_or_random_node_coordinates(n: usize, env_var_name: &str, x_min: fp, x
       for i in 0..n {
         let new_r_city = (
           i,
-          rng.gen_range(x_min, x_max),
-          rng.gen_range(y_min, y_max),
+          rng.gen_range(_x_min, _x_max),
+          rng.gen_range(_y_min, _y_max),
         );
         node_coordinates.push(new_r_city);
       }
@@ -814,16 +821,6 @@ fn spray(n: usize, mut bound_granularity: fp, thread_pool: &ThreadPool) {
   }
   let bound_granularity = bound_granularity;
   
-  // Bounding box for all points
-  let x_min_bound: fp = 0.0;
-  let x_max_bound: fp = 15.0;
-  let y_min_bound: fp = 0.0;
-  let y_max_bound: fp = 15.0;
-  
-  let x_min: fp = 3.0;
-  let x_max: fp = 12.0;
-  let y_min: fp = 3.0;
-  let y_max: fp = 12.0;
   
   let node_coordinates: Vec<(usize, fp, fp)> = get_env_or_random_node_coordinates(n, "TSP_INITIAL_COORDS", x_min, x_max, y_min, y_max);
   println!("Initial node_coordinates={:?}", &node_coordinates);
@@ -966,17 +963,6 @@ fn spray(n: usize, mut bound_granularity: fp, thread_pool: &ThreadPool) {
 }
 
 fn pattern_scan(n: usize, bound_granularity: fp, file_path: &str, thread_pool: &ThreadPool) {
-  // Bounding box for all points
-  let x_min_bound: fp = 0.0;
-  let x_max_bound: fp = 15.0;
-  let y_min_bound: fp = 0.0;
-  let y_max_bound: fp = 15.0;
-  
-  let x_min: fp = 3.0;
-  let x_max: fp = 12.0;
-  let y_min: fp = 3.0;
-  let y_max: fp = 12.0;
-
   let node_coordinates: Vec<(usize, fp, fp)> = get_env_or_random_node_coordinates(n, "TSP_INITIAL_COORDS", x_min, x_max, y_min, y_max);
   pattern_scan_coords(n, bound_granularity, file_path, node_coordinates, thread_pool);
 }
@@ -988,17 +974,6 @@ fn pattern_scan_coords(n: usize, mut bound_granularity: fp, file_path: &str, nod
     bound_granularity = 0.010;
   }
   let bound_granularity = bound_granularity;
-  
-  // Bounding box for all points
-  let x_min_bound: fp = 0.0;
-  let x_max_bound: fp = 15.0;
-  let y_min_bound: fp = 0.0;
-  let y_max_bound: fp = 15.0;
-  
-  let x_min: fp = 3.0;
-  let x_max: fp = 12.0;
-  let y_min: fp = 3.0;
-  let y_max: fp = 12.0;
   
   println!("Initial node_coordinates={:?}", &node_coordinates);
 
@@ -1175,17 +1150,6 @@ fn pattern_scan_coords(n: usize, mut bound_granularity: fp, file_path: &str, nod
 
 fn multi_pattern_scan(n: usize, bound_granularity: fp, num_multi_steps_to_scan: usize, thread_pool: &ThreadPool) {
   println!("Muti-pattern scanning {} cities...", n);
-  
-  // Bounding box for all points
-  let x_min_bound: fp = 0.0;
-  let x_max_bound: fp = 15.0;
-  let y_min_bound: fp = 0.0;
-  let y_max_bound: fp = 15.0;
-  
-  let x_min: fp = 3.0;
-  let x_max: fp = 12.0;
-  let y_min: fp = 3.0;
-  let y_max: fp = 12.0;
 
   let node_coordinates_a: Vec<(usize, fp, fp)> = get_env_or_random_node_coordinates(n, "TSP_INITIAL_COORDS", x_min, x_max, y_min, y_max);
   println!("Initial node_coordinates_a={:?}", &node_coordinates_a);
@@ -1318,7 +1282,14 @@ pub fn path_to_rgb(path: &[usize], city_weights: &Vec<Vec<fp>>) -> (u8, u8, u8) 
 fn spray_pattern_search(n: usize, bound_granularity: fp, num_sprays_to_perform: usize, thread_pool: &ThreadPool) {
   println!("Spray pattern searching {} cities for {} sprays...", n, num_sprays_to_perform);
 
-  // TODO
+  for spray_i in 0..num_sprays_to_perform {
+    // Generate random N-city
+    let node_coordinates: Vec<(usize, fp, fp)> = get_env_or_random_node_coordinates(n, "SHOULD_NEVER_BE_COORDS_HERE!!__$%@!#@#!#&(*#@_INVALID_CHARS", x_min, x_max, y_min, y_max);
+    println!("node_coordinates={:?}", node_coordinates);
+
+    //pattern_scan_coords(n, bound_granularity, file_path, node_coordinates, thread_pool);
+
+  }
 
 }
 
