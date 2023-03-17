@@ -120,48 +120,55 @@ impl<T: Default> Default for MySyncUnsafeCell<T> {
     }
 }
 
-pub static PICKLE_DB: Lazy<MySyncUnsafeCell< PickleDb >> = Lazy::new(|| {
-  // Mutex::new(
-  //   PickleDb::load("target/cached_solutions.db", PickleDbDumpPolicy::AutoDump, SerializationMethod::Cbor).unwrap_or(
-  //     PickleDb::new("target/cached_solutions.db", PickleDbDumpPolicy::AutoDump, SerializationMethod::Cbor)
-  //   )
-  // )
-  
-  // Save cache one a minute; we also flush at the end of main(),
-  // so we ought to be able to avoid a ton of overhead.
-  // let save_delay_ms = 60100;
-
-  // let pickle_db = match PickleDb::load("target/cached_solutions.db", PickleDbDumpPolicy::PeriodicDump( std::time::Duration::from_millis(save_delay_ms) ), SerializationMethod::Cbor) {
-  //   Ok(db) => db,
-  //   Err(e) => {
-  //     eprintln!("Error loading target/cached_solutions.db: {:?}", e);
-  //     PickleDb::new("target/cached_solutions.db", PickleDbDumpPolicy::PeriodicDump( std::time::Duration::from_millis(save_delay_ms) ), SerializationMethod::Cbor)
-  //   }
-  // };
-
-  // Even more agressive: we only dump at the end of main(), manually
-  let pickle_db = match PickleDb::load("target/cached_solutions.db", PickleDbDumpPolicy::DumpUponRequest, SerializationMethod::Cbor) {
-    Ok(db) => db,
-    Err(e) => {
-      eprintln!("Error loading target/cached_solutions.db: {:?}", e);
-      PickleDb::new("target/cached_solutions.db", PickleDbDumpPolicy::DumpUponRequest, SerializationMethod::Cbor)
+pub fn use_brute_cache_env_val() -> bool {
+  if let Ok(val) = env::var("USE_BRUTE_CACHE") {
+    if val.contains("t") || val.contains("T") {
+      return true;
     }
-  };
+    return false;
+  }
+  true
+}
 
-  MySyncUnsafeCell::new(pickle_db)
+pub static USE_BRUTE_CACHE: Lazy<MySyncUnsafeCell< AtomicBool >> = Lazy::new(|| {
+  MySyncUnsafeCell::new( AtomicBool::new( use_brute_cache_env_val() ) )
+});
+
+pub static PICKLE_DB: Lazy<MySyncUnsafeCell< PickleDb >> = Lazy::new(|| {
+  if use_brute_cache_env_val() {
+    // Even more agressive: we only dump at the end of main(), manually
+    let pickle_db = match PickleDb::load("target/cached_solutions.db", PickleDbDumpPolicy::DumpUponRequest, SerializationMethod::Cbor) {
+      Ok(db) => db,
+      Err(e) => {
+        eprintln!("Error loading target/cached_solutions.db: {:?}", e);
+        PickleDb::new("target/cached_solutions.db", PickleDbDumpPolicy::DumpUponRequest, SerializationMethod::Cbor)
+      }
+    };
+
+    MySyncUnsafeCell::new(pickle_db)
+  }
+  else {
+    println!("Brute caching turned because USE_BRUTE_CACHE={}", env::var("USE_BRUTE_CACHE").unwrap_or("".to_string()) );
+    MySyncUnsafeCell::new( PickleDb::new("/dev/null", PickleDbDumpPolicy::DumpUponRequest, SerializationMethod::Cbor) )
+  }
 });
 
 pub static MULTI_PICKLE_DB: Lazy<MySyncUnsafeCell< PickleDb >> = Lazy::new(|| {
-  // Even more agressive: we only dump at the end of main(), manually
-  let pickle_db = match PickleDb::load("target/cached_multi_solutions.db", PickleDbDumpPolicy::DumpUponRequest, SerializationMethod::Cbor) {
-    Ok(db) => db,
-    Err(e) => {
-      eprintln!("Error loading target/cached_multi_solutions.db: {:?}", e);
-      PickleDb::new("target/cached_multi_solutions.db", PickleDbDumpPolicy::DumpUponRequest, SerializationMethod::Cbor)
-    }
-  };
+  if use_brute_cache_env_val() {
+    // Even more agressive: we only dump at the end of main(), manually
+    let pickle_db = match PickleDb::load("target/cached_multi_solutions.db", PickleDbDumpPolicy::DumpUponRequest, SerializationMethod::Cbor) {
+      Ok(db) => db,
+      Err(e) => {
+        eprintln!("Error loading target/cached_multi_solutions.db: {:?}", e);
+        PickleDb::new("target/cached_multi_solutions.db", PickleDbDumpPolicy::DumpUponRequest, SerializationMethod::Cbor)
+      }
+    };
 
-  MySyncUnsafeCell::new(pickle_db)
+    MySyncUnsafeCell::new(pickle_db)
+  }
+  else {
+    MySyncUnsafeCell::new( PickleDb::new("/dev/null", PickleDbDumpPolicy::DumpUponRequest, SerializationMethod::Cbor) )
+  }
 });
 
 pub fn solve(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>, weights: &Vec<Vec<CityWeight>>, save_run_prefix: Option<String>, thread_pool: &ThreadPool) -> Vec<CityNum> {
@@ -392,23 +399,9 @@ fn get_cached_solutions(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoor
 }
 
 fn cache_solution(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>, solution_best_path: &Vec<CityNum>) -> Option<()> {
-  // I hereby declare all u64 == usize for the machines running this code
-  // let solution_best_path: &Vec<u64> = unsafe { std::mem::transmute::<&Vec<usize>, &Vec<u64>>(solution_best_path) };
-  // let zero_vec = zerovec::ZeroVec::from_slice_or_alloc(&solution_best_path);
-  
-  // let zero_vec_bytes = zero_vec.into_bytes();
-  // let cache_file = cached_solution_file(node_coordinates);
-  
-  // let mut file = std::fs::OpenOptions::new()
-  //     .create(true) // To create a new file
-  //     .write(true)
-  //     // either use the ? operator or unwrap since it returns a Result
-  //     .open(&cache_file).ok()?;
-
-  // file.write_all( &zero_vec_bytes.to_vec() ).ok()?;
-
-  // Some(())
-
+  if ! unsafe { USE_BRUTE_CACHE.get().as_ref()?.load(Ordering::SeqCst) } {
+    return Some(()); // Do not cache if cache disabled
+  }
   //PICKLE_DB.lock().unwrap().set::<Vec<CityNum>>( &cached_solution_key(node_coordinates), solution_best_path ).ok()?;
   if let Err(e) = PICKLE_DB.get_mut().set::<Vec<CityNum>>( &cached_solution_key(node_coordinates), solution_best_path ) {
     eprintln!("Error setting: {:?}", e);
@@ -419,24 +412,10 @@ fn cache_solution(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>, s
 }
 
 fn cache_solutions(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>, solution_best_paths: &Vec<Vec<CityNum>>) -> Option<()> {
-  // I hereby declare all u64 == usize for the machines running this code
-  // let solution_best_path: &Vec<u64> = unsafe { std::mem::transmute::<&Vec<usize>, &Vec<u64>>(solution_best_path) };
-  // let zero_vec = zerovec::ZeroVec::from_slice_or_alloc(&solution_best_path);
-  
-  // let zero_vec_bytes = zero_vec.into_bytes();
-  // let cache_file = cached_solution_file(node_coordinates);
-  
-  // let mut file = std::fs::OpenOptions::new()
-  //     .create(true) // To create a new file
-  //     .write(true)
-  //     // either use the ? operator or unwrap since it returns a Result
-  //     .open(&cache_file).ok()?;
+  if ! unsafe { USE_BRUTE_CACHE.get().as_ref()?.load(Ordering::SeqCst) } {
+    return Some(()); // Do not cache if cache disabled
+  }
 
-  // file.write_all( &zero_vec_bytes.to_vec() ).ok()?;
-
-  // Some(())
-
-  //PICKLE_DB.lock().unwrap().set::<Vec<CityNum>>( &cached_solution_key(node_coordinates), solution_best_path ).ok()?;
   if let Err(e) = MULTI_PICKLE_DB.get_mut().set::<Vec<Vec<CityNum>>>( &cached_solution_key(node_coordinates), solution_best_paths ) {
     eprintln!("Error setting: {:?}", e);
     return None;

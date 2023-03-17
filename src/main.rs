@@ -119,11 +119,13 @@ fn main() {
   println!("=== Elapsed time: {:?} ===", exec_duration);
   
   // Flush any brute algo cache we may have
-  if let Err(e) = brute_algo::PICKLE_DB.get_mut().dump() {
-    eprintln!("Error saving brute cache: {:?}", e);
-  }
-  if let Err(e) = brute_algo::MULTI_PICKLE_DB.get_mut().dump() {
-    eprintln!("Error saving multi brute cache: {:?}", e);
+  if brute_algo::use_brute_cache_env_val() {
+    if let Err(e) = brute_algo::PICKLE_DB.get_mut().dump() {
+      eprintln!("Error saving brute cache: {:?}", e);
+    }
+    if let Err(e) = brute_algo::MULTI_PICKLE_DB.get_mut().dump() {
+      eprintln!("Error saving multi brute cache: {:?}", e);
+    }
   }
 
 }
