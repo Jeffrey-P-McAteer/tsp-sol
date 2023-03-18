@@ -964,10 +964,22 @@ fn spray(n: usize, mut bound_granularity: fp, thread_pool: &ThreadPool) {
 
 fn pattern_scan(n: usize, bound_granularity: fp, file_path: &str, thread_pool: &ThreadPool) {
   let node_coordinates: Vec<(usize, fp, fp)> = get_env_or_random_node_coordinates(n, "TSP_INITIAL_COORDS", x_min, x_max, y_min, y_max);
-  pattern_scan_coords(n, bound_granularity, file_path, node_coordinates, thread_pool);
+  pattern_scan_coords(n, bound_granularity, file_path, node_coordinates, thread_pool, nop_closure);
 }
 
-fn pattern_scan_coords(n: usize, mut bound_granularity: fp, file_path: &str, node_coordinates: Vec<(usize, fp, fp)>, thread_pool: &ThreadPool) {
+
+fn nop_closure() { } // apparenty Option<<Fn() -> ()>>::None is annoying to construct as a type
+
+fn pattern_scan_coords<F>(
+  n: usize,
+  mut bound_granularity: fp,
+  file_path: &str,
+  node_coordinates: Vec<(usize, fp, fp)>,
+  thread_pool: &ThreadPool,
+  addtl_logging_fn: F
+) -> ()
+  where F: std::ops::Fn() -> (),
+{
   println!("Pattern scanning {} cities...", n);
   if bound_granularity < 0.010 {
     println!("Resetting {} to 0.010 because that's the size of a single pixel...", bound_granularity);
@@ -1161,7 +1173,7 @@ fn multi_pattern_scan(n: usize, bound_granularity: fp, num_multi_steps_to_scan: 
   for multi_step_i in 0..=num_multi_steps_to_scan {
     let converged_cities = converge_coordinates(&node_coordinates_a, &node_coordinates_b, multi_step_i, num_multi_steps_to_scan);
     let output_multiscan_file_path = format!("views/multi-pattern-scan-{:03}.png", multi_step_i);
-    pattern_scan_coords(n, bound_granularity, &output_multiscan_file_path, converged_cities, thread_pool);
+    pattern_scan_coords(n, bound_granularity, &output_multiscan_file_path, converged_cities, thread_pool, nop_closure);
     output_scan_files.push(output_multiscan_file_path);
   }
 
@@ -1293,7 +1305,10 @@ fn spray_pattern_search(n: usize, bound_granularity: fp, num_sprays_to_perform: 
     println!("node_coordinates={:?}", node_coordinates);
 
     let file_path = format!("views/spray-pattern-search-{:03}.png", spray_i);
-    pattern_scan_coords(n, bound_granularity, &file_path, node_coordinates, thread_pool);
+    pattern_scan_coords(n, bound_granularity, &file_path, node_coordinates, thread_pool, || {
+      // todo
+      
+    });
 
   }
 
