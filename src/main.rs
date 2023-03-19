@@ -1351,7 +1351,7 @@ fn spray_pattern_search(n: usize, bound_granularity: fp, num_sprays_to_perform: 
         print!("    ");
         for col_i in 0..n {
             if row_i == col_i {
-              print!("           ");
+              print!("            ");
               continue;
             }
             //let num = (summed_weights[row_i][col_i] * 1000.0 as fp).round() / 1000.0 as fp;

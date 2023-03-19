@@ -189,6 +189,8 @@ city size, maximum optimal solutions seen (of >=100 random cities searched to de
 
 ```
 
+Fitting a 3rd-degree polynominal to this gives us roughly `0.2x^2 + 0.9x - 1.4`, not sure what is means but the `x^2` term
+tells me I'm probably looking at a worst-case scenario of `n^2` possible optimal solutions to search going from `N` to `N+` points in a graph.
 
 
 
