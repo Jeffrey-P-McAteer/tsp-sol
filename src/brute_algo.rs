@@ -39,10 +39,6 @@ use std::io::{Read, Write};
 
 use pickledb::{PickleDb, PickleDbDumpPolicy, SerializationMethod};
 
-type CityNum = usize;
-type CityWeight = fp;
-type CityXYCoord = fp;
-
 
 // Maps a begin_permutation_num -> Vec<CityNum> coordinates.
 // As long as the .len() of the shared Vec<CityNum>s is the same this will save

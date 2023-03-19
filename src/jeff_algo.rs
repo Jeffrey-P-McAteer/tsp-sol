@@ -18,10 +18,6 @@
 
 use super::*;
 
-type CityNum = usize;
-type CityWeight = fp;
-type CityXYCoord = fp;
-
 pub fn solve(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>, weights: &Vec<Vec<CityWeight>>, save_run_prefix: Option<String>) -> Vec<usize> {
   let mut ordered_visits = compute_largest_triangle(node_coordinates, weights);
   

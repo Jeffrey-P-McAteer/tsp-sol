@@ -57,6 +57,10 @@ mod jeff_algo;
 pub type fp = f32;
 //pub type fp = f64;
 
+pub type CityNum = usize;
+pub type CityWeight = fp;
+pub type CityXYCoord = fp;
+
 // fp numbers within this distance are considered equal
 #[allow(non_upper_case_globals)]
 const fp_epsilon: fp = 0.0001;
@@ -968,7 +972,8 @@ fn pattern_scan(n: usize, bound_granularity: fp, file_path: &str, thread_pool: &
 }
 
 
-fn nop_closure() { } // apparenty Option<<Fn() -> ()>>::None is annoying to construct as a type
+//fn nop_closure() { } // apparenty Option<<Fn() -> ()>>::None is annoying to construct as a type
+fn nop_closure(a: &Vec<Vec<CityWeight>>, b: &Vec<CityNum>, c: &(u8, u8, u8)) { }
 
 fn pattern_scan_coords<F>(
   n: usize,
@@ -976,9 +981,9 @@ fn pattern_scan_coords<F>(
   file_path: &str,
   node_coordinates: Vec<(usize, fp, fp)>,
   thread_pool: &ThreadPool,
-  addtl_logging_fn: F
+  mut addtl_logging_fn: F
 ) -> ()
-  where F: std::ops::Fn() -> (),
+  where F: std::ops::FnMut(&Vec<Vec<CityWeight>>, &Vec<CityNum>, &(u8, u8, u8)) -> (),
 {
   println!("Pattern scanning {} cities...", n);
   if bound_granularity < 0.010 {
@@ -1022,10 +1027,10 @@ fn pattern_scan_coords<F>(
       
       let city_weights = compute_weight_coords(&node_coordinates);
       
-      let brute_sol = brute_algo::solve_all(&node_coordinates, &city_weights, None, thread_pool);
-      let num_sols: i32 = brute_sol.len() as i32;
+      let brute_solutions = brute_algo::solve_all(&node_coordinates, &city_weights, None, thread_pool);
+      let num_sols: i32 = brute_solutions.len() as i32;
       let rand_idx: i32 = rand::thread_rng().gen_range(0, num_sols);
-      let brute_sol: Vec<usize> = brute_sol[ rand_idx as usize ].clone(); // Vec<CityNum>
+      let brute_sol: Vec<CityNum> = brute_solutions[ rand_idx as usize ].clone(); // Vec<CityNum>
       
       let loc = (point_x, point_y);
       let (loc_x,loc_y) = scale_xy(width, height, x_range as u32, y_range as u32, smallest_x, smallest_y, loc.0, loc.1);
@@ -1038,6 +1043,12 @@ fn pattern_scan_coords<F>(
         unique_solution_spaces_points.insert(rgb_key, vec![]);
       }
       unique_solution_spaces_points.get_mut(&rgb_key).map(|key_vec| { key_vec.push( (point_x, point_y) ); });
+
+      addtl_logging_fn(
+        &city_weights,
+        &brute_sol,
+        &rgb_key
+      );
       
       // println!("RGB of {:?} is {}, {}, {}", brute_sol, r, g, b);
 
@@ -1302,13 +1313,50 @@ fn spray_pattern_search(n: usize, bound_granularity: fp, num_sprays_to_perform: 
   for spray_i in 0..num_sprays_to_perform {
     // Generate random N-city
     let node_coordinates: Vec<(usize, fp, fp)> = get_env_or_random_node_coordinates(n, "SHOULD_NEVER_BE_COORDS_HERE!!__$%@!#@#!#&(*#@_INVALID_CHARS", x_min, x_max, y_min, y_max);
-    println!("node_coordinates={:?}", node_coordinates);
+    
+    println!("");
+    println!("spray_i={:03} node_coordinates={:?}", spray_i, node_coordinates);
+
+    let mut seen_areas_sum_weights_and_count: HashMap<(u8, u8, u8), (usize, Vec<Vec<fp>>)> = HashMap::new();
 
     let file_path = format!("views/spray-pattern-search-{:03}.png", spray_i);
-    pattern_scan_coords(n, bound_granularity, &file_path, node_coordinates, thread_pool, || {
-      // todo
+    pattern_scan_coords(n, bound_granularity, &file_path, node_coordinates, thread_pool, |city_weights, brute_sol, rgb_key| {
+      if let Some((weights_count, summed_weights)) = seen_areas_sum_weights_and_count.get(rgb_key) {
+        let mut summed_weights = summed_weights.clone();
+        let n = city_weights.len();
+        for row_i in 0..n {
+          for col_i in 0..n {
+            summed_weights[row_i][col_i] += city_weights[row_i][col_i];
+          }
+        }
+
+        seen_areas_sum_weights_and_count.insert(*rgb_key, (weights_count + 1, city_weights.clone() ));
+      }
+      else {
+        seen_areas_sum_weights_and_count.insert(*rgb_key, (1, city_weights.clone() ));
+      }
       
     });
+
+    for (rgb_key, (weights_count, mut summed_weights)) in seen_areas_sum_weights_and_count {
+      let n = summed_weights.len();
+      let weights_count: fp = weights_count as fp;
+      for row_i in 0..n {
+        for col_i in 0..n {
+          summed_weights[row_i][col_i] = summed_weights[row_i][col_i] / weights_count;
+        }
+      }
+      println!("Avg weights for: {:02x}{:02x}{:02x} (of {} sums):", rgb_key.0, rgb_key.1, rgb_key.2, weights_count);
+      for row_i in 0..n {
+        print!("    ");
+        for col_i in 0..n {
+            let num = (summed_weights[row_i][col_i] * 1000.0 as fp).round() / 1000.0 as fp;
+            print!("{:0.8}  ", num);
+        }
+        println!("");
+      }
+
+    }
 
   }
 
