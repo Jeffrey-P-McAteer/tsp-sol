@@ -1399,14 +1399,14 @@ fn spray_pattern_search(n: usize, bound_granularity: fp, num_sprays_to_perform: 
       print_square_matrix(&summed_weights);
       
       for edge_tuple in edges_to_rec_min_max_for.iter() {
-        println!("Min weights for {}, {}", edge_tuple.0, edge_tuple.1);
         let min_edge_weights = seen_areas_mins_by_edge.get(&rgb_key).unwrap().get(edge_tuple).unwrap();
+        println!("Min weights for {}, {} = {}", edge_tuple.0, edge_tuple.1, min_edge_weights[edge_tuple.0][edge_tuple.1]);
         print_square_matrix(&min_edge_weights);
       }
 
       for edge_tuple in edges_to_rec_min_max_for.iter() {
-        println!("Max weights for {}, {}", edge_tuple.0, edge_tuple.1);
         let max_edge_weights = seen_areas_maxs_by_edge.get(&rgb_key).unwrap().get(edge_tuple).unwrap();
+        println!("Max weights for {}, {} = {}", edge_tuple.0, edge_tuple.1, max_edge_weights[edge_tuple.0][edge_tuple.1]);
         print_square_matrix(&max_edge_weights);
       }
 
