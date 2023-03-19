@@ -156,6 +156,13 @@ USE_BRUTE_CACHE=f cargo run --release -- spray-pattern-search 3 0.025 500
 USE_BRUTE_CACHE=f cargo run --release -- spray-pattern-search 4 0.05 100
 
 
+# Dumb tiny triangle; do we see 3 divergent patterns at the peaks, or do they only appear w/
+# a significant edge weight ratio differential?
+# NB: 7.5 is x center of graph
+USE_BRUTE_CACHE=f TSP_INITIAL_COORDS='6.5,7.0 7.5,7.0 7.0,6.5 ' cargo run --release -- pattern-scan 3 0.025
+
+USE_BRUTE_CACHE=f TSP_INITIAL_COORDS='6.5,7.0 7.5,7.0 7.0,6.65 ' cargo run --release -- pattern-scan 3 0.025
+
 
 ```
 
