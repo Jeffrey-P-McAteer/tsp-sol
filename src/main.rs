@@ -1318,6 +1318,21 @@ fn spray_pattern_search(n: usize, bound_granularity: fp, num_sprays_to_perform: 
     println!("spray_i={:03} node_coordinates={:?}", spray_i, node_coordinates);
 
     let mut seen_areas_sum_weights_and_count: HashMap<(u8, u8, u8), (usize, Vec<Vec<fp>>)> = HashMap::new();
+    // for now assume a 4x4 matrix + grab min+max for everything
+    // TODO dynamically calc a triangle for edges_to_rec_min_max_for
+    let edges_to_rec_min_max_for = &[
+      (0, 1),
+      (0, 2),
+      (0, 3),
+      
+      (1, 2),
+      (1, 3),
+
+      (2, 3),
+    ];
+    // color -> edge -> weight matrix w/ min value at (row, col) coordinate from edges_to_rec_min_max_for
+    let mut seen_areas_mins_by_edge: HashMap<(u8, u8, u8), HashMap<(usize, usize), Vec<Vec<fp>>>> = HashMap::new();
+    let mut seen_areas_maxs_by_edge: HashMap<(u8, u8, u8), HashMap<(usize, usize), Vec<Vec<fp>>>> = HashMap::new();
 
     let file_path = format!("views/spray-pattern-search-{:03}.png", spray_i);
     pattern_scan_coords(n, bound_granularity, &file_path, node_coordinates, thread_pool, |city_weights, brute_sol, rgb_key| {
@@ -1331,9 +1346,42 @@ fn spray_pattern_search(n: usize, bound_granularity: fp, num_sprays_to_perform: 
         }
 
         seen_areas_sum_weights_and_count.insert(*rgb_key, (weights_count + 1, city_weights.clone() ));
+
+        // For all row x col edge tuples, is city_weights[row][col] a min()?
+        for edge_tuple in edges_to_rec_min_max_for.iter() {
+          let current_edge_min = seen_areas_mins_by_edge.get(rgb_key).unwrap().get(edge_tuple).unwrap()[edge_tuple.0][edge_tuple.1];
+          let this_edge_min = city_weights[edge_tuple.0][edge_tuple.1];
+          if this_edge_min < current_edge_min {
+            // Replace min[row][col] weights w/ city_weights
+            seen_areas_mins_by_edge.get_mut(rgb_key).unwrap().insert(*edge_tuple, city_weights.clone() );
+          }
+        }
+
+        // For all row x col edge tuples, is city_weights[row][col] a max()?
+        for edge_tuple in edges_to_rec_min_max_for.iter() {
+          let current_edge_max = seen_areas_maxs_by_edge.get(rgb_key).unwrap().get(edge_tuple).unwrap()[edge_tuple.0][edge_tuple.1];
+          let this_edge_max = city_weights[edge_tuple.0][edge_tuple.1];
+          if this_edge_max > current_edge_max {
+            // Replace min[row][col] weights w/ city_weights
+            seen_areas_maxs_by_edge.get_mut(rgb_key).unwrap().insert(*edge_tuple, city_weights.clone() );
+          }
+        }
+
       }
       else {
         seen_areas_sum_weights_and_count.insert(*rgb_key, (1, city_weights.clone() ));
+        
+        let mut min_areas_hm = HashMap::new();
+        for edge_tuple in edges_to_rec_min_max_for.iter() {
+          min_areas_hm.insert(*edge_tuple, city_weights.clone() ); // they're _all_ a min() at step 1
+        }
+        seen_areas_mins_by_edge.insert(*rgb_key, min_areas_hm);
+
+        let mut max_areas_hm = HashMap::new();
+        for edge_tuple in edges_to_rec_min_max_for.iter() {
+          max_areas_hm.insert(*edge_tuple, city_weights.clone() ); // they're _all_ a max() at step 1
+        }
+        seen_areas_maxs_by_edge.insert(*rgb_key, max_areas_hm);
       }
       
     });
@@ -1347,18 +1395,18 @@ fn spray_pattern_search(n: usize, bound_granularity: fp, num_sprays_to_perform: 
         }
       }
       println!("Avg weights for: {:02x}{:02x}{:02x} (of {} sums):", rgb_key.0, rgb_key.1, rgb_key.2, weights_count);
-      for row_i in 0..n {
-        print!("    ");
-        for col_i in 0..n {
-            if row_i == col_i {
-              print!("            ");
-              continue;
-            }
-            //let num = (summed_weights[row_i][col_i] * 1000.0 as fp).round() / 1000.0 as fp;
-            let num = summed_weights[row_i][col_i];
-            print!("{:0.8}  ", num);
-        }
-        println!("");
+      print_square_matrix(&summed_weights);
+      
+      for edge_tuple in edges_to_rec_min_max_for.iter() {
+        println!("Min weights for {}, {}", edge_tuple.0, edge_tuple.1);
+        let min_edge_weights = seen_areas_mins_by_edge.get(&rgb_key).unwrap().get(edge_tuple).unwrap();
+        print_square_matrix(&min_edge_weights);
+      }
+
+      for edge_tuple in edges_to_rec_min_max_for.iter() {
+        println!("Max weights for {}, {}", edge_tuple.0, edge_tuple.1);
+        let max_edge_weights = seen_areas_maxs_by_edge.get(&rgb_key).unwrap().get(edge_tuple).unwrap();
+        print_square_matrix(&max_edge_weights);
       }
 
     }
@@ -1367,5 +1415,18 @@ fn spray_pattern_search(n: usize, bound_granularity: fp, num_sprays_to_perform: 
 
 }
 
-
+fn print_square_matrix(weights: &Vec<Vec<fp>>) {
+  let n = weights.len();
+  for row_i in 0..n {
+    print!("    ");
+    for col_i in 0..n {
+        if row_i == col_i {
+          print!("x.x         ");
+          continue;
+        }
+        print!("{:0.8}  ", weights[row_i][col_i] );
+    }
+    println!("");
+  }
+}
 
