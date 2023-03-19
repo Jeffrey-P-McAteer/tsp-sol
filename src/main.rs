@@ -1394,6 +1394,7 @@ fn spray_pattern_search(n: usize, bound_granularity: fp, num_sprays_to_perform: 
           summed_weights[row_i][col_i] = summed_weights[row_i][col_i] / weights_count;
         }
       }
+      println!("");
       println!("Avg weights for: {:02x}{:02x}{:02x} (of {} sums):", rgb_key.0, rgb_key.1, rgb_key.2, weights_count);
       print_square_matrix(&summed_weights);
       
