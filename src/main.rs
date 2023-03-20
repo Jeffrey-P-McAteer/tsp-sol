@@ -87,7 +87,7 @@ pub const y_max: fp = 12.0;
 fn usage() {
   println!(r#"Usage: ./tsp-sol path/to/berlin52.tsp|delta|selective|spray
 
-Passing a single file (tsp/berlin52.tsp) will run JeffAlgo on it and pring the size and solution path.
+Passing a single file (tsp/berlin52.tsp) will run JeffAlgo on it and print the size and solution path.
 
 delta will cause 1000 runs using both JeffAlgo and BruteAlgo, incorrect JeffAlgo runs will be dumped to the ./views directory.
 
