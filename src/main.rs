@@ -1393,7 +1393,7 @@ fn spray_pattern_search(n: usize, bound_granularity: fp, num_sprays_to_perform: 
       
       let city_weights = normalize_weights(city_weights);
       html_content += format!(
-        "<div style=\"width:8px;height:8px;position:absolute;left:{}px;top:{}px;background-color:#{:02x}{:02x}{:02x}\">{}</div>",
+        "<div style=\"width:5px;height:5px;position:absolute;left:{}px;top:{}px;background-color:#{:02x}{:02x}{:02x}\">{}</div>",
         point_x,point_y,
         rgb_key.0, rgb_key.1, rgb_key.2,
         html_format_tour_details(&city_weights, brute_sol).as_str()
