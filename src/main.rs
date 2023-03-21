@@ -1335,7 +1335,7 @@ fn spray_pattern_search(n: usize, bound_granularity: fp, num_sprays_to_perform: 
 
     let file_path = format!("views/spray-pattern-search-{:03}.png", spray_i);
     let html_path = format!("views/spray-pattern-search-{:03}.html", spray_i);
-    let mut html_content = "<!DOCTYPE html><head><style> div > * { display: none; width: 450px; background-color: Canvas ; position: relative; top:-100px; left:10px; } div:hover > * { display: block; } </style></head><body>".to_string();
+    let mut html_content = "<!DOCTYPE html><head><style> div > * { display: none; width: 450px; background-color: Canvas ; position: relative; top:-120px; left:10px; } div:hover > * { display: block; } </style></head><body>".to_string();
 
     pattern_scan_coords(n, bound_granularity, &file_path, node_coordinates.clone(), thread_pool, |city_weights, brute_sol, (point_x, point_y), rgb_key| {
       // if let Some((weights_count, summed_weights)) = seen_areas_sum_weights_and_count.get(rgb_key) {
