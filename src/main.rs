@@ -1391,11 +1391,12 @@ fn spray_pattern_search(n: usize, bound_granularity: fp, num_sprays_to_perform: 
       let point_x: isize = (point_x * 100.0 as fp) as isize;
       let point_y: isize = (point_y * 100.0 as fp) as isize;
       
+      let city_weights = normalize_weights(city_weights);
       html_content += format!(
         "<div style=\"width:8px;height:8px;position:absolute;left:{}px;top:{}px;background-color:#{:02x}{:02x}{:02x}\">{}</div>",
         point_x,point_y,
         rgb_key.0, rgb_key.1, rgb_key.2,
-        html_format_tour_details(city_weights, brute_sol).as_str()
+        html_format_tour_details(&city_weights, brute_sol).as_str()
       ).as_str();
 
       
@@ -1406,7 +1407,7 @@ fn spray_pattern_search(n: usize, bound_granularity: fp, num_sprays_to_perform: 
       let city_x: isize = (city_x * 100.0 as fp) as isize;
       let city_y: isize = (city_y * 100.0 as fp) as isize;
       html_content += format!(
-        "<div style=\"width:24px;height:24px;position:absolute;left:{}px;top:{}px;background:transparent;border: 3px solid red;border-radius:99px;font-weight:bold;\">{}</div>",
+        "<div style=\"width:24px;height:24px;position:absolute;left:{}px;top:{}px;background:transparent;border: 3px solid red;border-radius:99px;font-weight:bold;pointer-events:none;\">{}</div>",
         city_x - 12, city_y - 12, city_num
       ).as_str();
     }
@@ -1445,6 +1446,32 @@ fn spray_pattern_search(n: usize, bound_granularity: fp, num_sprays_to_perform: 
 
   }
 
+}
+
+// transforms matrix of weights from 0.0 -> N to 0.0 -> 1.0 no matter how large the heaviest weight is.
+fn normalize_weights(weights: &Vec<Vec<fp>>) -> Vec<Vec<fp>> {
+  let mut heaviest_weight: fp = 0.0 as fp;
+  for row in weights.iter() {
+    for num in row.iter() {
+      if *num > heaviest_weight {
+        heaviest_weight = *num;
+      }
+    }
+  }
+  
+  let corrective_ratio = 1.0 as fp / heaviest_weight;
+
+  let mut normalized_weights = vec![];
+  for row in weights.iter() {
+    let mut normalized_row = vec![];
+    for num in row.iter() {
+      normalized_row.push(
+        *num * corrective_ratio
+      );
+    }
+    normalized_weights.push( normalized_row );
+  }
+  normalized_weights
 }
 
 fn html_format_tour_details(weights: &Vec<Vec<fp>>, brute_tour: &Vec<CityNum>) -> String {
