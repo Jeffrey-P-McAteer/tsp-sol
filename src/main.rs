@@ -41,7 +41,7 @@ use once_cell::sync::Lazy;
 use std::fs;
 use std::fs::{File,create_dir};
 use std::path::Path;
-use std::io::{BufReader};
+use std::io::{BufReader,Write};
 use std::sync::{Mutex};
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
@@ -973,7 +973,7 @@ fn pattern_scan(n: usize, bound_granularity: fp, file_path: &str, thread_pool: &
 
 
 //fn nop_closure() { } // apparenty Option<<Fn() -> ()>>::None is annoying to construct as a type
-fn nop_closure(a: &Vec<Vec<CityWeight>>, b: &Vec<CityNum>, c: &(u8, u8, u8)) { }
+fn nop_closure(a: &Vec<Vec<CityWeight>>, b: &Vec<CityNum>, c: &(fp, fp), d: &(u8, u8, u8)) { }
 
 fn pattern_scan_coords<F>(
   n: usize,
@@ -983,7 +983,7 @@ fn pattern_scan_coords<F>(
   thread_pool: &ThreadPool,
   mut addtl_logging_fn: F
 ) -> ()
-  where F: std::ops::FnMut(&Vec<Vec<CityWeight>>, &Vec<CityNum>, &(u8, u8, u8)) -> (),
+  where F: std::ops::FnMut(&Vec<Vec<CityWeight>>, &Vec<CityNum>, &(fp, fp), &(u8, u8, u8)) -> (),
 {
   println!("Pattern scanning {} cities...", n);
   if bound_granularity < 0.010 {
@@ -1047,6 +1047,7 @@ fn pattern_scan_coords<F>(
       addtl_logging_fn(
         &city_weights,
         &brute_sol,
+        &(point_x, point_y),
         &rgb_key
       );
       
@@ -1317,7 +1318,6 @@ fn spray_pattern_search(n: usize, bound_granularity: fp, num_sprays_to_perform: 
     println!("");
     println!("spray_i={:03} node_coordinates={:?}", spray_i, node_coordinates);
 
-    let mut seen_areas_sum_weights_and_count: HashMap<(u8, u8, u8), (usize, Vec<Vec<fp>>)> = HashMap::new();
     // for now assume a 4x4 matrix + grab min+max for everything
     // TODO dynamically calc a triangle for edges_to_rec_min_max_for
     let mut edges_to_rec_min_max_for = vec![];
@@ -1328,91 +1328,144 @@ fn spray_pattern_search(n: usize, bound_granularity: fp, num_sprays_to_perform: 
     }
     let edges_to_rec_min_max_for = edges_to_rec_min_max_for;
 
-    // color -> edge -> weight matrix w/ min value at (row, col) coordinate from edges_to_rec_min_max_for
-    let mut seen_areas_mins_by_edge: HashMap<(u8, u8, u8), HashMap<(usize, usize), Vec<Vec<fp>>>> = HashMap::new();
-    let mut seen_areas_maxs_by_edge: HashMap<(u8, u8, u8), HashMap<(usize, usize), Vec<Vec<fp>>>> = HashMap::new();
+    // let mut seen_areas_sum_weights_and_count: HashMap<(u8, u8, u8), (usize, Vec<Vec<fp>>)> = HashMap::new();
+    // // color -> edge -> weight matrix w/ min value at (row, col) coordinate from edges_to_rec_min_max_for
+    // let mut seen_areas_mins_by_edge: HashMap<(u8, u8, u8), HashMap<(usize, usize), Vec<Vec<fp>>>> = HashMap::new();
+    // let mut seen_areas_maxs_by_edge: HashMap<(u8, u8, u8), HashMap<(usize, usize), Vec<Vec<fp>>>> = HashMap::new();
 
     let file_path = format!("views/spray-pattern-search-{:03}.png", spray_i);
-    pattern_scan_coords(n, bound_granularity, &file_path, node_coordinates, thread_pool, |city_weights, brute_sol, rgb_key| {
-      if let Some((weights_count, summed_weights)) = seen_areas_sum_weights_and_count.get(rgb_key) {
-        let mut summed_weights = summed_weights.clone();
-        let n = city_weights.len();
-        for row_i in 0..n {
-          for col_i in 0..n {
-            summed_weights[row_i][col_i] += city_weights[row_i][col_i];
-          }
-        }
+    let html_path = format!("views/spray-pattern-search-{:03}.html", spray_i);
+    let mut html_content = "<!DOCTYPE html><head><style> div > * { display: none; width: 450px; background-color: Canvas ; position: relative; top:-100px; left:10px; } div:hover > * { display: block; } </style></head><body>".to_string();
 
-        seen_areas_sum_weights_and_count.insert(*rgb_key, (weights_count + 1, city_weights.clone() ));
+    pattern_scan_coords(n, bound_granularity, &file_path, node_coordinates.clone(), thread_pool, |city_weights, brute_sol, (point_x, point_y), rgb_key| {
+      // if let Some((weights_count, summed_weights)) = seen_areas_sum_weights_and_count.get(rgb_key) {
+      //   let mut summed_weights = summed_weights.clone();
+      //   let n = city_weights.len();
+      //   for row_i in 0..n {
+      //     for col_i in 0..n {
+      //       summed_weights[row_i][col_i] += city_weights[row_i][col_i];
+      //     }
+      //   }
 
-        // For all row x col edge tuples, is city_weights[row][col] a min()?
-        for edge_tuple in edges_to_rec_min_max_for.iter() {
-          let current_edge_min = seen_areas_mins_by_edge.get(rgb_key).unwrap().get(edge_tuple).unwrap()[edge_tuple.0][edge_tuple.1];
-          let this_edge_min = city_weights[edge_tuple.0][edge_tuple.1];
-          if this_edge_min < current_edge_min {
-            // Replace min[row][col] weights w/ city_weights
-            seen_areas_mins_by_edge.get_mut(rgb_key).unwrap().insert(*edge_tuple, city_weights.clone() );
-          }
-        }
+      //   seen_areas_sum_weights_and_count.insert(*rgb_key, (weights_count + 1, city_weights.clone() ));
 
-        // For all row x col edge tuples, is city_weights[row][col] a max()?
-        for edge_tuple in edges_to_rec_min_max_for.iter() {
-          let current_edge_max = seen_areas_maxs_by_edge.get(rgb_key).unwrap().get(edge_tuple).unwrap()[edge_tuple.0][edge_tuple.1];
-          let this_edge_max = city_weights[edge_tuple.0][edge_tuple.1];
-          if this_edge_max > current_edge_max {
-            // Replace min[row][col] weights w/ city_weights
-            seen_areas_maxs_by_edge.get_mut(rgb_key).unwrap().insert(*edge_tuple, city_weights.clone() );
-          }
-        }
+      //   // For all row x col edge tuples, is city_weights[row][col] a min()?
+      //   for edge_tuple in edges_to_rec_min_max_for.iter() {
+      //     let current_edge_min = seen_areas_mins_by_edge.get(rgb_key).unwrap().get(edge_tuple).unwrap()[edge_tuple.0][edge_tuple.1];
+      //     let this_edge_min = city_weights[edge_tuple.0][edge_tuple.1];
+      //     if this_edge_min < current_edge_min {
+      //       // Replace min[row][col] weights w/ city_weights
+      //       seen_areas_mins_by_edge.get_mut(rgb_key).unwrap().insert(*edge_tuple, city_weights.clone() );
+      //     }
+      //   }
 
-      }
-      else {
-        seen_areas_sum_weights_and_count.insert(*rgb_key, (1, city_weights.clone() ));
+      //   // For all row x col edge tuples, is city_weights[row][col] a max()?
+      //   for edge_tuple in edges_to_rec_min_max_for.iter() {
+      //     let current_edge_max = seen_areas_maxs_by_edge.get(rgb_key).unwrap().get(edge_tuple).unwrap()[edge_tuple.0][edge_tuple.1];
+      //     let this_edge_max = city_weights[edge_tuple.0][edge_tuple.1];
+      //     if this_edge_max > current_edge_max {
+      //       // Replace min[row][col] weights w/ city_weights
+      //       seen_areas_maxs_by_edge.get_mut(rgb_key).unwrap().insert(*edge_tuple, city_weights.clone() );
+      //     }
+      //   }
+
+      // }
+      // else {
+      //   seen_areas_sum_weights_and_count.insert(*rgb_key, (1, city_weights.clone() ));
         
-        let mut min_areas_hm = HashMap::new();
-        for edge_tuple in edges_to_rec_min_max_for.iter() {
-          min_areas_hm.insert(*edge_tuple, city_weights.clone() ); // they're _all_ a min() at step 1
-        }
-        seen_areas_mins_by_edge.insert(*rgb_key, min_areas_hm);
+      //   let mut min_areas_hm = HashMap::new();
+      //   for edge_tuple in edges_to_rec_min_max_for.iter() {
+      //     min_areas_hm.insert(*edge_tuple, city_weights.clone() ); // they're _all_ a min() at step 1
+      //   }
+      //   seen_areas_mins_by_edge.insert(*rgb_key, min_areas_hm);
 
-        let mut max_areas_hm = HashMap::new();
-        for edge_tuple in edges_to_rec_min_max_for.iter() {
-          max_areas_hm.insert(*edge_tuple, city_weights.clone() ); // they're _all_ a max() at step 1
-        }
-        seen_areas_maxs_by_edge.insert(*rgb_key, max_areas_hm);
-      }
+      //   let mut max_areas_hm = HashMap::new();
+      //   for edge_tuple in edges_to_rec_min_max_for.iter() {
+      //     max_areas_hm.insert(*edge_tuple, city_weights.clone() ); // they're _all_ a max() at step 1
+      //   }
+      //   seen_areas_maxs_by_edge.insert(*rgb_key, max_areas_hm);
+      // }
+      
+      // rgb_key
+
+      let point_x: isize = (point_x * 100.0 as fp) as isize;
+      let point_y: isize = (point_y * 100.0 as fp) as isize;
+      
+      html_content += format!(
+        "<div style=\"width:8px;height:8px;position:absolute;left:{}px;top:{}px;background-color:#{:02x}{:02x}{:02x}\">{}</div>",
+        point_x,point_y,
+        rgb_key.0, rgb_key.1, rgb_key.2,
+        html_format_tour_details(city_weights, brute_sol).as_str()
+      ).as_str();
+
       
     });
 
-    for (rgb_key, (weights_count, mut summed_weights)) in seen_areas_sum_weights_and_count {
-      let n = summed_weights.len();
-      let weights_count: fp = weights_count as fp;
-      for row_i in 0..n {
-        for col_i in 0..n {
-          summed_weights[row_i][col_i] = summed_weights[row_i][col_i] / weights_count;
-        }
-      }
-      println!("");
-      println!("Avg weights for: {:02x}{:02x}{:02x} (of {} sums):", rgb_key.0, rgb_key.1, rgb_key.2, weights_count);
-      print_square_matrix(&summed_weights);
-      
-      for edge_tuple in edges_to_rec_min_max_for.iter() {
-        let min_edge_weights = seen_areas_mins_by_edge.get(&rgb_key).unwrap().get(edge_tuple).unwrap();
-        println!("Min weights for {}, {} = {}", edge_tuple.0, edge_tuple.1, min_edge_weights[edge_tuple.0][edge_tuple.1]);
-        print_square_matrix(&min_edge_weights);
-      }
-
-      for edge_tuple in edges_to_rec_min_max_for.iter() {
-        let max_edge_weights = seen_areas_maxs_by_edge.get(&rgb_key).unwrap().get(edge_tuple).unwrap();
-        println!("Max weights for {}, {} = {}", edge_tuple.0, edge_tuple.1, max_edge_weights[edge_tuple.0][edge_tuple.1]);
-        print_square_matrix(&max_edge_weights);
-      }
-
+    // Overlap tested N+1 points w/ beginning coordinates
+    for (city_num, city_x, city_y) in node_coordinates.iter() {
+      let city_x: isize = (city_x * 100.0 as fp) as isize;
+      let city_y: isize = (city_y * 100.0 as fp) as isize;
+      html_content += format!(
+        "<div style=\"width:24px;height:24px;position:absolute;left:{}px;top:{}px;background:transparent;border: 3px solid red;border-radius:99px;font-weight:bold;\">{}</div>",
+        city_x - 12, city_y - 12, city_num
+      ).as_str();
     }
+
+    html_content += "</body>";
+
+    let mut f = File::create(&html_path).expect("Unable to create file");
+    f.write_all(html_content.as_bytes()).expect("Unable to write data");
+
+
+    // for (rgb_key, (weights_count, mut summed_weights)) in seen_areas_sum_weights_and_count {
+    //   let n = summed_weights.len();
+    //   let weights_count: fp = weights_count as fp;
+    //   for row_i in 0..n {
+    //     for col_i in 0..n {
+    //       summed_weights[row_i][col_i] = summed_weights[row_i][col_i] / weights_count;
+    //     }
+    //   }
+    //   println!("");
+    //   println!("Avg weights for: {:02x}{:02x}{:02x} (of {} sums):", rgb_key.0, rgb_key.1, rgb_key.2, weights_count);
+    //   print_square_matrix(&summed_weights);
+      
+    //   for edge_tuple in edges_to_rec_min_max_for.iter() {
+    //     let min_edge_weights = seen_areas_mins_by_edge.get(&rgb_key).unwrap().get(edge_tuple).unwrap();
+    //     println!("Min weights for {}, {} = {}", edge_tuple.0, edge_tuple.1, min_edge_weights[edge_tuple.0][edge_tuple.1]);
+    //     print_square_matrix(&min_edge_weights);
+    //   }
+
+    //   for edge_tuple in edges_to_rec_min_max_for.iter() {
+    //     let max_edge_weights = seen_areas_maxs_by_edge.get(&rgb_key).unwrap().get(edge_tuple).unwrap();
+    //     println!("Max weights for {}, {} = {}", edge_tuple.0, edge_tuple.1, max_edge_weights[edge_tuple.0][edge_tuple.1]);
+    //     print_square_matrix(&max_edge_weights);
+    //   }
+
+    // }
 
   }
 
 }
+
+fn html_format_tour_details(weights: &Vec<Vec<fp>>, brute_tour: &Vec<CityNum>) -> String {
+  let mut s = "<pre>".to_string();
+  let n = weights.len();
+  for row_i in 0..n {
+    s += "    ";
+    for col_i in 0..n {
+        if row_i == col_i {
+          s += "x.x         ";
+          continue;
+        }
+        s += format!("{:0.8}  ", weights[row_i][col_i] ).as_str();
+    }
+    s += "<br/>";
+  }
+  s += format!("tour = {:?}", brute_tour).as_str();
+  s += "</pre>";
+  s
+}
+
 
 fn print_square_matrix(weights: &Vec<Vec<fp>>) {
   let n = weights.len();
