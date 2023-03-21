@@ -1320,16 +1320,14 @@ fn spray_pattern_search(n: usize, bound_granularity: fp, num_sprays_to_perform: 
     let mut seen_areas_sum_weights_and_count: HashMap<(u8, u8, u8), (usize, Vec<Vec<fp>>)> = HashMap::new();
     // for now assume a 4x4 matrix + grab min+max for everything
     // TODO dynamically calc a triangle for edges_to_rec_min_max_for
-    let edges_to_rec_min_max_for = &[
-      (0, 1),
-      (0, 2),
-      (0, 3),
-      
-      (1, 2),
-      (1, 3),
+    let mut edges_to_rec_min_max_for = vec![];
+    for edge_i in 0..n {
+      for edge_j in (edge_i+1)..n {
+        edges_to_rec_min_max_for.push( (edge_i, edge_j) );
+      }
+    }
+    let edges_to_rec_min_max_for = edges_to_rec_min_max_for;
 
-      (2, 3),
-    ];
     // color -> edge -> weight matrix w/ min value at (row, col) coordinate from edges_to_rec_min_max_for
     let mut seen_areas_mins_by_edge: HashMap<(u8, u8, u8), HashMap<(usize, usize), Vec<Vec<fp>>>> = HashMap::new();
     let mut seen_areas_maxs_by_edge: HashMap<(u8, u8, u8), HashMap<(usize, usize), Vec<Vec<fp>>>> = HashMap::new();
