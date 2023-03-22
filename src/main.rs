@@ -128,7 +128,44 @@ pub const HTML_BEGIN: &'static str = r#"
           var canvas_elm = document.getElementById("overlay-canvas");
           var ctx = canvas_elm.getContext("2d");
           ctx.clearRect(0, 0, canvas_elm.width, canvas_elm.height);
+          
+          try {
+            var initial_coords_s = document.getElementById("initial-sol").getAttribute("c").split(" ");
+            var initial_coords = [];
+            for (var i=0; i<initial_coords_s.length; i+= 1) {
+              try {
+                var coords_s = initial_coords_s[i].split(",");
+                if (coords_s.length < 2) {
+                  continue;
+                }
+                initial_coords.push(
+                  [ parseFloat(coords_s[0]), parseFloat(coords_s[1]) ]
+                );
+              }
+              catch (e) {
+                console.log(e);
+              }
+            }
+            ctx.lineWidth = 1;
+            ctx.strokeStyle = 'white';
+            ctx.setLineDash([]);
+            var last_coords = initial_coords[initial_coords.length-1];
+            for (var i=0; i<initial_coords.length; i+= 1) {
+              var dis_coords = initial_coords[i];
+              ctx.beginPath();
+              ctx.moveTo(last_coords[0], last_coords[1]);
+              ctx.lineTo(dis_coords[0], dis_coords[1]);
+              ctx.stroke();
+              last_coords = dis_coords;
+            }
+          }
+          catch (e) {
+            console.log(e);
+          }
+          
           ctx.lineWidth = 2;
+          ctx.strokeStyle = 'black';
+          ctx.setLineDash([10,10]);
           var last_coords = path_coords[path_coords.length-1];
           for (var i=0; i<path_coords.length; i+= 1) {
             var dis_coords = path_coords[i];
@@ -1072,6 +1109,11 @@ fn pattern_scan_coords<F>(
 
   let mut unique_solution_spaces_points: HashMap<(u8, u8, u8), Vec<(fp, fp)>> = HashMap::new();
 
+  // If we get >1 brute solutions, pick next in line % all.
+  // This is more deterministic than picking at random and produces a noticable checker pattern
+  // on areas with 2+ solutions due to weight symmetry
+  let mut brute_sol_nonce = 0;
+
   let mut point_y = y_min_bound;
   loop {
     if point_y > y_max_bound {
@@ -1094,8 +1136,11 @@ fn pattern_scan_coords<F>(
       
       let brute_solutions = brute_algo::solve_all(&node_coordinates, &city_weights, None, thread_pool);
       let num_sols: i32 = brute_solutions.len() as i32;
-      let rand_idx: i32 = rand::thread_rng().gen_range(0, num_sols);
-      let brute_sol: Vec<CityNum> = brute_solutions[ rand_idx as usize ].clone(); // Vec<CityNum>
+      //let rand_idx: i32 = rand::thread_rng().gen_range(0, num_sols);
+      //let brute_sol: Vec<CityNum> = brute_solutions[ rand_idx as usize ].clone(); // Vec<CityNum>
+      let picked_idx: i32 = (brute_sol_nonce % brute_solutions.len()) as i32;
+      let brute_sol: Vec<CityNum> = brute_solutions[ picked_idx as usize ].clone(); // Vec<CityNum>
+      brute_sol_nonce += 1;
       
       let loc = (point_x, point_y);
       let (loc_x,loc_y) = scale_xy(width, height, x_range as u32, y_range as u32, smallest_x, smallest_y, loc.0, loc.1);
@@ -1249,6 +1294,8 @@ fn multi_pattern_scan(n: usize, bound_granularity: fp, num_multi_steps_to_scan: 
   let mut output_scan_files = vec![];
   for multi_step_i in 0..=num_multi_steps_to_scan {
     let converged_cities = converge_coordinates(&node_coordinates_a, &node_coordinates_b, multi_step_i, num_multi_steps_to_scan);
+    let converged_cities_weights = compute_weight_coords(&converged_cities);
+    let initial_solution = brute_algo::solve(&converged_cities, &converged_cities_weights, None, thread_pool);
     let output_multiscan_file_path = format!("views/multi-pattern-scan-{:03}.png", multi_step_i);
     let html_path = format!("views/multi-pattern-scan-{:03}.html", multi_step_i);
     let mut html_content = HTML_BEGIN.to_string();
@@ -1286,6 +1333,12 @@ fn multi_pattern_scan(n: usize, bound_granularity: fp, num_multi_steps_to_scan: 
       ).as_str();
     }
 
+    let mut c = "".to_string();
+    for city_num in initial_solution.iter() {
+      c += format!("{},{} ", (converged_cities[*city_num].1 * HTML_POINT_SCALE) as isize, (converged_cities[*city_num].2 * HTML_POINT_SCALE) as isize).as_str();
+    }
+
+    html_content += format!("<pre style=\"position:absolute;top:1600px;height:350px;\" id=\"initial-sol\" c=\"{}\">initial_solution = {:?}</pre>", c, &initial_solution).as_str();
     html_content += HTML_END;
 
     let mut f = File::create(&html_path).expect("Unable to create file");
