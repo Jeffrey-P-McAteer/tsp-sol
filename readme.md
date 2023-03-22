@@ -169,6 +169,15 @@ USE_BRUTE_CACHE=f TSP_INITIAL_COORDS='3.0,3.0 3.0,12.0 12.0,12.0 12.0,3.0 3.0,9'
 USE_BRUTE_CACHE=f TSP_INITIAL_COORDS='3.0,3.0 3.0,12.0 12.0,12.0 12.0,3.0' TSP_ENDING_COORDS='3.0,3.0 3.0,12.0 12.0,12.0 3.0,12.0' cargo run --release -- multi-pattern-scan 4 0.025 64
 
 
+# Current research following a very simple set of decision areas
+# that are still complex enough to observe a backtracking-like behavior.
+INCREMENT_NONCE_ON_ROW=f \
+  USE_BRUTE_CACHE=f \
+  TSP_INITIAL_COORDS='3.0,3.0 3.0,12.0 12.0,12.0 12.0,3.0' \
+  TSP_ENDING_COORDS='3.0,3.0 3.0,12.0 12.0,12.0 3.0,12.0' \
+  cargo run --release -- multi-pattern-scan 4 0.049 32
+
+
 
 
 ```

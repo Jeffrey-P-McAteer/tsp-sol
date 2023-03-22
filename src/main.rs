@@ -89,34 +89,59 @@ pub const HTML_BEGIN: &'static str = r#"
   <head>
     <style>
       div > * {
-          display: none;
-          width: 450px;
-          background-color: Canvas ;
-          position: relative;
-          top:-120px;
-          left:10px;
+        display: none;
+        width: 450px;
+        background-color: Canvas ;
+        position: relative;
+        top:-120px;
+        left:10px;
+      }
+      div:hover > * {
+        display: block;
+        pointer-events:none;
+      }
+      html, body {
+        background: #c0c0c0;
+      }
+    </style>
+    <script>
+      /* test w/ draw_path( document.querySelectorAll('div')[5] ) */
+      function draw_path(clicked_elm) {
+        console.log('draw_path', clicked_elm);
+        /*event = event || window.event;
+        var clicked_elm = event.currentTarget || event.target;*/
+        var path_coords_s = clicked_elm.getAttribute("c").split(" ");
+        console.log(path_coords_s);
+        var path_coords = [];
+        for (var i=0; i<path_coords_s.length; i+= 1) {
+          try {
+            var coords_s = path_coords_s[i].split(",");
+            if (coords_s.length < 2) {
+              continue;
+            }
+            path_coords.push(
+              [ parseFloat(coords_s[0]), parseFloat(coords_s[1]) ]
+            );
+          }
+          catch (e) {
+            console.log(e);
+          }
         }
-        div:hover > * {
-          display: block;
-          pointer-events:none;
-        }
-      </style>
-      <script>
-        /* test w/ draw_path( document.querySelectorAll('div')[5] ) */
-        function draw_path(clicked_elm) {
-          console.log('draw_path', clicked_elm);
-          /*event = event || window.event;
-          var clicked_elm = event.currentTarget || event.target;*/
-          var path_coords_s = clicked_elm.getAttribute("c").split(" ");
-          console.log(path_coords_s);
-          var path_coords = [];
-          for (var i=0; i<path_coords_s.length; i+= 1) {
+        console.log(path_coords);
+        var canvas_elm = document.getElementById("overlay-canvas");
+        var ctx = canvas_elm.getContext("2d");
+        ctx.clearRect(0, 0, canvas_elm.width, canvas_elm.height);
+        
+        try {
+          var initial_coords_s = document.getElementById("initial-sol").getAttribute("c").split(" ");
+          var initial_coords = [];
+          for (var i=0; i<initial_coords_s.length; i+= 1) {
             try {
-              var coords_s = path_coords_s[i].split(",");
+              var coords_s = initial_coords_s[i].split(",");
               if (coords_s.length < 2) {
                 continue;
               }
-              path_coords.push(
+              initial_coords.push(
                 [ parseFloat(coords_s[0]), parseFloat(coords_s[1]) ]
               );
             }
@@ -124,51 +149,12 @@ pub const HTML_BEGIN: &'static str = r#"
               console.log(e);
             }
           }
-          console.log(path_coords);
-          var canvas_elm = document.getElementById("overlay-canvas");
-          var ctx = canvas_elm.getContext("2d");
-          ctx.clearRect(0, 0, canvas_elm.width, canvas_elm.height);
-          
-          try {
-            var initial_coords_s = document.getElementById("initial-sol").getAttribute("c").split(" ");
-            var initial_coords = [];
-            for (var i=0; i<initial_coords_s.length; i+= 1) {
-              try {
-                var coords_s = initial_coords_s[i].split(",");
-                if (coords_s.length < 2) {
-                  continue;
-                }
-                initial_coords.push(
-                  [ parseFloat(coords_s[0]), parseFloat(coords_s[1]) ]
-                );
-              }
-              catch (e) {
-                console.log(e);
-              }
-            }
-            ctx.lineWidth = 1;
-            ctx.strokeStyle = 'white';
-            ctx.setLineDash([]);
-            var last_coords = initial_coords[initial_coords.length-1];
-            for (var i=0; i<initial_coords.length; i+= 1) {
-              var dis_coords = initial_coords[i];
-              ctx.beginPath();
-              ctx.moveTo(last_coords[0], last_coords[1]);
-              ctx.lineTo(dis_coords[0], dis_coords[1]);
-              ctx.stroke();
-              last_coords = dis_coords;
-            }
-          }
-          catch (e) {
-            console.log(e);
-          }
-          
-          ctx.lineWidth = 2;
-          ctx.strokeStyle = 'black';
-          ctx.setLineDash([10,10]);
-          var last_coords = path_coords[path_coords.length-1];
-          for (var i=0; i<path_coords.length; i+= 1) {
-            var dis_coords = path_coords[i];
+          ctx.lineWidth = 1;
+          ctx.strokeStyle = 'white';
+          ctx.setLineDash([]);
+          var last_coords = initial_coords[initial_coords.length-1];
+          for (var i=0; i<initial_coords.length; i+= 1) {
+            var dis_coords = initial_coords[i];
             ctx.beginPath();
             ctx.moveTo(last_coords[0], last_coords[1]);
             ctx.lineTo(dis_coords[0], dis_coords[1]);
@@ -176,9 +162,26 @@ pub const HTML_BEGIN: &'static str = r#"
             last_coords = dis_coords;
           }
         }
-      </script>
-    </head>
-    <body>
+        catch (e) {
+          console.log(e);
+        }
+        
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = 'black';
+        ctx.setLineDash([10,10]);
+        var last_coords = path_coords[path_coords.length-1];
+        for (var i=0; i<path_coords.length; i+= 1) {
+          var dis_coords = path_coords[i];
+          ctx.beginPath();
+          ctx.moveTo(last_coords[0], last_coords[1]);
+          ctx.lineTo(dis_coords[0], dis_coords[1]);
+          ctx.stroke();
+          last_coords = dis_coords;
+        }
+      }
+    </script>
+  </head>
+  <body>
 "#;
 pub const HTML_END: &'static str = r#"
   <canvas id="overlay-canvas" width="1450px" height="1450px" style="position:absolute;top:0;left:0;pointer-events:none;"/>
@@ -1114,13 +1117,18 @@ fn pattern_scan_coords<F>(
   // on areas with 2+ solutions due to weight symmetry
   let mut brute_sol_nonce = 0;
 
+  // If you get stripes instead of checkers, toggle the value of INCREMENT_NONCE_ON_ROW env variable to get the other pattern.
+  let increment_nonce_on_row = env::var("INCREMENT_NONCE_ON_ROW").unwrap_or("f".to_string()).contains("t");
+
   let mut point_y = y_min_bound;
   loop {
     if point_y > y_max_bound {
       break;
     }
 
-    brute_sol_nonce += 1; // bump so exactly-two are staggered at each row
+    if increment_nonce_on_row {
+      brute_sol_nonce += 1; // bump so exactly-two are staggered at each row
+    }
     
     let mut point_x = x_min_bound;
     loop {
