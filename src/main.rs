@@ -128,7 +128,7 @@ pub const HTML_BEGIN: &'static str = r#"
           var canvas_elm = document.getElementById("overlay-canvas");
           var ctx = canvas_elm.getContext("2d");
           ctx.clearRect(0, 0, canvas_elm.width, canvas_elm.height);
-          ctx.lineWidth = 4;
+          ctx.lineWidth = 2;
           var last_coords = path_coords[path_coords.length-1];
           for (var i=0; i<path_coords.length; i+= 1) {
             var dis_coords = path_coords[i];
