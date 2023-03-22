@@ -166,7 +166,7 @@ USE_BRUTE_CACHE=f TSP_INITIAL_COORDS='6.5,7.0 7.5,7.0 7.0,6.65 ' cargo run --rel
 # Square w/ biased left-right point moving
 USE_BRUTE_CACHE=f TSP_INITIAL_COORDS='3.0,3.0 3.0,12.0 12.0,12.0 12.0,3.0 3.0,9' TSP_ENDING_COORDS='3.0,3.0 3.0,12.0 12.0,12.0 12.0,3.0 12.0,9' cargo run --release -- multi-pattern-scan 5 0.025 64
 
-USE_BRUTE_CACHE=f TSP_INITIAL_COORDS='3.0,3.0 3.0,12.0 12.0,12.0 12.0,3.0' $env:TSP_ENDING_COORDS='3.0,3.0 3.0,12.0 12.0,12.0 7.5,7.5' cargo run --release -- multi-pattern-scan 4 0.025 64
+USE_BRUTE_CACHE=f TSP_INITIAL_COORDS='3.0,3.0 3.0,12.0 12.0,12.0 12.0,3.0' TSP_ENDING_COORDS='3.0,3.0 3.0,12.0 12.0,12.0 3.0,12.0' cargo run --release -- multi-pattern-scan 4 0.025 64
 
 
 
