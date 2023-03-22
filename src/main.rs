@@ -1119,6 +1119,8 @@ fn pattern_scan_coords<F>(
     if point_y > y_max_bound {
       break;
     }
+
+    brute_sol_nonce += 1; // bump so exactly-two are staggered at each row
     
     let mut point_x = x_min_bound;
     loop {
