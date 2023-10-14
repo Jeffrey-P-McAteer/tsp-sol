@@ -3,12 +3,13 @@ import os
 import sys
 import subprocess
 
+env_path = os.path.join(os.getcwd(), '.py-env')
+os.makedirs(env_path, exist_ok=True)
+sys.path.append(env_path)
+
 try:
   import environmentinator
 except:
-  env_path = os.path.join(os.getcwd(), '.py-env')
-  os.makedirs(env_path, exist_ok=True)
-  sys.path.append(env_path)
   subprocess.run([
     sys.executable, '-m', 'pip', 'install', f'--target={env_path}', 'environmentinator'
   ])
@@ -28,6 +29,7 @@ def main(args=sys.argv):
   x = numpy.linspace(-10, 10, 1000)
 
   # calculate the y value for each element of the x vector
+  #y = x**2 + 2*x + 2  
   y = x**2 + 2*x + 2  
 
   fig, ax = matplotlib.pyplot.subplots()
