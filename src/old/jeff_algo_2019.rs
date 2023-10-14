@@ -1,6 +1,6 @@
 /**
  *  tsp-sol - an experimental environment for traveling salesman solution analysis
- *  Copyright (C) 2019  Jeffrey McAteer <jeffrey.p.mcateer@gmail.com>
+ *  Copyright (C) 2023  Jeffrey McAteer <jeffrey@jmcateer.com>
  *  
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by

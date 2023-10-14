@@ -2,7 +2,7 @@
 name = "tsp-sol"
 version = "0.1.0"
 edition = "2021"
-authors = ["Jeffrey McAteer <jeffrey.p.mcateer@gmail.com>"]
+authors = ["Jeffrey McAteer <jeffrey@jmcateer.com>"]
 
 [dependencies]
 tsplib = "0.1"
