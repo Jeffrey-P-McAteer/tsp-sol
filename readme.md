@@ -178,6 +178,11 @@ INCREMENT_NONCE_ON_ROW=f \
   cargo run --release -- multi-pattern-scan 4 0.049 32
 
 
+# 2023-10-14 research, following/modeling 3d conics to
+# match 2d parabolic shapes/area regions
+TSP_INITIAL_COORDS='3.0,11.0 12.0,11.0 3.0,9.0 ' TSP_ENDING_COORDS='3.0,11.0 12.0,11.0 12.0,9.0 ' cargo run --release -- multi-pattern-scan 3 0.03 16
+
+
 
 
 ```
