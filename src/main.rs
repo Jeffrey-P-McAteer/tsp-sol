@@ -1307,11 +1307,12 @@ fn multi_pattern_scan(n: usize, bound_granularity: fp, num_multi_steps_to_scan: 
     let converged_cities_weights = compute_weight_coords(&converged_cities);
     let initial_solution = brute_algo::solve(&converged_cities, &converged_cities_weights, None, thread_pool);
     let output_multiscan_file_path = format!("views/multi-pattern-scan-{:03}.png", multi_step_i);
+    let output_multiscan_parabola_file_path = format!("views/multi-pattern-scan-{:03}-parabola.png", multi_step_i); // TODO
     let html_path = format!("views/multi-pattern-scan-{:03}.html", multi_step_i);
     let mut html_content = HTML_BEGIN.to_string();
-    pattern_scan_coords(n, bound_granularity, &output_multiscan_file_path, converged_cities.clone(), thread_pool, |city_weights, brute_sol, (point_x, point_y), rgb_key| {
-      let point_x: isize = (point_x * HTML_POINT_SCALE) as isize;
-      let point_y: isize = (point_y * HTML_POINT_SCALE) as isize;
+    pattern_scan_coords(n, bound_granularity, &output_multiscan_file_path, converged_cities.clone(), thread_pool, |city_weights, brute_sol, (tsp_point_x, tsp_point_y), rgb_key| {
+      let point_x: isize = (tsp_point_x * HTML_POINT_SCALE) as isize;
+      let point_y: isize = (tsp_point_y * HTML_POINT_SCALE) as isize;
 
       let mut c = "".to_string();
       for city_num in brute_sol.iter() {
