@@ -1398,8 +1398,99 @@ fn multi_pattern_scan(n: usize, bound_granularity: fp, num_multi_steps_to_scan: 
       }
     }
 
-    // now use each set of key, list of parabola_points... to predict N polynominals?
-    {
+    // now use each set of key, list of parabola_points to predict N polynominals
+    
+    // Iterate all TSP edge points + store lists of continuous strings w/ different (a color, b color) sides;
+    // these will be our parabolic edges which we can algebra functions out of?
+
+    // List of A -> B MIDPOINTS; average x,y of two most-nearby points as we iterate forwards along both.
+    // We expect each pair of lines to have within 1-2 number of the same points. 
+    // keys are (std::cmp::min(A, B), std::cmp::max(A, B)) so we keep both color data and collection order does not matter.
+    let mut functions_edge_points: HashMap<(usize, usize), Vec<(fp, fp)>> = HashMap::new();
+
+    let matching_radius = (bound_granularity.powf(2.0) + bound_granularity.powf(2.0)).sqrt() * 1.02; // sqrt(A**2 + B**2) plus 2% error to fetch points on diagonals
+
+    for (rgb_key_a, edge_tsp_points_a) in &parabola_points {
+      // for all points within bound_granularity of a point in edge_tsp_points_a,
+      // take average and add to vec. If vec len > /*0*/ 2, add to functions_edge_points.
+      let mut nearby_pts_colors: Vec<(fp, fp, usize)> = vec![];
+      for (a_tsp_pt_x, a_tsp_pt_y) in edge_tsp_points_a {
+        nearby_pts_colors.push(
+          (*a_tsp_pt_x, *a_tsp_pt_y, *rgb_key_a) // include a data
+        );
+        for (rgb_key_b, edge_tsp_points_b) in &parabola_points {
+          if *rgb_key_b == *rgb_key_a {
+            continue;
+          }
+          for (b_tsp_pt_x, b_tsp_pt_y) in edge_tsp_points_b {
+            let ab_pt_dist = ((a_tsp_pt_x - b_tsp_pt_x).powf(2.0) + (a_tsp_pt_y - b_tsp_pt_y).powf(2.0)).sqrt();
+            if ab_pt_dist < matching_radius {
+              // points are co-located, add b data!
+              nearby_pts_colors.push(
+                (*b_tsp_pt_x, *b_tsp_pt_y, *rgb_key_b)
+              );
+            }
+          }
+        }
+      }
+
+      let nearby_pts_colors = nearby_pts_colors;
+      // Now we have all nearby_pts_colors for this edge_tsp_points_a;
+      // Walk the original line again and insert nearby points to functions_edge_points
+      // along their A-B vectors by taking the average of all nearby points.
+      for (a_tsp_pt_x, a_tsp_pt_y) in edge_tsp_points_a {
+        let mut other_rgb_key_b_val = rgb_key_a;
+        let mut rgb_key_b_nearby_positions : Vec<(fp, fp)> = vec![];
+        for (b_tsp_pt_x, b_tsp_pt_y, rgb_key_b) in &nearby_pts_colors {
+          if rgb_key_b == rgb_key_a || (other_rgb_key_b_val != rgb_key_a && rgb_key_b != other_rgb_key_b_val ) {
+            continue; // Skip our own x,y points AND not-the-first-value-of-rgb_key_b points.
+          }
+          // Are we within matching_radius of a_tsp_pt_x, a_tsp_pt_y?
+          let ab_pt_dist = ((a_tsp_pt_x - b_tsp_pt_x).powf(2.0) + (a_tsp_pt_y - b_tsp_pt_y).powf(2.0)).sqrt();
+          if ab_pt_dist < matching_radius {
+            other_rgb_key_b_val = rgb_key_b; // First rgb_key_b wins, but we expect only 1 in 99% of cases so that's fine.
+            rgb_key_b_nearby_positions.push(
+              (*b_tsp_pt_x, *b_tsp_pt_y)
+            );
+          }
+        }
+        if other_rgb_key_b_val == rgb_key_a {
+          continue; // apparently nearby_pts_colors.len() == 0, don't store empty data.
+        }
+        // We now guarantee that other_rgb_key_b_val is not rgb_key_a
+        // Now average all points in rgb_key_b_nearby_positions and store in a->b the key
+        let mut total_pt_x: fp = *a_tsp_pt_x;
+        let mut total_pt_y: fp = *a_tsp_pt_y;
+        for (b_tsp_pt_x, b_tsp_pt_y) in &rgb_key_b_nearby_positions {
+          total_pt_x += *b_tsp_pt_x;
+          total_pt_y += *b_tsp_pt_y;
+        }
+
+        let avg_pt_x: fp = total_pt_x / ((rgb_key_b_nearby_positions.len()+1) as fp);
+        let avg_pt_y: fp = total_pt_y / ((rgb_key_b_nearby_positions.len()+1) as fp);
+        
+        let functions_edge_points_key: (usize, usize) = (
+          std::cmp::min(*rgb_key_a, *other_rgb_key_b_val),
+          std::cmp::max(*rgb_key_a, *other_rgb_key_b_val)
+        );
+
+        if ! functions_edge_points.contains_key(&functions_edge_points_key) {
+          functions_edge_points.insert(functions_edge_points_key, vec![] );
+        }
+
+        if let Some(functions_edge_points_vec) = functions_edge_points.get_mut(&functions_edge_points_key) {
+          functions_edge_points_vec.push(
+            (avg_pt_x, avg_pt_y)
+          );
+        }
+
+      }
+
+    }
+
+    // Now we can assume functions_edge_points is full?    
+
+    { // text out
       let mut parabola_txt = String::new();
       for (rgb_key, edge_tsp_points) in &parabola_points {
         let num_points = edge_tsp_points.len();
@@ -1409,13 +1500,23 @@ fn multi_pattern_scan(n: usize, bound_granularity: fp, num_multi_steps_to_scan: 
         }
         parabola_txt += "\n";
       }
+
+      parabola_txt += "=== === === ===\n";
+      for (edge_keys, edge_points_vec) in &functions_edge_points {
+        parabola_txt += format!("Edge {:06x} - {:06x} ({} points) \n", edge_keys.0, edge_keys.1, edge_points_vec.len() ).as_str();
+        for (edge_tsp_x, edge_tsp_y) in edge_points_vec {
+          parabola_txt += format!("  {}, {}\n", edge_tsp_x, edge_tsp_y).as_str();
+        }
+        parabola_txt += "\n";
+      }
+      parabola_txt += "\n";
+
       let mut f = File::create(&output_multiscan_parabola_txt_file_path).expect("Unable to create file");
       f.write_all(parabola_txt.as_bytes()).expect("Unable to write data");
     }
 
-    // TODO predict parabolas & add to data structure so they can be plotted in output_multiscan_parabola_file_path
 
-    {
+    { // image out
       let (width, height) = (900, 900);
       let mut image = RgbImage::new(width + 15, height + 15); // width, height
       let font = Font::try_from_bytes(include_bytes!("../resources/NotoSans-Bold.ttf")).unwrap();
