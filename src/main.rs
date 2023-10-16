@@ -1619,12 +1619,19 @@ fn multi_pattern_scan(n: usize, bound_granularity: fp, num_multi_steps_to_scan: 
             }
           }
 
-          { // Flip X - red
-            let x = (-(x - x_midpt)) + x_midpt; // Flip x around center to match coord spaces
+          x += bound_granularity * 0.05; // 20x precision
+        }
 
-            let y = (a * x.powf(2.0)) + (b * x) + c;
+        let mut y = smallest_y;
+        loop {
+          if y >= largest_y {
+            break;
+          }
 
-            if y > smallest_y && y < largest_y {
+          { // Flipped x/y equation - red
+            let x = (a * y.powf(2.0)) + (b * y) + c;
+
+            if x > smallest_y && x < largest_y {
               // Transform TSP x and y to image x and y and drop some ink on it!
             
               let r: u8 = 255;
@@ -1637,46 +1644,7 @@ fn multi_pattern_scan(n: usize, bound_granularity: fp, num_multi_steps_to_scan: 
             }
           }
 
-          { // Flip Y - Green
-            let x = (-(x - x_midpt)) + x_midpt; // Flip x around center to match coord spaces
-
-            let y = (a * x.powf(2.0)) + (b * x) + c;
-
-            if y > smallest_y && y < largest_y {
-              // Transform TSP x and y to image x and y and drop some ink on it!
-            
-              let r: u8 = 0;
-              let g: u8 = 255;
-              let b: u8 = 0;
-              let (loc_x,loc_y) = scale_xy(width, height, x_range as u32, y_range as u32, smallest_x, smallest_y, x, y);
-
-              *image.get_pixel_mut(loc_x, loc_y) = Rgb([r, g, b]);
-
-            }
-          }
-
-          { // Flip X AND Y - Blue
-            
-            let x = (-(x - x_midpt)) + x_midpt; // Flip x around center to match coord spaces
-
-            let y = (a * x.powf(2.0)) + (b * x) + c;
-
-            let y = (-(y - y_midpt)) + y_midpt; // Flip y around center to match coord spaces
-            
-            if y > smallest_y && y < largest_y {
-              // Transform TSP x and y to image x and y and drop some ink on it!
-            
-              let r: u8 = 0;
-              let g: u8 = 0;
-              let b: u8 = 255;
-              let (loc_x,loc_y) = scale_xy(width, height, x_range as u32, y_range as u32, smallest_x, smallest_y, x, y);
-
-              *image.get_pixel_mut(loc_x, loc_y) = Rgb([r, g, b]);
-
-            }
-          }
-
-          x += bound_granularity * 0.05; // 20x precision
+          y += bound_granularity * 0.05; // 20x precision
         }
 
         // TODO labels et al
