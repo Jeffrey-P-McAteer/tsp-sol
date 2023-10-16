@@ -1496,12 +1496,15 @@ fn multi_pattern_scan(n: usize, bound_granularity: fp, num_multi_steps_to_scan: 
         let num_points = edge_tsp_points.len();
         parabola_txt += format!("=== {rgb_key:x} ({num_points} points) ===\n").as_str();
         for (edge_pt_x, edge_pt_y) in edge_tsp_points {
-          parabola_txt += format!(" ({edge_pt_x}, {edge_pt_y})\n").as_str();
+          parabola_txt += format!("  {edge_pt_x}, {edge_pt_y}\n").as_str();
         }
         parabola_txt += "\n";
       }
 
       parabola_txt += "=== === === ===\n";
+      parabola_txt += "===  EDGES  ===\n";
+      parabola_txt += "=== === === ===\n";
+      
       for (edge_keys, edge_points_vec) in &functions_edge_points {
         parabola_txt += format!("Edge {:06x} - {:06x} ({} points) \n", edge_keys.0, edge_keys.1, edge_points_vec.len() ).as_str();
         for (edge_tsp_x, edge_tsp_y) in edge_points_vec {
