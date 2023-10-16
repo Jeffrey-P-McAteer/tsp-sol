@@ -1342,25 +1342,37 @@ fn multi_pattern_scan(n: usize, bound_granularity: fp, num_multi_steps_to_scan: 
       );
 
 
-
     });
     let output_multiscan_parabola_file_path = format!("views/multi-pattern-scan-{:03}-parabola.png", multi_step_i);
+    let output_multiscan_parabola_txt_file_path = format!("views/multi-pattern-scan-{:03}-parabola.txt", multi_step_i);
     // Edge detection w/ tsp_points_colors
     let mut parabola_points: HashMap<usize, Vec<(fp, fp)>> = HashMap::new(); // RGB color string -> list of points on ... exterior.. hmm.
     
     // We know tsp_point_colors contains a square, so compute width & height so we can index into neighbors for edge detection
-    let tsp_square_size: usize = (f64::sqrt(tsp_point_colors.len() as f64) as usize /*+ 1*/) as usize;
+    let tsp_square_size: isize = (f64::sqrt(tsp_point_colors.len() as f64) as isize /*+ 1*/) as isize;
 
     for y in 0..tsp_square_size {
       for x in 0..tsp_square_size {
-        let (tsp_point_x, tsp_point_y, rgb_key) = tsp_point_colors[(y * tsp_square_size) + x];
+        let (tsp_point_x, tsp_point_y, rgb_key) = tsp_point_colors[((y * tsp_square_size) + x) as usize];
+        
         // First question; are our neighbors rgb_key s different?
+        
+        // "y-minus-one-index", "x-plus-one-index", etc.
+        let ym1i: isize = ((y-1) * tsp_square_size) + x;
+        let yp1i: isize = ((y+1) * tsp_square_size) + x;
+        let xm1i: isize = (y*tsp_square_size) + (x-1);
+        let xp1i: isize = (y*tsp_square_size) + (x+1);
+        
+        if ym1i < 0 || yp1i >= tsp_point_colors.len() as isize || xm1i < 0 || xp1i >= tsp_point_colors.len() as isize  {
+          continue; // off-square!
+        }
+
         #[allow(unused_parens)]
         let is_edge_pt = (
-          rgb_key != tsp_point_colors[(std::cmp::min(y-1,0) * tsp_square_size) + x].2 ||                  // is y-1 different color?
-          rgb_key != tsp_point_colors[(std::cmp::max(y+1,tsp_square_size-1) * tsp_square_size) + x].2 ||  // is y+1 different color?
-          rgb_key != tsp_point_colors[(y * tsp_square_size) + std::cmp::min(x-1, 0)].2 ||                 // is x-1 different color?
-          rgb_key != tsp_point_colors[(y * tsp_square_size) + std::cmp::max(x+1, tsp_square_size-1)].2    // is x+1 different color?
+          rgb_key != tsp_point_colors[ym1i as usize].2 ||  // is y-1 different color?
+          rgb_key != tsp_point_colors[yp1i as usize].2 ||  // is y+1 different color?
+          rgb_key != tsp_point_colors[xm1i as usize].2 ||  // is x-1 different color?
+          rgb_key != tsp_point_colors[xp1i as usize].2     // is x+1 different color?
         );
         if !is_edge_pt {
           continue;
@@ -1370,14 +1382,33 @@ fn multi_pattern_scan(n: usize, bound_granularity: fp, num_multi_steps_to_scan: 
           parabola_points.insert(rgb_key, vec![]);
         }
 
-        parabola_points[&rgb_key].push(
-          (tsp_point_x, tsp_point_y)
-        );
+        if let Some(parabola_points_vec) = parabola_points.get_mut(&rgb_key) {
+          parabola_points_vec.push(
+            (tsp_point_x, tsp_point_y)
+          );
+        }
 
       }
     }
 
     // now use each set of key, list of points... to predict N polynominals?
+    let mut parabola_txt = String::new();
+    for (rgb_key, edge_tsp_points) in &parabola_points {
+      let num_points = edge_tsp_points.len();
+      parabola_txt += format!("=== {rgb_key:x} ({num_points} points) ===\n").as_str();
+      for (edge_pt_x, edge_pt_y) in edge_tsp_points {
+        parabola_txt += format!(" ({edge_pt_x}, {edge_pt_y})\n").as_str();
+      }
+      parabola_txt += "\n";
+    }
+    let mut f = File::create(&output_multiscan_parabola_txt_file_path).expect("Unable to create file");
+    f.write_all(parabola_txt.as_bytes()).expect("Unable to write data");
+
+    for (rgb_key, edge_tsp_points) in &parabola_points {
+      for (edge_pt_x, edge_pt_y) in edge_tsp_points {
+        // todo draw an image into output_multiscan_parabola_file_path
+      }
+    }
 
 
 
