@@ -1488,7 +1488,39 @@ fn multi_pattern_scan(n: usize, bound_granularity: fp, num_multi_steps_to_scan: 
 
     }
 
-    // Now we can assume functions_edge_points is full?    
+    // Now we can assume functions_edge_points is full;
+    // compute the a(x**2) + bx + c formula given 3 points from each edge.
+    let mut functions_edge_abc_coef: HashMap<(usize, usize), (fp, fp, fp)> = HashMap::new();
+    for (edge_keys, edge_points_vec) in &functions_edge_points {
+      if edge_points_vec.len() < 3 {
+        continue; // not enough data!
+      }
+
+      let (x1, y1) = edge_points_vec[0];
+      let (x2, y2) = edge_points_vec[edge_points_vec.len() / 2];
+      let (x3, y3) = edge_points_vec[edge_points_vec.len() - 1];
+      
+      let a1 = -(x1.powf(2.0)) + x2.powf(2.0);
+      let b1 = -x1 + x2;
+      let d1 = -y1 + y2;
+      let a2 = -(x2.powf(2.0)) + x3.powf(2.0);
+      
+      let b2 = -x2 + x3;
+      let d2 = -y2 + y3;
+      let bm = -(b2 / b1);
+      
+      let a3 = (bm * a1) + a2;
+      let d3 = (bm * d1) + d2;
+      
+      let a: fp = d3 / a3;
+      let b: fp = ((d1 - a1) * a) / b1;
+      let c: fp = y1 - (a*x1).powf(2.0) - (b*x1);
+
+      functions_edge_abc_coef.insert(
+        *edge_keys, (a, b, c)
+      );
+    }
+
 
     { // text out
       let mut parabola_txt = String::new();
@@ -1506,7 +1538,12 @@ fn multi_pattern_scan(n: usize, bound_granularity: fp, num_multi_steps_to_scan: 
       parabola_txt += "=== === === ===\n";
       
       for (edge_keys, edge_points_vec) in &functions_edge_points {
-        parabola_txt += format!("Edge {:06x} - {:06x} ({} points) \n", edge_keys.0, edge_keys.1, edge_points_vec.len() ).as_str();
+        let (a, b, c) = functions_edge_abc_coef.get(edge_keys).unwrap_or(&(0.0, 0.0, 0.0)); // we know it exists
+
+        parabola_txt += format!("Edge {:06x} - {:06x} has {} points,  y = ({} * x**2) + ({} * x) + {}  \n",
+          edge_keys.0, edge_keys.1, edge_points_vec.len(), a, b, c
+        ).as_str();
+        
         for (edge_tsp_x, edge_tsp_y) in edge_points_vec {
           parabola_txt += format!("  {}, {}\n", edge_tsp_x, edge_tsp_y).as_str();
         }
@@ -1545,6 +1582,36 @@ fn multi_pattern_scan(n: usize, bound_granularity: fp, num_multi_steps_to_scan: 
           }
 
         }
+      }
+
+      // Also draw parabolas in white using functions_edge_abc_coef
+      for (rgb_key, (a, b, c)) in &functions_edge_abc_coef {
+        // Draw in steps from smallest_x -> largest_x, keeping where Y falls into range.
+        let mut x = smallest_x;
+        loop {
+          if x >= largest_x {
+            break;
+          }
+
+          let y = (a * x.powf(2.0)) + (b * x) + c;
+          if y > smallest_y && y < largest_y {
+            // Transform TSP x and y to image x and y and drop some ink on it!
+          
+            let r: u8 = 255;
+            let g: u8 = 255;
+            let b: u8 = 255;
+            let (loc_x,loc_y) = scale_xy(width, height, x_range as u32, y_range as u32, smallest_x, smallest_y, x, y);
+
+            *image.get_pixel_mut(loc_x, loc_y) = Rgb([r, g, b]);
+
+          }
+
+          x += bound_granularity;
+        }
+
+        // TODO labels et al
+        
+
       }
 
       image.save(output_multiscan_parabola_file_path.clone()).unwrap();
