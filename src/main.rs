@@ -1584,6 +1584,9 @@ fn multi_pattern_scan(n: usize, bound_granularity: fp, num_multi_steps_to_scan: 
         }
       }
 
+      let x_midpt = (smallest_x+x_range)/2.0;
+      let y_midpt = (smallest_y+y_range)/2.0;
+
       // Also draw parabolas in white using functions_edge_abc_coef
       for (rgb_key, (a, b, c)) in &functions_edge_abc_coef {
         // Draw in steps from smallest_x -> largest_x, keeping where Y falls into range.
@@ -1593,17 +1596,24 @@ fn multi_pattern_scan(n: usize, bound_granularity: fp, num_multi_steps_to_scan: 
             break;
           }
 
-          let y = (a * x.powf(2.0)) + (b * x) + c;
-          if y > smallest_y && y < largest_y {
-            // Transform TSP x and y to image x and y and drop some ink on it!
-          
-            let r: u8 = 255;
-            let g: u8 = 255;
-            let b: u8 = 255;
-            let (loc_x,loc_y) = scale_xy(width, height, x_range as u32, y_range as u32, smallest_x, smallest_y, x, y);
+          {
+            let x = (-(x - x_midpt)) + x_midpt; // Flip x around center
 
-            *image.get_pixel_mut(loc_x, loc_y) = Rgb([r, g, b]);
+            let y = (a * x.powf(2.0)) + (b * x) + c;
 
+            // let y = (-(y - y_midpt)) + y_midpt; // Flip y around center
+            
+            if y > smallest_y && y < largest_y {
+              // Transform TSP x and y to image x and y and drop some ink on it!
+            
+              let r: u8 = 255;
+              let g: u8 = 255;
+              let b: u8 = 255;
+              let (loc_x,loc_y) = scale_xy(width, height, x_range as u32, y_range as u32, smallest_x, smallest_y, x, y);
+
+              *image.get_pixel_mut(loc_x, loc_y) = Rgb([r, g, b]);
+
+            }
           }
 
           x += bound_granularity;
