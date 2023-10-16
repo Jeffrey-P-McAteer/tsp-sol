@@ -1584,8 +1584,8 @@ fn multi_pattern_scan(n: usize, bound_granularity: fp, num_multi_steps_to_scan: 
         }
       }
 
-      let x_midpt = (smallest_x+x_range)/2.0;
-      let y_midpt = (smallest_y+y_range)/2.0;
+      let x_midpt = (smallest_x+largest_x)/2.0;
+      let y_midpt = (smallest_y+largest_y)/2.0;
 
       // Also draw parabolas in white using functions_edge_abc_coef
       for (rgb_key, (a, b, c)) in &functions_edge_abc_coef {
