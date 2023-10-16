@@ -1302,6 +1302,7 @@ fn multi_pattern_scan(n: usize, bound_granularity: fp, num_multi_steps_to_scan: 
   println!("Initial node_coordinates_b={:?}", &node_coordinates_b);
 
   let mut output_scan_files = vec![];
+  let mut output_multiscan_parabola_file_paths = vec![];
   for multi_step_i in 0..=num_multi_steps_to_scan {
     let converged_cities = converge_coordinates(&node_coordinates_a, &node_coordinates_b, multi_step_i, num_multi_steps_to_scan);
     let converged_cities_weights = compute_weight_coords(&converged_cities);
@@ -1343,6 +1344,7 @@ fn multi_pattern_scan(n: usize, bound_granularity: fp, num_multi_steps_to_scan: 
 
 
     });
+
     let output_multiscan_parabola_file_path = format!("views/multi-pattern-scan-{:03}-parabola.png", multi_step_i);
     let output_multiscan_parabola_txt_file_path = format!("views/multi-pattern-scan-{:03}-parabola.txt", multi_step_i);
     // Edge detection w/ tsp_points_colors
@@ -1363,8 +1365,8 @@ fn multi_pattern_scan(n: usize, bound_granularity: fp, num_multi_steps_to_scan: 
         let xm1i: isize = (y*tsp_square_size) + (x-1);
         let xp1i: isize = (y*tsp_square_size) + (x+1);
         
-        if ym1i < 0 || yp1i >= tsp_point_colors.len() as isize || xm1i < 0 || xp1i >= tsp_point_colors.len() as isize  {
-          continue; // off-square!
+        if ym1i <= 0 || yp1i >= tsp_point_colors.len() as isize || xm1i <= 0 || xp1i >= tsp_point_colors.len() as isize  {
+          continue; // off-square! (incl. borders to avoid comparing pixel colors against black in output files)
         }
 
         #[allow(unused_parens)]
@@ -1391,24 +1393,58 @@ fn multi_pattern_scan(n: usize, bound_granularity: fp, num_multi_steps_to_scan: 
       }
     }
 
-    // now use each set of key, list of points... to predict N polynominals?
-    let mut parabola_txt = String::new();
-    for (rgb_key, edge_tsp_points) in &parabola_points {
-      let num_points = edge_tsp_points.len();
-      parabola_txt += format!("=== {rgb_key:x} ({num_points} points) ===\n").as_str();
-      for (edge_pt_x, edge_pt_y) in edge_tsp_points {
-        parabola_txt += format!(" ({edge_pt_x}, {edge_pt_y})\n").as_str();
+    // now use each set of key, list of parabola_points... to predict N polynominals?
+    {
+      let mut parabola_txt = String::new();
+      for (rgb_key, edge_tsp_points) in &parabola_points {
+        let num_points = edge_tsp_points.len();
+        parabola_txt += format!("=== {rgb_key:x} ({num_points} points) ===\n").as_str();
+        for (edge_pt_x, edge_pt_y) in edge_tsp_points {
+          parabola_txt += format!(" ({edge_pt_x}, {edge_pt_y})\n").as_str();
+        }
+        parabola_txt += "\n";
       }
-      parabola_txt += "\n";
+      let mut f = File::create(&output_multiscan_parabola_txt_file_path).expect("Unable to create file");
+      f.write_all(parabola_txt.as_bytes()).expect("Unable to write data");
     }
-    let mut f = File::create(&output_multiscan_parabola_txt_file_path).expect("Unable to create file");
-    f.write_all(parabola_txt.as_bytes()).expect("Unable to write data");
 
-    for (rgb_key, edge_tsp_points) in &parabola_points {
-      for (edge_pt_x, edge_pt_y) in edge_tsp_points {
-        // todo draw an image into output_multiscan_parabola_file_path
+    // TODO predict parabolas & add to data structure so they can be plotted in output_multiscan_parabola_file_path
+
+    {
+      let (width, height) = (900, 900);
+      let mut image = RgbImage::new(width + 15, height + 15); // width, height
+      let font = Font::try_from_bytes(include_bytes!("../resources/NotoSans-Bold.ttf")).unwrap();
+      
+      let (smallest_x, largest_y, largest_x, smallest_y) = (x_min_bound, y_max_bound, x_max_bound, y_min_bound);
+      let x_range: fp = largest_x - smallest_x;
+      let y_range: fp = largest_y - smallest_y;
+
+      for (rgb_key, edge_tsp_points) in &parabola_points {
+        for (tsp_edge_point_x, tsp_edge_point_y) in edge_tsp_points {
+          // todo draw an image into output_multiscan_parabola_file_path
+          
+          let r: u8 = ((rgb_key >> 16) & 0xff) as u8;
+          let g: u8 = ((rgb_key >>  8) & 0xff) as u8;
+          let b: u8 = ((rgb_key >>  0) & 0xff) as u8;
+          let (loc_x,loc_y) = scale_xy(width, height, x_range as u32, y_range as u32, smallest_x, smallest_y, *tsp_edge_point_x, *tsp_edge_point_y);
+
+          *image.get_pixel_mut(loc_x, loc_y) = Rgb([r, g, b]);
+          {
+            *image.get_pixel_mut(loc_x+1, loc_y) = Rgb([r, g, b]);
+            *image.get_pixel_mut(loc_x+1, loc_y+1) = Rgb([r, g, b]);
+            *image.get_pixel_mut(loc_x, loc_y+1) = Rgb([r, g, b]);
+          }
+
+        }
       }
+
+      image.save(output_multiscan_parabola_file_path.clone()).unwrap();
+
+      output_multiscan_parabola_file_paths.push(output_multiscan_parabola_file_path.clone());
     }
+
+
+
 
 
 
@@ -1447,6 +1483,20 @@ fn multi_pattern_scan(n: usize, bound_granularity: fp, num_multi_steps_to_scan: 
     }
   }
   println!("See {}", gif_output_file);
+
+  
+  // Parabola gif as well
+  let gif_output_file = "views/multi-pattern-scan-parabola.gif";
+
+  let images = engiffen::load_images(&output_multiscan_parabola_file_paths);
+  if let Ok(gif_data) = engiffen::engiffen(&images, 5 /*fps*/, engiffen::Quantizer::Naive ) {
+    if let Ok(mut output_f) = File::create(gif_output_file) {
+      if let Err(e) = gif_data.write(&mut output_f) {
+        eprintln!("Error writing to {}: {:?}", gif_output_file, e);
+      }
+    }
+  }
+  
 
 }
 
