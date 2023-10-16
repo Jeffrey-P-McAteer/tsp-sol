@@ -1307,9 +1307,12 @@ fn multi_pattern_scan(n: usize, bound_granularity: fp, num_multi_steps_to_scan: 
     let converged_cities_weights = compute_weight_coords(&converged_cities);
     let initial_solution = brute_algo::solve(&converged_cities, &converged_cities_weights, None, thread_pool);
     let output_multiscan_file_path = format!("views/multi-pattern-scan-{:03}.png", multi_step_i);
-    let output_multiscan_parabola_file_path = format!("views/multi-pattern-scan-{:03}-parabola.png", multi_step_i); // TODO
     let html_path = format!("views/multi-pattern-scan-{:03}.html", multi_step_i);
     let mut html_content = HTML_BEGIN.to_string();
+    
+    // [(x, y, rgb_usize, ) ... ]
+    let mut tsp_point_colors: Vec<(fp, fp, usize)> = vec![];
+
     pattern_scan_coords(n, bound_granularity, &output_multiscan_file_path, converged_cities.clone(), thread_pool, |city_weights, brute_sol, (tsp_point_x, tsp_point_y), rgb_key| {
       let point_x: isize = (tsp_point_x * HTML_POINT_SCALE) as isize;
       let point_y: isize = (tsp_point_y * HTML_POINT_SCALE) as isize;
@@ -1333,7 +1336,51 @@ fn multi_pattern_scan(n: usize, bound_granularity: fp, num_multi_steps_to_scan: 
         html_format_tour_details(&city_weights, brute_sol).as_str()
       ).as_str();
 
+      let rgb_key: usize = ((rgb_key.0 as usize) << 16) + ((rgb_key.1 as usize) << 8) + (rgb_key.2 as usize);
+      tsp_point_colors.push(
+        (*tsp_point_x, *tsp_point_y, rgb_key)
+      );
+
+
+
     });
+    let output_multiscan_parabola_file_path = format!("views/multi-pattern-scan-{:03}-parabola.png", multi_step_i);
+    // Edge detection w/ tsp_points_colors
+    let mut parabola_points: HashMap<usize, Vec<(fp, fp)>> = HashMap::new(); // RGB color string -> list of points on ... exterior.. hmm.
+    
+    // We know tsp_point_colors contains a square, so compute width & height so we can index into neighbors for edge detection
+    let tsp_square_size: usize = (f64::sqrt(tsp_point_colors.len() as f64) as usize /*+ 1*/) as usize;
+
+    for y in 0..tsp_square_size {
+      for x in 0..tsp_square_size {
+        let (tsp_point_x, tsp_point_y, rgb_key) = tsp_point_colors[(y * tsp_square_size) + x];
+        // First question; are our neighbors rgb_key s different?
+        #[allow(unused_parens)]
+        let is_edge_pt = (
+          rgb_key != tsp_point_colors[(std::cmp::min(y-1,0) * tsp_square_size) + x].2 ||                  // is y-1 different color?
+          rgb_key != tsp_point_colors[(std::cmp::max(y+1,tsp_square_size-1) * tsp_square_size) + x].2 ||  // is y+1 different color?
+          rgb_key != tsp_point_colors[(y * tsp_square_size) + std::cmp::min(x-1, 0)].2 ||                 // is x-1 different color?
+          rgb_key != tsp_point_colors[(y * tsp_square_size) + std::cmp::max(x+1, tsp_square_size-1)].2    // is x+1 different color?
+        );
+        if !is_edge_pt {
+          continue;
+        }
+
+        if !parabola_points.contains_key(&rgb_key) {
+          parabola_points.insert(rgb_key, vec![]);
+        }
+
+        parabola_points[&rgb_key].push(
+          (tsp_point_x, tsp_point_y)
+        );
+
+      }
+    }
+
+    // now use each set of key, list of points... to predict N polynominals?
+
+
+
     // Overlap tested N+1 points w/ beginning coordinates
     for (city_num, city_x, city_y) in converged_cities.iter() {
       let city_x: isize = (city_x * HTML_POINT_SCALE) as isize;
