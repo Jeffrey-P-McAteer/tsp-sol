@@ -1380,6 +1380,11 @@ fn multi_pattern_scan(n: usize, bound_granularity: fp, num_multi_steps_to_scan: 
           continue;
         }
 
+        // Throw out the straight lines on square's border, we're not interested in those!
+        if is_edge_pt && (x <= 2 || x >= tsp_square_size - 2 || y <= 2 || y >= tsp_square_size - 2 ) {
+          continue;
+        }
+
         if !parabola_points.contains_key(&rgb_key) {
           parabola_points.insert(rgb_key, vec![]);
         }
