@@ -169,7 +169,7 @@ pub fn solve_for_6pts(
     const RANGE_BEGIN: fp = -5.0;
     const RANGE_END: fp = 5.0;
     //const RANGE_STEP: fp = 0.1;
-    const RANGE_STEP: fp = 1.0;
+    const RANGE_STEP: fp = 0.1;
 
     let mut best_abcdef = (0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
     let mut smallest_error = 99999999.0;
