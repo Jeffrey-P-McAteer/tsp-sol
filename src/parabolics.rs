@@ -18,17 +18,21 @@ pub fn solve_for_6pts(
     -> (fp, fp, fp, fp, fp, fp)
 {
     // We brute force everything, taking the smallest error (abs()'ing all Y values) for the 6 points
-    //const RANGE_BEGIN: fp = -1.0;
-    //const RANGE_END: fp = 1.0;
-    //const RANGE_STEP: fp = 0.1;
-    //const RANGE_STEP: fp = 0.05;
-
-    const coef_range: &[fp] = &[
+    
+    /*const coef_range: &[fp] = &[
         -2.0, -1.9, -1.8, -1.7, -1.6, -1.5, -1.4, -1.3, -1.2, -1.1,
         -1.0, -0.9, -0.8, -0.7, -0.6, -0.5, -0.4, -0.3, -0.2, -0.1,
         0.0,
         0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0,
         2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 2.9, 2.0,
+    ];*/
+
+    const coef_range: &[fp] = &[
+        -10.0, -9.0, -8.0, -7.0, -6.0, -5.0, -4.0, -3.0, -2.0, -1.0,
+               -9.5, -8.5, -7.5, -6.5, -5.5, -4.5, -3.5, -2.5, -1.5,
+        0.0,
+        1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0,
+        1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5, 8.5, 9.5,
     ];
 
     const big_coef_range: &[fp] = &[
