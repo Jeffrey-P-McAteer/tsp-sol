@@ -4,6 +4,7 @@
 
 use super::*;
 
+/*
 // See https://github.com/datamole-ai/gomez/blob/main/examples/rosenbrock.rs
 use nalgebra as na;
 //use gomez::nalgebra as na;
@@ -68,7 +69,7 @@ impl System for Parabola {
 }
 
 
-
+*/
 
 
 pub fn solve_for_6pts(
@@ -81,41 +82,74 @@ pub fn solve_for_6pts(
 )
     -> (fp, fp, fp, fp, fp, fp)
 {
+    // Adapted from https://github.com/nerdypepper/gauss_jordan/blob/master/src/main.rs
+    // Solve Ax^2 + Bxy + Cy^2 + Dx + Ey + F == 0
+    const SIZE: usize = 6;
+    let mut system: [[fp; SIZE+1]; SIZE]  = [
+        [ x1.powf(2.0), x1*y1, y1.powf(2.0), x1, y1, 1.0, 0.0],
+        [ x2.powf(2.0), x2*y2, y2.powf(2.0), x2, y2, 1.0, 0.0],
+        [ x3.powf(2.0), x3*y3, y3.powf(2.0), x3, y3, 1.0, 0.0],
+        [ x4.powf(2.0), x4*y4, y4.powf(2.0), x4, y4, 1.0, 0.0],
+        [ x5.powf(2.0), x5*y5, y5.powf(2.0), x5, y5, 1.0, 0.0],
+        [ x6.powf(2.0), x6*y6, y6.powf(2.0), x6, y6, 1.0, 0.0]
+    ];
 
-    let f = Parabola { a: 1.0, b: 1.0, c: 1.0, d: 1.0, e: 1.0, f: 1.0 };
-    let dom = Domain::with_dim(f.dim().value());
-    let mut solver = TrustRegion::new(&f, &dom);
-
-    // Initial guess.
-    let mut x = na::vector![y1]; // wait wat?
-
-    let mut fx = na::vector![0.0];
-
-    for i in 1..=100 {
-        let res = solver.next(&f, &dom, &mut x, &mut fx);
-
-        if let Err(e) = res {
-            println!("Error! e={e:?}");
-            break;
-        }
-
-        println!(
-            "iter = {}\t|| fx || = {}\tx = {:?}",
-            i,
-            fx.norm(),
-            x.as_slice()
-        );
-
-        if fx.norm() < 1e-5 {
-            println!("solved");
-            //return Ok(());
-            break;
+    for i in 0..SIZE-1 {
+        for j in i..SIZE-1 {
+            if system[i][i] == 0.0 {
+                continue;
+            }
+            else {
+                let factor = system[j + 1][i] as fp / system[i][i] as fp;
+                for k in i..SIZE+1 {
+                    system[j + 1][k] -= factor * system[i][k] as fp;
+                }
+            }
         }
     }
 
-    // Tons todo around here
+    // System is now in row-echelon form
 
-    return (0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+    for i in (1..SIZE).rev() {
+        if system[i][i] == 0.0 {
+            continue;
+        }
+        else {
+            for j in (1..i+1).rev() {
+                let factor = system[j - 1][i] as fp / system[i][i] as fp;
+                for k in (0..SIZE+1).rev() {
+                    system[j - 1][k] -= factor * system[i][k] as fp;
+                }
+            }
+        }
+    }
+
+    for i in 0..SIZE {
+        if system[i][i] == 0.0 {
+            continue; // println!("Infnitely many solutions");
+        }
+        else {
+            system[i][SIZE] /= system[i][i] as fp;
+            system[i][i] = 1.0;
+            //println!("X{} = {}", i + 1, system[i][SIZE]);
+        }
+    }
+
+    // System is now solved, the values in system[0..6][SIZE] are the value of A,B,C,D,E,F
+
+    println!("");
+    println!("system = {:?}", system);
+    println!("");
+    for row in system {
+        println!(" >  {:?}", row);
+    }
+    println!("");
+    
+    //return (0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+    return (
+        system[0][SIZE], system[1][SIZE], system[2][SIZE],
+        system[3][SIZE], system[4][SIZE], system[5][SIZE]
+    );
 }
 
 // Given an X value, return ALL y values for the coefficients. Possible results are
@@ -124,5 +158,33 @@ pub fn solve_for_6pts(
 pub fn evaluate_parabolic_for_x(x: fp, (a, b, c, d, e, f): (fp, fp, fp, fp, fp, fp)) -> Vec<fp> {
     let mut y_vals: Vec<fp> = vec![];
 
+    // WA: solve (A*(x^2)) + (B*x*y) + (C*(y^2)) + (D*x) + (E*y) + F = 0 for y
+
+    if c != 0.0 {
+        y_vals.push(
+            -(
+                ( ((b*x) + e).powf(2.0) - (4.0*c*( (x*((a*x) + d)) + f)) ).sqrt() + (b*x) + e
+                ) / (
+                    2.0*c
+            )
+        );
+        y_vals.push(
+            -(
+                -(( ((b*x) + e).powf(2.0) - (4.0*c*( (x*((a*x) + d)) + f)) ).sqrt()) + (b*x) + e
+                ) / (
+                    2.0*c
+            )
+        );
+    }
+
+    if c == 0.0 && ((b*x)+e) != 0.0 {
+        y_vals.push(
+            -( (x*( (a*x) + d )) + f ) / ( (b*x) + e )
+        );
+    }
+
+
     return y_vals;
 }
+
+
