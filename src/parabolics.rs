@@ -166,10 +166,10 @@ pub fn solve_for_6pts(
     -> (fp, fp, fp, fp, fp, fp)
 {
     // We brute force everything, taking the smallest error (abs()'ing all Y values) for the 6 points
-    const RANGE_BEGIN: fp = -5.0;
-    const RANGE_END: fp = 5.0;
+    const RANGE_BEGIN: fp = -4.0;
+    const RANGE_END: fp = 4.0;
     //const RANGE_STEP: fp = 0.1;
-    const RANGE_STEP: fp = 0.1;
+    const RANGE_STEP: fp = 0.2;
 
     let mut best_abcdef = (0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
     let mut smallest_error = 99999999.0;
