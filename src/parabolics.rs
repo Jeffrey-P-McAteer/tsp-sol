@@ -204,12 +204,12 @@ pub fn solve_for_6pts(
                             let c_y5 = evaluate_parabolic_for_x_absonly(x5, this_coefs);
                             let c_y6 = evaluate_parabolic_for_x_absonly(x6, this_coefs);
                             
-                            let this_error = (c_y1 - y1).abs() +
-                                             (c_y2 - y2).abs() +
-                                             (c_y3 - y3).abs() +
-                                             (c_y4 - y4).abs() +
-                                             (c_y5 - y5).abs() +
-                                             (c_y6 - y6).abs();
+                            let this_error = (c_y1 - y1.abs()).abs() +
+                                             (c_y2 - y2.abs()).abs() +
+                                             (c_y3 - y3.abs()).abs() +
+                                             (c_y4 - y4.abs()).abs() +
+                                             (c_y5 - y5.abs()).abs() +
+                                             (c_y6 - y6.abs()).abs();
                             
                             if this_error < smallest_error {
                                 best_abcdef = this_coefs;
