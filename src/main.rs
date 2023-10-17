@@ -1602,9 +1602,9 @@ fn multi_pattern_scan(n: usize, bound_granularity: fp, num_multi_steps_to_scan: 
       for ((rgb_key_1, rgb_key_2), (a, b, c, d, e, f)) in &functions_edge_xy_abcdef_coef {
 
         // Edge colors is straight-up combo of the 2 component colors
-        let r: u8 = ( (((rgb_key_1 >> 16) & 0xff)+((rgb_key_2 >> 16) & 0xff)) /2) as u8;
-        let g: u8 = ( (((rgb_key_1 >> 8) & 0xff)+((rgb_key_2 >> 8) & 0xff)) /2) as u8;
-        let b: u8 = ( (((rgb_key_1 >> 0) & 0xff)+((rgb_key_2 >> 0) & 0xff)) /2) as u8;
+        let col_r: u8 = ( (((rgb_key_1 >> 16) & 0xff)+((rgb_key_2 >> 16) & 0xff)) /2) as u8;
+        let col_g: u8 = ( (((rgb_key_1 >> 8) & 0xff)+((rgb_key_2 >> 8) & 0xff)) /2) as u8;
+        let col_b: u8 = ( (((rgb_key_1 >> 0) & 0xff)+((rgb_key_2 >> 0) & 0xff)) /2) as u8;
         
         // Draw in steps from smallest_x -> largest_x, keeping where Y falls into range.
         let mut x = smallest_x;
@@ -1629,7 +1629,7 @@ fn multi_pattern_scan(n: usize, bound_granularity: fp, num_multi_steps_to_scan: 
               //let b: u8 = 255;
               let (loc_x,loc_y) = scale_xy(width, height, x_range as u32, y_range as u32, smallest_x, smallest_y, x, y);
 
-              *image.get_pixel_mut(loc_x, loc_y) = Rgb([r, g, b]);
+              *image.get_pixel_mut(loc_x, loc_y) = Rgb([col_r, col_g, col_b]);
 
             }
           }
@@ -1646,7 +1646,7 @@ fn multi_pattern_scan(n: usize, bound_granularity: fp, num_multi_steps_to_scan: 
 
         let font_height = 18.0;
         let font_scale = Scale { x: font_height, y: font_height };
-        draw_text_mut(&mut image, Rgb([r, g, b]), loc_x as u32, loc_y as u32, font_scale, &font, label_txt.as_str());
+        draw_text_mut(&mut image, Rgb([col_r, col_g, col_b]), loc_x as u32, loc_y as u32, font_scale, &font, label_txt.as_str());
 
       }
 
