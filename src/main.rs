@@ -1513,6 +1513,7 @@ fn multi_pattern_scan(n: usize, bound_granularity: fp, num_multi_steps_to_scan: 
       let (x6, y6) = edge_points_vec[edge_points_vec.len() - 1];*/
       
       let (a, b, c, d, e, f) = parabolics::solve_for_6pts(
+        thread_pool,
         edge_points_vec[0],
         edge_points_vec[1 * one_sixth_dist],
         edge_points_vec[2 * one_sixth_dist],
