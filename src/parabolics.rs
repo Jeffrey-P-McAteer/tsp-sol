@@ -146,6 +146,7 @@ impl System for Parabola {
 */
 
 // Borrowed from https://stackoverflow.com/questions/73356686/rust-for-loop-with-floating-point-types
+#[inline]
 fn float_loop(start: fp, threshold: fp, step_size: fp) -> impl Iterator<Item = fp> {
     std::iter::successors(Some(start), move |&prev| {
         let next = prev + step_size;
@@ -166,28 +167,41 @@ pub fn solve_for_6pts(
     -> (fp, fp, fp, fp, fp, fp)
 {
     // We brute force everything, taking the smallest error (abs()'ing all Y values) for the 6 points
-    const RANGE_BEGIN: fp = -4.0;
-    const RANGE_END: fp = 4.0;
+    //const RANGE_BEGIN: fp = -1.0;
+    //const RANGE_END: fp = 1.0;
     //const RANGE_STEP: fp = 0.1;
-    const RANGE_STEP: fp = 0.2;
+    //const RANGE_STEP: fp = 0.05;
+
+    const coef_range: &[fp] = &[
+        -1.0, -0.95, -0.90, -0.85, -0.80, -0.75, -0.70, -0.65, -0.60, -0.55, -0.50, -0.45, -0.40, -0.35, -0.30, -0.25, -0.20, -0.15, -0.10,
+        0.0,
+        0.10, 0.15, 0.20, 0.25, 0.30, 0.35, 0.40, 0.45, 0.50, 0.55, 0.60, 0.65, 0.70, 0.75, 0.80, 0.85, 0.90, 0.95, 1.0,
+    ];
 
     let mut best_abcdef = (0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
     let mut smallest_error = 99999999.0;
 
-    for a in float_loop(RANGE_BEGIN, RANGE_END, RANGE_STEP) {
-        for b in float_loop(RANGE_BEGIN, RANGE_END, RANGE_STEP) {
-            for c in float_loop(RANGE_BEGIN, RANGE_END, RANGE_STEP) {
-                for d in float_loop(RANGE_BEGIN, RANGE_END, RANGE_STEP) {
-                    for e in float_loop(RANGE_BEGIN, RANGE_END, RANGE_STEP) {
-                        for f in float_loop(RANGE_BEGIN, RANGE_END, RANGE_STEP) {
+    // for a in float_loop(RANGE_BEGIN, RANGE_END, RANGE_STEP) {
+    //     for b in float_loop(RANGE_BEGIN, RANGE_END, RANGE_STEP) {
+    //         for c in float_loop(RANGE_BEGIN, RANGE_END, RANGE_STEP) {
+    //             for d in float_loop(RANGE_BEGIN, RANGE_END, RANGE_STEP) {
+    //                 for e in float_loop(RANGE_BEGIN, RANGE_END, RANGE_STEP) {
+    //                     for f in float_loop(RANGE_BEGIN, RANGE_END, RANGE_STEP) {
+    for a in coef_range {
+        for b in coef_range {
+            for c in coef_range {
+                for d in coef_range {
+                    for e in coef_range {
+                        for f in coef_range {
                             // On top of the world, baby
                             
-                            let c_y1 = evaluate_parabolic_for_x_absonly(x1, (a,b,c,d,e,f));
-                            let c_y2 = evaluate_parabolic_for_x_absonly(x2, (a,b,c,d,e,f));
-                            let c_y3 = evaluate_parabolic_for_x_absonly(x3, (a,b,c,d,e,f));
-                            let c_y4 = evaluate_parabolic_for_x_absonly(x4, (a,b,c,d,e,f));
-                            let c_y5 = evaluate_parabolic_for_x_absonly(x5, (a,b,c,d,e,f));
-                            let c_y6 = evaluate_parabolic_for_x_absonly(x6, (a,b,c,d,e,f));
+                            let this_coefs = (*a,*b,*c,*d,*e,*f);
+                            let c_y1 = evaluate_parabolic_for_x_absonly(x1, this_coefs);
+                            let c_y2 = evaluate_parabolic_for_x_absonly(x2, this_coefs);
+                            let c_y3 = evaluate_parabolic_for_x_absonly(x3, this_coefs);
+                            let c_y4 = evaluate_parabolic_for_x_absonly(x4, this_coefs);
+                            let c_y5 = evaluate_parabolic_for_x_absonly(x5, this_coefs);
+                            let c_y6 = evaluate_parabolic_for_x_absonly(x6, this_coefs);
                             
                             let this_error = (c_y1 - y1).abs() +
                                              (c_y2 - y2).abs() +
@@ -197,7 +211,8 @@ pub fn solve_for_6pts(
                                              (c_y6 - y6).abs();
                             
                             if this_error < smallest_error {
-                                best_abcdef = (a, b, c, d, e, f); // store lowest error!
+                                //best_abcdef = (a, b, c, d, e, f); // store lowest error!
+                                best_abcdef = this_coefs;
                                 smallest_error = this_error;
                             }
 
@@ -248,6 +263,7 @@ pub fn evaluate_parabolic_for_x(x: fp, (a, b, c, d, e, f): (fp, fp, fp, fp, fp, 
 
 
 // Faster, incorrect version of evaluate_parabolic_for_x
+#[inline]
 pub fn evaluate_parabolic_for_x_absonly(x: fp, (a, b, c, d, e, f): (fp, fp, fp, fp, fp, fp)) -> fp {
     let mut y = 0.0;
 

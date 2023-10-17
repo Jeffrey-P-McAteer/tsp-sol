@@ -1599,9 +1599,18 @@ fn multi_pattern_scan(n: usize, bound_granularity: fp, num_multi_steps_to_scan: 
       let y_midpt = (smallest_y+largest_y)/2.0;
 
       // Also draw parabolas in white using functions_edge_xy_abcdef_coef
-      for (rgb_key, (a, b, c, d, e, f)) in &functions_edge_xy_abcdef_coef {
+      for ((rgb_key_1, rgb_key_2), (a, b, c, d, e, f)) in &functions_edge_xy_abcdef_coef {
+
+        // Edge colors is straight-up combo of the 2 component colors
+        let r: u8 = ( (((rgb_key_1 >> 16) & 0xff)+((rgb_key_2 >> 16) & 0xff)) /2) as u8;
+        let g: u8 = ( (((rgb_key_1 >> 8) & 0xff)+((rgb_key_2 >> 8) & 0xff)) /2) as u8;
+        let b: u8 = ( (((rgb_key_1 >> 0) & 0xff)+((rgb_key_2 >> 0) & 0xff)) /2) as u8;
+        
         // Draw in steps from smallest_x -> largest_x, keeping where Y falls into range.
         let mut x = smallest_x;
+        let mut curve_total_x: fp = 0.0;
+        let mut curve_total_y: fp = 0.0;
+        let mut curve_num_pts: usize = 0;
         loop {
           if x >= largest_x {
             break;
@@ -1610,10 +1619,14 @@ fn multi_pattern_scan(n: usize, bound_granularity: fp, num_multi_steps_to_scan: 
           for y in parabolics::evaluate_parabolic_for_x(x, (*a, *b, *c, *d, *e, *f)) {
             if y > smallest_y && y < largest_y {
               // Transform TSP x and y to image x and y and drop some ink on it!
+
+              curve_total_x += x;
+              curve_total_y += y;
+              curve_num_pts += 1;
             
-              let r: u8 = 255;
-              let g: u8 = 255;
-              let b: u8 = 255;
+              //let r: u8 = 255;
+              //let g: u8 = 255;
+              //let b: u8 = 255;
               let (loc_x,loc_y) = scale_xy(width, height, x_range as u32, y_range as u32, smallest_x, smallest_y, x, y);
 
               *image.get_pixel_mut(loc_x, loc_y) = Rgb([r, g, b]);
@@ -1624,8 +1637,16 @@ fn multi_pattern_scan(n: usize, bound_granularity: fp, num_multi_steps_to_scan: 
           x += bound_granularity * 0.05; // 20x precision
         }
 
-        // TODO labels et al
-        
+        let curve_avg_x = curve_total_x / curve_num_pts as fp;
+        let curve_avg_y = curve_total_y / curve_num_pts as fp;
+        let (loc_x,loc_y) = scale_xy(width, height, x_range as u32, y_range as u32, smallest_x, smallest_y, curve_avg_x, curve_avg_y);
+        // Drop a label at average x,y for curve
+
+        let label_txt = format!("{:06x} - {:06x}", rgb_key_1, rgb_key_2);
+
+        let font_height = 18.0;
+        let font_scale = Scale { x: font_height, y: font_height };
+        draw_text_mut(&mut image, Rgb([r, g, b]), loc_x as u32, loc_y as u32, font_scale, &font, label_txt.as_str());
 
       }
 
