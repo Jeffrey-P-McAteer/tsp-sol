@@ -182,6 +182,8 @@ INCREMENT_NONCE_ON_ROW=f \
 # match 2d parabolic shapes/area regions
 TSP_INITIAL_COORDS='3.0,11.0 12.0,11.0 3.0,9.0 ' TSP_ENDING_COORDS='3.0,11.0 12.0,11.0 12.0,9.0 ' cargo run --release -- multi-pattern-scan 3 0.027 16
 
+# Support fns
+python -c "print(', '.join([ f'{x*0.5}' for x in range(-20, 20) ]))"
 feh -d $( find views -iname '*-parabola.png' )
 
 
