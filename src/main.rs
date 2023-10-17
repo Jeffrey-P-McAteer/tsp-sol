@@ -1634,7 +1634,7 @@ fn multi_pattern_scan(n: usize, bound_granularity: fp, num_multi_steps_to_scan: 
             }
           }
 
-          x += bound_granularity * 0.05; // 20x precision
+          x += bound_granularity * 0.025; // 40x precision
         }
 
         let curve_avg_x = curve_total_x / curve_num_pts as fp;
