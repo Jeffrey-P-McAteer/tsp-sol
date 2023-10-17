@@ -180,6 +180,12 @@ pub fn solve_for_6pts(
         2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 2.9, 2.0,
     ];
 
+    const big_coef_range: &[fp] = &[
+        -12.0, -10.0, -8.0, -6.0, -4.0, -2.0,
+        -1.0, 0.0, 1.0,
+        2.0, 4.0, 6.0, 8.0, 10.0, 12.0
+    ];
+
     let mut best_abcdef = (0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
     let mut smallest_error = 99999999.0;
 
@@ -188,8 +194,7 @@ pub fn solve_for_6pts(
             for c in coef_range {
                 for d in coef_range {
                     for e in coef_range {
-                        for f in coef_range {
-                            // On top of the world, baby
+                        for f in big_coef_range { // F can move more b/c I want angular accuracy
                             
                             let this_coefs = (*a,*b,*c,*d,*e,*f);
                             let c_y1 = evaluate_parabolic_for_x_absonly(x1, this_coefs);
@@ -207,7 +212,6 @@ pub fn solve_for_6pts(
                                              (c_y6 - y6).abs();
                             
                             if this_error < smallest_error {
-                                //best_abcdef = (a, b, c, d, e, f); // store lowest error!
                                 best_abcdef = this_coefs;
                                 smallest_error = this_error;
                             }
