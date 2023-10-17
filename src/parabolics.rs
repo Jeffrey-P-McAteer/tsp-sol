@@ -173,20 +173,18 @@ pub fn solve_for_6pts(
     //const RANGE_STEP: fp = 0.05;
 
     const coef_range: &[fp] = &[
-        -1.0, -0.95, -0.90, -0.85, -0.80, -0.75, -0.70, -0.65, -0.60, -0.55, -0.50, -0.45, -0.40, -0.35, -0.30, -0.25, -0.20, -0.15, -0.10,
+        -1.0, -0.9, -0.8, -0.7, -0.6, -0.5, -0.4, -0.3, -0.2, -0.1,
         0.0,
-        0.10, 0.15, 0.20, 0.25, 0.30, 0.35, 0.40, 0.45, 0.50, 0.55, 0.60, 0.65, 0.70, 0.75, 0.80, 0.85, 0.90, 0.95, 1.0,
+        0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0,
     ];
 
+    let mut best_abcdef_ones = (0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
     let mut best_abcdef = (0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
     let mut smallest_error = 99999999.0;
 
-    // for a in float_loop(RANGE_BEGIN, RANGE_END, RANGE_STEP) {
-    //     for b in float_loop(RANGE_BEGIN, RANGE_END, RANGE_STEP) {
-    //         for c in float_loop(RANGE_BEGIN, RANGE_END, RANGE_STEP) {
-    //             for d in float_loop(RANGE_BEGIN, RANGE_END, RANGE_STEP) {
-    //                 for e in float_loop(RANGE_BEGIN, RANGE_END, RANGE_STEP) {
-    //                     for f in float_loop(RANGE_BEGIN, RANGE_END, RANGE_STEP) {
+    // First scan coefs at an offset of coef_range[i] * 10.0 to get the 1s place closest curve,
+    // then scan those coefficients 0.1's place to fit closer to points.
+    
     for a in coef_range {
         for b in coef_range {
             for c in coef_range {
@@ -195,7 +193,52 @@ pub fn solve_for_6pts(
                         for f in coef_range {
                             // On top of the world, baby
                             
-                            let this_coefs = (*a,*b,*c,*d,*e,*f);
+                            let this_coefs = (*a*10.0, *b*10.0, *c*10.0, *d*10.0, *e*10.0, *f*10.0);
+                            let c_y1 = evaluate_parabolic_for_x_absonly(x1, this_coefs);
+                            let c_y2 = evaluate_parabolic_for_x_absonly(x2, this_coefs);
+                            let c_y3 = evaluate_parabolic_for_x_absonly(x3, this_coefs);
+                            let c_y4 = evaluate_parabolic_for_x_absonly(x4, this_coefs);
+                            let c_y5 = evaluate_parabolic_for_x_absonly(x5, this_coefs);
+                            let c_y6 = evaluate_parabolic_for_x_absonly(x6, this_coefs);
+                            
+                            let this_error = (c_y1 - y1).abs() +
+                                             (c_y2 - y2).abs() +
+                                             (c_y3 - y3).abs() +
+                                             (c_y4 - y4).abs() +
+                                             (c_y5 - y5).abs() +
+                                             (c_y6 - y6).abs();
+                            
+                            if this_error < smallest_error {
+                                //best_abcdef = (a, b, c, d, e, f); // store lowest error!
+                                best_abcdef_ones = this_coefs;
+                                smallest_error = this_error;
+                            }
+
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    smallest_error = 99999999.0;
+
+    for a in coef_range {
+        for b in coef_range {
+            for c in coef_range {
+                for d in coef_range {
+                    for e in coef_range {
+                        for f in coef_range {
+                            // On top of the world, baby
+                            
+                            let this_coefs = ( // a,b,c,d are all one-tenth now.
+                                best_abcdef_ones.0 + *a,
+                                best_abcdef_ones.1 + *b,
+                                best_abcdef_ones.2 + *c,
+                                best_abcdef_ones.3 + *d,
+                                best_abcdef_ones.4 + *e,
+                                best_abcdef_ones.5 + *f
+                            );
                             let c_y1 = evaluate_parabolic_for_x_absonly(x1, this_coefs);
                             let c_y2 = evaluate_parabolic_for_x_absonly(x2, this_coefs);
                             let c_y3 = evaluate_parabolic_for_x_absonly(x3, this_coefs);
