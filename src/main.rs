@@ -1648,6 +1648,13 @@ fn multi_pattern_scan(n: usize, bound_granularity: fp, num_multi_steps_to_scan: 
         let font_scale = Scale { x: font_height, y: font_height };
         draw_text_mut(&mut image, Rgb([col_r, col_g, col_b]), loc_x as u32, loc_y as u32, font_scale, &font, label_txt.as_str());
 
+        let eq_txt = format!(
+          "{}x^2 + {}xy + {}y^2 + {}x + {}y + {} = 0",
+          a, b, c, d, e, f
+        );
+        draw_text_mut(&mut image, Rgb([col_r, col_g, col_b]), loc_x as u32, (loc_y-24) as u32, font_scale, &font, eq_txt.as_str());
+
+
       }
 
       image.save(output_multiscan_parabola_file_path.clone()).unwrap();
