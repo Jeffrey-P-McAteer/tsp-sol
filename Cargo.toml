@@ -21,6 +21,10 @@ pickledb = "0.5"
 threadpool = "1.8"
 engiffen = "0.8"
 
+gomez = "0.4"
+nalgebra = "*"
+
+
 [target.'cfg(not(windows))'.dependencies]
 fasthash = "0.4"
 

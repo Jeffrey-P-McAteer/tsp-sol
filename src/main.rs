@@ -53,6 +53,8 @@ use std::f64;
 mod brute_algo;
 mod jeff_algo;
 
+mod parabolics;
+
 #[allow(non_camel_case_types)]
 pub type fp = f32;
 //pub type fp = f64;
@@ -1489,36 +1491,38 @@ fn multi_pattern_scan(n: usize, bound_granularity: fp, num_multi_steps_to_scan: 
     }
 
     // Now we can assume functions_edge_points is full;
-    // compute the a(x**2) + bx + c formula given 3 points from each edge.
-    let mut functions_edge_abc_coef: HashMap<(usize, usize), (fp, fp, fp)> = HashMap::new();
+    // compute Ax^2 + Bxy + Cy^2 + Dx + Ey + F == 0 coefficients and store in the map.
+    let mut functions_edge_xy_abcdef_coef: HashMap<(usize, usize), (fp, fp, fp, fp, fp, fp /*A,B,C,D,E,F*/)> = HashMap::new();
+
     for (edge_keys, edge_points_vec) in &functions_edge_points {
-      if edge_points_vec.len() < 3 {
+      if edge_points_vec.len() < /*3*/ 6 {
         continue; // not enough data!
       }
 
-      let (x1, y1) = edge_points_vec[0];
-      let (x2, y2) = edge_points_vec[edge_points_vec.len() / 2];
-      let (x3, y3) = edge_points_vec[edge_points_vec.len() - 1];
+      // Grab 6 equi-distant points to use in gomez to solve the general conics equations
+      // to find A, B, C, D, E, and F for
+      // Ax^2 + Bxy + Cy^2 + Dx + Ey + F == 0
       
-      let a1 = -(x1.powf(2.0)) + x2.powf(2.0);
-      let b1 = -x1 + x2;
-      let d1 = -y1 + y2;
-      let a2 = -(x2.powf(2.0)) + x3.powf(2.0);
-      
-      let b2 = -x2 + x3;
-      let d2 = -y2 + y3;
-      let bm = -(b2 / b1);
-      
-      let a3 = (bm * a1) + a2;
-      let d3 = (bm * d1) + d2;
-      
-      let a: fp = d3 / a3;
-      let b: fp = ((d1 - a1) * a) / b1;
-      let c: fp = y1 - (a*x1).powf(2.0) - (b*x1);
+      let one_sixth_dist = edge_points_vec.len() / 6;
 
-      functions_edge_abc_coef.insert(
-        *edge_keys, (a, b, c)
+      /*let (x1, y1) = edge_points_vec[0];
+      let (x2, y2) = edge_points_vec[1 * one_sixth_dist];
+      let (x3, y3) = edge_points_vec[2 * one_sixth_dist];
+      let (x4, y4) = edge_points_vec[3 * one_sixth_dist];
+      let (x5, y5) = edge_points_vec[4 * one_sixth_dist];
+      let (x6, y6) = edge_points_vec[edge_points_vec.len() - 1];*/
+      
+      let (a, b, c, d, e, f) = parabolics::solve_for_6pts(
+        edge_points_vec[0],
+        edge_points_vec[1 * one_sixth_dist],
+        edge_points_vec[2 * one_sixth_dist],
+        edge_points_vec[3 * one_sixth_dist],
+        edge_points_vec[4 * one_sixth_dist],
+        edge_points_vec[edge_points_vec.len() - 1]
       );
+
+      functions_edge_xy_abcdef_coef.insert(*edge_keys, (a, b, c, d, e, f));
+
     }
 
 
@@ -1538,10 +1542,10 @@ fn multi_pattern_scan(n: usize, bound_granularity: fp, num_multi_steps_to_scan: 
       parabola_txt += "=== === === ===\n";
       
       for (edge_keys, edge_points_vec) in &functions_edge_points {
-        let (a, b, c) = functions_edge_abc_coef.get(edge_keys).unwrap_or(&(0.0, 0.0, 0.0)); // we know it exists
+        let (a,b,c,d,e,f) = functions_edge_xy_abcdef_coef.get(edge_keys).unwrap_or(&(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)); // we know it exists
 
-        parabola_txt += format!("Edge {:06x} - {:06x} has {} points,  y = ({} * x**2) + ({} * x) + {}  \n",
-          edge_keys.0, edge_keys.1, edge_points_vec.len(), a, b, c
+        parabola_txt += format!("Edge {:06x} - {:06x} has {} points,  0 = ({} * x**2) + ({} * xy) + ({} * y**2) + ({} * x) + ({} * y) + {} \n",
+          edge_keys.0, edge_keys.1, edge_points_vec.len(), a,b,c,d,e,f
         ).as_str();
         
         for (edge_tsp_x, edge_tsp_y) in edge_points_vec {
@@ -1594,8 +1598,8 @@ fn multi_pattern_scan(n: usize, bound_granularity: fp, num_multi_steps_to_scan: 
       let x_midpt = (smallest_x+largest_x)/2.0;
       let y_midpt = (smallest_y+largest_y)/2.0;
 
-      // Also draw parabolas in white using functions_edge_abc_coef
-      for (rgb_key, (a, b, c)) in &functions_edge_abc_coef {
+      // Also draw parabolas in white using functions_edge_xy_abcdef_coef
+      for (rgb_key, (a, b, c, d, e, f)) in &functions_edge_xy_abcdef_coef {
         // Draw in steps from smallest_x -> largest_x, keeping where Y falls into range.
         let mut x = smallest_x;
         loop {
@@ -1603,9 +1607,7 @@ fn multi_pattern_scan(n: usize, bound_granularity: fp, num_multi_steps_to_scan: 
             break;
           }
 
-          { // Straight equation - white
-            let y = (a * x.powf(2.0)) + (b * x) + c;
-
+          for y in parabolics::evaluate_parabolic_for_x(x, (*a, *b, *c, *d, *e, *f)) {
             if y > smallest_y && y < largest_y {
               // Transform TSP x and y to image x and y and drop some ink on it!
             
@@ -1620,31 +1622,6 @@ fn multi_pattern_scan(n: usize, bound_granularity: fp, num_multi_steps_to_scan: 
           }
 
           x += bound_granularity * 0.05; // 20x precision
-        }
-
-        let mut y = smallest_y;
-        loop {
-          if y >= largest_y {
-            break;
-          }
-
-          { // Flipped x/y equation - red
-            let x = (a * y.powf(2.0)) + (b * y) + c;
-
-            if x > smallest_y && x < largest_y {
-              // Transform TSP x and y to image x and y and drop some ink on it!
-            
-              let r: u8 = 255;
-              let g: u8 = 0;
-              let b: u8 = 0;
-              let (loc_x,loc_y) = scale_xy(width, height, x_range as u32, y_range as u32, smallest_x, smallest_y, x, y);
-
-              *image.get_pixel_mut(loc_x, loc_y) = Rgb([r, g, b]);
-
-            }
-          }
-
-          y += bound_granularity * 0.05; // 20x precision
         }
 
         // TODO labels et al
