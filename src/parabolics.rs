@@ -32,7 +32,7 @@ pub fn solve_for_6pts(
 
     const error_exit_target: fp = 0.32; // randomly permute until we hit < this error
     const long_iter_error_exit_target: fp = 0.95;
-    const long_iter_count: usize = 100_000_000;
+    const long_iter_count: usize = 5_000_000_000;
 
     for _ in 0..NUM_THREADS {
         // Copy vars to be moved into thread
