@@ -30,7 +30,7 @@ pub fn solve_for_6pts(
     let mut best_abcdef = Arc::new(Mutex::new( (0.0, 0.0, 0.0, 0.0, 0.0, 0.0) ));
     let mut smallest_error = Arc::new(Mutex::new( 99999999.0 ));
 
-    const error_exit_target: fp = 0.32; // randomly permute until we hit < this error
+    const error_exit_target: fp = 0.30; // randomly permute until we hit < this error
     const long_iter_error_exit_target: fp = 0.95;
     const long_iter_count: usize = 5_000_000_000;
 
