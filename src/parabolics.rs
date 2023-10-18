@@ -18,7 +18,7 @@ pub fn solve_for_6pts(
     -> (fp, fp, fp, fp, fp, fp)
 {
     
-    const num_guesses_per_coef: usize = 100;
+    const num_guesses_per_coef: usize = 20;
     const min_guess: fp = -30.0; // cannot do min_guess..max_guess ???
     const max_guess: fp = 30.0;
     let guess_range = max_guess - min_guess;
