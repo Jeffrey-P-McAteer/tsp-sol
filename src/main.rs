@@ -56,8 +56,9 @@ mod jeff_algo;
 mod parabolics;
 
 #[allow(non_camel_case_types)]
-pub type fp = f32;
 //pub type fp = f64;
+pub type fp = f32;
+
 
 pub type CityNum = usize;
 pub type CityWeight = fp;

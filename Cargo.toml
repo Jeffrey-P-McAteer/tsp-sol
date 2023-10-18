@@ -21,7 +21,8 @@ pickledb = "0.5"
 threadpool = "1.8"
 engiffen = "0.8"
 
-linregress = "0.5"
+linreg = "0.2"
+fastrand = "2.0"
 
 
 [target.'cfg(not(windows))'.dependencies]
