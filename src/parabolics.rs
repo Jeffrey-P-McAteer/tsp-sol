@@ -103,7 +103,7 @@ pub fn solve_for_6pts(
 
     thread_pool.join();
 
-    println!("Curve Error: {}", *smallest_error.lock().unwrap() );
+    // println!("Curve Error: {}", *smallest_error.lock().unwrap() );
 
     return *(best_abcdef.lock().unwrap());
 
