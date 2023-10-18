@@ -2,9 +2,14 @@
 // used to solve the 6-parameter equation of parabolics given some points
 // (A*(x^2)) + (B*x*y) + (C*(y^2)) + (D*x) + (E*y) + F = 0
 
+#![allow(non_upper_case_globals)]
+#![allow(unused_mut)]
+
 use super::*;
 
 use std::sync::{Mutex, RwLock, Arc}; // 48-core-xeon threading go brrrr
+
+const NUM_THREADS: usize = 4;
 
 pub fn solve_for_6pts(
   thread_pool: &ThreadPool,
@@ -26,8 +31,9 @@ pub fn solve_for_6pts(
     let mut best_abcdef = Arc::new(Mutex::new( (0.0, 0.0, 0.0, 0.0, 0.0, 0.0) ));
     let mut smallest_error = Arc::new(Mutex::new( 99999999.0 ));
 
-    for a in 0..num_guesses_per_coef {
-        let a = (fastrand::f32() * guess_range) + min_guess;
+    const error_exit_target: fp = 0.30; // randomly permute until we hit < this error
+
+    for _ in 0..NUM_THREADS {
         // Copy vars to be moved into thread
         let (x1, y1, x2, y2, x3, y3, x4, y4, x5, y5, x6, y6) = (x1, y1, x2, y2, x3, y3, x4, y4, x5, y5, x6, y6);
         let best_abcdef = best_abcdef.clone();
@@ -37,41 +43,49 @@ pub fn solve_for_6pts(
             let mut local_best_abcdef = (0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
             let mut local_smallest_error = 99999999.0;
 
-            for b in 0..num_guesses_per_coef {
-                let b = (fastrand::f32() * guess_range) + min_guess;
-                for c in 0..num_guesses_per_coef {
-                    let c = (fastrand::f32() * guess_range) + min_guess;
-                    for d in 0..num_guesses_per_coef {
-                        let d = (fastrand::f32() * guess_range) + min_guess;
-                        for e in 0..num_guesses_per_coef {
-                            let e = (fastrand::f32() * guess_range) + min_guess;
-                            for f in 0..num_guesses_per_coef {
-                                let f = (fastrand::f32() * guess_range) + min_guess;
-                                
-                                let this_coefs = (a,b,c,d,e,f);
-                                let c_y1 = evaluate_parabolic_for_x_absonly(x1, this_coefs);
-                                let c_y2 = evaluate_parabolic_for_x_absonly(x2, this_coefs);
-                                let c_y3 = evaluate_parabolic_for_x_absonly(x3, this_coefs);
-                                let c_y4 = evaluate_parabolic_for_x_absonly(x4, this_coefs);
-                                let c_y5 = evaluate_parabolic_for_x_absonly(x5, this_coefs);
-                                let c_y6 = evaluate_parabolic_for_x_absonly(x6, this_coefs);
-                                
-                                let this_error = (c_y1 - y1.abs()).abs() +
-                                                 (c_y2 - y2.abs()).abs() +
-                                                 (c_y3 - y3.abs()).abs() +
-                                                 (c_y4 - y4.abs()).abs() +
-                                                 (c_y5 - y5.abs()).abs() +
-                                                 (c_y6 - y6.abs()).abs();
-                                
-                                if this_error < local_smallest_error {
-                                    local_best_abcdef = this_coefs;
-                                    local_smallest_error = this_error;
-                                }
+            let mut loop_i = 0;
+            loop {
+                loop_i += 1;
 
-                            }
-                        }
+                let a = (fastrand::f32() * guess_range) + min_guess;
+                let b = (fastrand::f32() * guess_range) + min_guess;
+                let c = (fastrand::f32() * guess_range) + min_guess;
+                let d = (fastrand::f32() * guess_range) + min_guess;
+                let e = (fastrand::f32() * guess_range) + min_guess;
+                let f = (fastrand::f32() * guess_range) + min_guess;
+
+                let this_coefs = (a,b,c,d,e,f);
+                let c_y1 = evaluate_parabolic_for_x_absonly(x1, this_coefs);
+                let c_y2 = evaluate_parabolic_for_x_absonly(x2, this_coefs);
+                let c_y3 = evaluate_parabolic_for_x_absonly(x3, this_coefs);
+                let c_y4 = evaluate_parabolic_for_x_absonly(x4, this_coefs);
+                let c_y5 = evaluate_parabolic_for_x_absonly(x5, this_coefs);
+                let c_y6 = evaluate_parabolic_for_x_absonly(x6, this_coefs);
+                
+                let this_error = (c_y1 - y1.abs()).abs() +
+                                 (c_y2 - y2.abs()).abs() +
+                                 (c_y3 - y3.abs()).abs() +
+                                 (c_y4 - y4.abs()).abs() +
+                                 (c_y5 - y5.abs()).abs() +
+                                 (c_y6 - y6.abs()).abs();
+                
+                if this_error < local_smallest_error {
+                    local_best_abcdef = this_coefs;
+                    local_smallest_error = this_error;
+                }
+
+                if local_smallest_error < error_exit_target {
+                    break; // we're done, other threads will check in 5,000 or so random checks and exit.
+                }
+
+                if loop_i % 2000 == 0 {
+                    // Should we exit b/c another thread found & exited?
+                    let mut smallest_err_guard = smallest_error.lock().unwrap();
+                    if *smallest_err_guard < error_exit_target {
+                        break;
                     }
                 }
+
             }
 
             {
@@ -88,6 +102,8 @@ pub fn solve_for_6pts(
     }
 
     thread_pool.join();
+
+    println!("Curve Error: {}", *smallest_error.lock().unwrap() );
 
     return *(best_abcdef.lock().unwrap());
 
