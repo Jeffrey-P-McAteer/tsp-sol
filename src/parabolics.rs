@@ -23,16 +23,16 @@ pub fn solve_for_6pts(
     -> (fp, fp, fp, fp, fp, fp)
 {
     
-    const min_guess: fp = -100.0; // cannot do min_guess..max_guess ???
-    const max_guess: fp = 100.0;
+    const min_guess: fp = -150.0; // cannot do min_guess..max_guess ???
+    const max_guess: fp = 150.0;
     let guess_range = max_guess - min_guess;
 
     let mut best_abcdef = Arc::new(Mutex::new( (0.0, 0.0, 0.0, 0.0, 0.0, 0.0) ));
     let mut smallest_error = Arc::new(Mutex::new( 99999999.0 ));
 
-    const error_exit_target: fp = 0.35; // randomly permute until we hit < this error
-    const long_iter_error_exit_target: fp = 0.75;
-    const long_iter_count: usize = 5_000_000;
+    const error_exit_target: fp = 0.32; // randomly permute until we hit < this error
+    const long_iter_error_exit_target: fp = 0.95;
+    const long_iter_count: usize = 100_000_000;
 
     for _ in 0..NUM_THREADS {
         // Copy vars to be moved into thread
@@ -119,7 +119,7 @@ pub fn solve_for_6pts(
 
     thread_pool.join();
 
-    // println!("Curve Error: {}", *smallest_error.lock().unwrap() );
+    println!("Curve Error: {}", *smallest_error.lock().unwrap() );
 
     return *(best_abcdef.lock().unwrap());
 
