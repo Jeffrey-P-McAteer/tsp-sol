@@ -17,44 +17,80 @@ pub fn solve_for_6pts(
 )
     -> (fp, fp, fp, fp, fp, fp)
 {
-  use linreg::{linear_regression, linear_regression_of};
+    
+    const num_guesses_per_coef: usize = 100;
+    const min_guess: fp = -30.0; // cannot do min_guess..max_guess ???
+    const max_guess: fp = 30.0;
+    let guess_range = max_guess - min_guess;
 
-  // See https://docs.rs/linreg/latest/linreg/
+    let mut best_abcdef = Arc::new(Mutex::new( (0.0, 0.0, 0.0, 0.0, 0.0, 0.0) ));
+    let mut smallest_error = Arc::new(Mutex::new( 99999999.0 ));
 
-  // for a,b,c,d,e,f approximate their values and use linear_regression_of
-  // N times feeding in the x,y pairs above to linearly best-fit their true values
-  // using a prior set of best-fit linear coeficients
-  const NUM_ATTEMPTS: usize = 100;
-  let mut r1 = (1.0, 1.0, 1.0, 1.0, 1.0, 1.0);
-  let mut r2 = (1.0, 1.0, 1.0, 1.0, 1.0, 1.0);
+    for a in 0..num_guesses_per_coef {
+        let a = (fastrand::f32() * guess_range) + min_guess;
+        // Copy vars to be moved into thread
+        let (x1, y1, x2, y2, x3, y3, x4, y4, x5, y5, x6, y6) = (x1, y1, x2, y2, x3, y3, x4, y4, x5, y5, x6, y6);
+        let best_abcdef = best_abcdef.clone();
+        let smallest_error = smallest_error.clone();
+        thread_pool.execute(move || {
+            
+            let mut local_best_abcdef = (0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+            let mut local_smallest_error = 99999999.0;
 
-  for a in NUM_ATTEMPTS {
-    if a % 2 == 0 {
-        // x and y values stored as tuples
-      let tuples: Vec<(f32, f32)> = vec![(1.0, 2.0),
-                                         (2.0, 4.0),
-                                         (3.0, 5.0),
-                                         (4.0, 4.0),
-                                         (5.0, 5.0)];
-      
-      if let Ok(r) = linear_regression_of(&tuples) {
-        
-      }
+            for b in 0..num_guesses_per_coef {
+                let b = (fastrand::f32() * guess_range) + min_guess;
+                for c in 0..num_guesses_per_coef {
+                    let c = (fastrand::f32() * guess_range) + min_guess;
+                    for d in 0..num_guesses_per_coef {
+                        let d = (fastrand::f32() * guess_range) + min_guess;
+                        for e in 0..num_guesses_per_coef {
+                            let e = (fastrand::f32() * guess_range) + min_guess;
+                            for f in 0..num_guesses_per_coef {
+                                let f = (fastrand::f32() * guess_range) + min_guess;
+                                
+                                let this_coefs = (a,b,c,d,e,f);
+                                let c_y1 = evaluate_parabolic_for_x_absonly(x1, this_coefs);
+                                let c_y2 = evaluate_parabolic_for_x_absonly(x2, this_coefs);
+                                let c_y3 = evaluate_parabolic_for_x_absonly(x3, this_coefs);
+                                let c_y4 = evaluate_parabolic_for_x_absonly(x4, this_coefs);
+                                let c_y5 = evaluate_parabolic_for_x_absonly(x5, this_coefs);
+                                let c_y6 = evaluate_parabolic_for_x_absonly(x6, this_coefs);
+                                
+                                let this_error = (c_y1 - y1.abs()).abs() +
+                                                 (c_y2 - y2.abs()).abs() +
+                                                 (c_y3 - y3.abs()).abs() +
+                                                 (c_y4 - y4.abs()).abs() +
+                                                 (c_y5 - y5.abs()).abs() +
+                                                 (c_y6 - y6.abs()).abs();
+                                
+                                if this_error < local_smallest_error {
+                                    local_best_abcdef = this_coefs;
+                                    local_smallest_error = this_error;
+                                }
+
+                            }
+                        }
+                    }
+                }
+            }
+
+            {
+                let mut smallest_err_guard = smallest_error.lock().unwrap();
+                let mut best_abcdef_guard = best_abcdef.lock().unwrap();
+                if local_smallest_error < *smallest_err_guard {
+                    *smallest_err_guard = local_smallest_error;
+                    *best_abcdef_guard = local_best_abcdef;
+                }
+            }
+            // Mutexes are unlocked
+
+        });
     }
-    else {
 
-    }
-  }
+    thread_pool.join();
 
-  // return average of best coeficients
-  return (
-    (r1.0 + r2.0) / 2.0,
-    (r1.1 + r2.1) / 2.0,
-    (r1.2 + r2.2) / 2.0,
-    (r1.3 + r2.3) / 2.0,
-    (r1.4 + r2.4) / 2.0,
-    (r1.5 + r2.5) / 2.0,
-  );
+    return *(best_abcdef.lock().unwrap());
+
 }
 
 // Given an X value, return ALL y values for the coefficients. Possible results are
