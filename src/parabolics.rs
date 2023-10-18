@@ -24,14 +24,14 @@ pub fn solve_for_6pts(
 {
     
     const num_guesses_per_coef: usize = 22;
-    const min_guess: fp = -20.0; // cannot do min_guess..max_guess ???
-    const max_guess: fp = 20.0;
+    const min_guess: fp = -30.0; // cannot do min_guess..max_guess ???
+    const max_guess: fp = 30.0;
     let guess_range = max_guess - min_guess;
 
     let mut best_abcdef = Arc::new(Mutex::new( (0.0, 0.0, 0.0, 0.0, 0.0, 0.0) ));
     let mut smallest_error = Arc::new(Mutex::new( 99999999.0 ));
 
-    const error_exit_target: fp = 0.30; // randomly permute until we hit < this error
+    const error_exit_target: fp = 0.35; // randomly permute until we hit < this error
 
     for _ in 0..NUM_THREADS {
         // Copy vars to be moved into thread
