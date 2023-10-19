@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+body > div {
+    border: black 1px solid;
+    margin: 0;
+    padding: 10px;
+    width: calc(100% - 20px);
+}
+body > div > canvas {
+    border: black 1px solid;
+    padding: 2px;
+    margin: 0;
+}
+script {
+    display: block;
+    font-family: monospace;
+    white-space: pre;
+    width: 100%;
+    overflow: scroll;
+}
+.hidden {
+    display: none;
+}
+    </style>
+</head>
+<body>
+    <div>
+        <canvas width="100" height="100%"></canvas>
+        <script class="hidden">
+(function(canvas) {
+    const context = canvas.getContext('2d');
+    
+    const funcs = [];
+    const postPaints = [];
+
+    window.graph = function(f) {
+        funcs.push(f)
+    }
+    function postPaint(f) {
+        postPaints.push(f);
+    }
+    window.postPaint = postPaint;
+    
+    function *paint() {
+        for (let fi = 0; fi < funcs.length; fi++) {
+            const f = funcs[fi];
+            for (let x = -(canvas.width / 2) + 0; x < (canvas.width / 2); x++) {
+                for (let y = -(canvas.height / 2) + 0; y < (canvas.height / 2); y++) {
+                    context.fillStyle = f(x, y);
+                    context.strokeStyle = "";
+                    context.beginPath();
+                    // context.ellipse(x, y, 1, 1, 0, Math.PI*2, 0);
+                    context.rect(x, y, 1, 1);
+                    context.closePath();
+                    context.fill();
+                }
+                yield;
+            }
+        }
+    }
+
+    var interval;
+    function doPaint() {
+        context.reset();
+        context.fillStyle = "rgb(255,255,255)";
+        context.beginPath();
+        context.rect(0, 0, context.width, context.height);
+        context.closePath();
+        context.fill();
+        canvas.width = canvas.parentElement.clientWidth - 24;
+        canvas.height = window.visualViewport.height - 100;
+        context.translate(canvas.width / 2, canvas.height / 2);
+        var scale = Math.min(1, canvas.width / 200, canvas.height / 200)
+        context.scale(scale, scale);
+
+        var iter = paint();
+        function doing() {
+            if (iter.next().done) {
+                clearInterval(interval);
+                postPaints.forEach(f => f(context));
+            }
+        }
+        clearInterval(interval);
+        interval = setInterval(doing, 0);
+    }
+    doPaint();
+    window.addEventListener("resize", doPaint);
+})(document.currentScript.parentElement.querySelector("canvas"));
+
+// Draw axes
+// postPaint((/** @type {CanvasRenderingContext2D} */ context) => {
+//     context.strokeStyle = "rgb(0, 0, 0)";
+//     context.lineTo(0, 0);
+//     context.beginPath();
+//     context.lineTo(-400, 0);
+//     context.lineTo(0, 0);
+//     context.lineTo(400, 0);
+//     context.lineTo(0, 0);
+//     context.lineTo(0, -400);
+//     context.lineTo(0, 0);
+//     context.lineTo(0, 400);
+//     context.lineTo(0, 0);
+//     context.closePath();
+//     context.stroke();
+// });
+        </script>
+    </div>
+    <script class="hidden">
+//https://stackoverflow.com/questions/2450954/how-to-randomize-shuffle-a-javascript-array
+function shuffle(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+    }
+}
+
+// https://stackoverflow.com/questions/40264376/get-all-the-possible-unique-permutations
+function swap(a, i, j) {
+    const t = a[i];
+    a[i] = a[j];
+    a[j] = t;
+}
+
+function reverseSuffix(a, start) {
+    if (start === 0) {
+        a.reverse();
+    }
+    else {
+        let left = start;
+        let right = a.length - 1;
+
+        while (left < right)
+            swap(a, left++, right--);
+    }
+}
+
+function nextPermutation(a) {
+    // 1. find the largest index `i` such that a[i] < a[i + 1].
+    // 2. find the largest `j` (> i) such that a[i] < a[j].
+    // 3. swap a[i] with a[j].
+    // 4. reverse the suffix of `a` starting at index (i + 1).
+    //
+    // For a more intuitive description of this algorithm, see:
+    //   https://www.nayuki.io/page/next-lexicographical-permutation-algorithm
+    const reversedIndices = [...Array(a.length).keys()].reverse();
+
+    // Step #1; (note: `.slice(1)` maybe not necessary in JS?)
+    const i = reversedIndices.slice(1).find(i => a[i] < a[i + 1]);
+
+    if (i === undefined) {
+        a.reverse();
+        return false;
+    } 
+
+    // Steps #2-4
+    const j = reversedIndices.find(j => a[i] < a[j]);
+    swap(a, i, j);
+    reverseSuffix(a, i + 1);
+    return true;
+}
+
+/**
+ * @generator
+ * @param {any[]} a
+ */
+function* uniquePermutations(a) {
+    const b = a.slice().sort();
+
+    do {
+        yield b.slice();
+    } while (nextPermutation(b));
+}
+    </script>
+    <script>
+const points = [
+    [-45, 0],
+    [5, 15],
+    [45, -30]
+];
+
+const colors = [
+    "#ADD8E677",
+    "#9ACD3277",
+    "#87CEEB77",
+    "#B0C4DE77",
+    "#DC143C77",
+    "#F5F5DC77",
+    "#FA807277",
+    "#6B8E2377",
+    "#6495ED77",
+    "#FAFAD277",
+    "#ADFF2F77",
+    "#00808077",
+    "#DCDCDC77",
+    "#F0F0F077",
+    "#9966CC77",
+    "#3CB37177",
+    "#A0522D77",
+    "#DEB88777",
+    "#FF149377",
+    "#20B2AA77",
+    "#DDA0DD77",
+    "#DAA52077",
+    "#EE82EE77",
+    "#FF25EE77",
+    "#00CED177",
+    "#00FF7F77",
+    "#69696977",
+    "#FF00FF77",
+    "#FFDAB977",
+    "#6A5ACD77",
+    "#00BFFF77",
+    "#AFEEEE77",
+];
+
+// Draw points
+postPaint((/** @type {CanvasRenderingContext2D} */ context) => {
+    function drawPoint(p, fill) {
+        context.fillStyle = fill;
+        context.strokeStyle = "rgb(0, 0, 0)";
+        context.beginPath();
+        context.ellipse(p[0], p[1], 1, 1, 0, Math.PI*2, 0);
+        context.closePath();
+        context.fill();
+        //context.stroke();
+    }
+
+    for (const point of points) {
+        drawPoint(point, "rgb(255, 0, 0)")
+    }
+
+    var center = points.reduce((tot, p) => [tot[0] + p[0], tot[1] + p[1] ], [0, 0])
+    center[0] /= points.length;
+    center[1] /= points.length;
+    drawPoint(center, "rgba(255, 255, 255, 0.85)");
+})
+
+// Draw nearest
+graph((x, y) => {
+    function dis(x1, y1, x2, y2) {
+        return Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
+    }
+
+    let dm = points.map((p, i) => [i, dis(x, y, p[0], p[1])]);
+    let min = dm[0];
+    for (const pair of dm) {
+        if (pair[1] < min[1]) {
+            min = pair;
+        }
+    }
+
+    return colors[colors.length - min[0] - 1];
+});
+
+// draw shortest path
+const permutations = [[0,1,2,3],[0,1,3,2],[0,2,1,3]];
+graph((x, y) => {
+    function dis(a, b) {
+        return Math.sqrt(Math.pow(b[0] - a[0], 2) + Math.pow(b[1] - a[1], 2));
+    }
+
+    function *segment(line) {
+        for (let i = 1; i < line.length; i++) {
+            yield [line[i-1], line[i]];
+        }
+        yield [line[0], line[line.length - 1]]
+    }
+
+    function idxToPoint(idx) {
+        return [...points, [x, y]][idx];
+    }
+
+    let min = [0, Infinity, [0,1,2,3]];
+    let perms = permutations.map((a, b) => [a, b]);
+    shuffle(perms);
+    for (var i = 0; i < perms.length; i++) {
+        var d = Array.from(
+            segment(perms[i][0].map(idxToPoint))
+        ).reduce((t, p) => t + dis(p[0], p[1]), 0);
+        if (d <= min[1]) {
+            min = [perms[i][1], d, perms[i][0]];
+        }
+    }
+
+    return colors[(min[0]) % colors.length];
+});
+    </script>
+</body>
+</html>
