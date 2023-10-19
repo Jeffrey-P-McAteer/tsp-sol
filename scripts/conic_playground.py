@@ -112,7 +112,14 @@ def main(args=sys.argv):
   q_btn = ttk.Button(controls_frm, text='Quit', command=root.destroy)
   q_btn.pack(side='right', fill='both', expand=False)
 
-  coeficients = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+  coeficients = [
+    tkinter.DoubleVar(value=1.0),
+    tkinter.DoubleVar(value=1.0),
+    tkinter.DoubleVar(value=1.0),
+    tkinter.DoubleVar(value=1.0),
+    tkinter.DoubleVar(value=1.0),
+    tkinter.DoubleVar(value=1.0),
+  ]
 
   currently_redrawing = False
 
@@ -122,12 +129,16 @@ def main(args=sys.argv):
       return
     currently_redrawing = True
     try:
+      #print(f'coeficients = {coeficients}')
+      coeficient_vals = [float(x.get()) for x in coeficients]
+      print(f'coeficient_vals = {coeficient_vals}')
+
       canvas_w = float(canvas.winfo_width())
       canvas_h = float(canvas.winfo_height())
       #print(f'canvas = {canvas_w} x {canvas_h}')
       canvas.create_rectangle((0, 0), (canvas_w, canvas_h), fill='black') # clear
       for x in float_range(graph_x_min, graph_x_max, graph_draw_resolution):
-        for y in all_conic_y_vals(x, coeficients):
+        for y in all_conic_y_vals(x, coeficient_vals):
           # Transform x and y into screen pixel coords
           px_x = ((x - graph_x_min) / (graph_x_max - graph_x_min)) * canvas_w
           px_y = ((y - graph_y_min) / (graph_y_max - graph_y_min)) * canvas_h
@@ -140,17 +151,11 @@ def main(args=sys.argv):
     except:
       traceback.print_exc()
     currently_redrawing = False
+    root.after(1000, redraw_canvas) # infinite redraw loop at 1 fps
 
   sliders_col = ttk.Frame(controls_frm, padding=5)
   sliders_col.pack(side='left')
 
-  def update_a_val(slider_val):
-    nonlocal a_in, coeficients
-    try:
-      coeficients[A] = float(slider_val)
-      redraw_canvas()
-    except:
-      traceback.print_exc()
 
   a_frm = ttk.Frame(sliders_col, padding=5)
   a_frm.pack(side='bottom')
@@ -158,29 +163,36 @@ def main(args=sys.argv):
   a_label = ttk.Label(a_frm, text="A")
   a_label.pack(side='left')
 
-  a_in = ttk.Scale(a_frm, from_=coeficient_min, to=coeficient_max, orient=HORIZONTAL, length=300, command=update_a_val)
+  a_in = ttk.Scale(a_frm, from_=coeficient_min, to=coeficient_max, orient=HORIZONTAL, length=300, variable=coeficients[A])
   a_in.set(1)
   a_in.pack(side='right')
 
 
-  def update_b_val(slider_val):
-    nonlocal b_in, coeficients
-    try:
-      coeficients[B] = float(slider_val)
-      redraw_canvas()
-    except:
-      traceback.print_exc()
 
-  b_frm = ttk.Frame(sliders_col, padding=5)
-  b_frm.pack(side='bottom')
+  # b_frm = ttk.Frame(sliders_col, padding=5)
+  # b_frm.pack(side='bottom')
   
-  b_label = ttk.Label(b_frm, text="B")
-  b_label.pack(side='left')
+  # b_label = ttk.Label(b_frm, text="B")
+  # b_label.pack(side='left')
 
-  b_in = ttk.Scale(b_frm, from_=coeficient_min, to=coeficient_max, orient=HORIZONTAL, length=300, command=update_a_val)
-  b_in.set(1)
-  b_in.pack(side='right')
+  # b_in = ttk.Scale(b_frm, from_=coeficient_min, to=coeficient_max, orient=HORIZONTAL, length=300, variable=coeficients[B])
+  # b_in.set(1)
+  # b_in.pack(side='right')
 
+
+
+  # c_frm = ttk.Frame(sliders_col, padding=5)
+  # c_frm.pack(side='bottom')
+  
+  # c_label = ttk.Label(c_frm, text="C")
+  # c_label.pack(side='left')
+
+  # c_in = ttk.Scale(c_frm, from_=coeficient_min, to=coeficient_max, orient=HORIZONTAL, length=300, variable=coeficients[C])
+  # c_in.set(1)
+  # c_in.pack(side='right')
+
+
+  redraw_canvas()
 
   float_next_window_async() # Unecessary actually, I've got a rule someplace for tkinter to float
   root.mainloop()
