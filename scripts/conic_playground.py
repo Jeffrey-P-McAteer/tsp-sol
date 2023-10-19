@@ -2,6 +2,8 @@
 import os
 import sys
 import subprocess
+import math
+import traceback
 
 # Ought to come w/ python, if not see your OS's package manager for a copy pf python-tkinter
 import tkinter
@@ -22,15 +24,78 @@ except:
 
 # matplotlib = environmentinator.ensure_module('matplotlib')
 
+# Global helpers to index into coeficient tuple
+A=0
+B=1
+C=2
+D=3
+E=4
+F=5
+
 def float_next_window_async():
   subprocess.run(['swaymsg', 'exec', '''sh -c "sleep 0.4 ; swaymsg 'floating enable'" '''])
 
+def float_range(begin_f, end_f, step_f):
+  if begin_f < end_f and step_f < 0.0:
+    raise Exception('Infinite float_range!')
+  elif begin_f > end_f and step_f > 0.0:
+    raise Exception('Infinite float_range!')
+
+  val = begin_f
+  while val < end_f:
+    yield val
+    val += step_f
+  yield end_f
+
+def all_conic_y_vals(x, coeficients):
+  a = coeficients[A]
+  b = coeficients[B]
+  c = coeficients[C]
+  d = coeficients[D]
+  e = coeficients[E]
+  f = coeficients[F]
+  if c != 0:
+    try:
+      yield -(
+            math.sqrt( ((b*x) + e)**2.0 - (4.0*c*( (x*((a*x) + d)) + f)) ) + (b*x) + e
+          ) / (
+              2.0*c
+        )
+    except:
+      #traceback.print_exc()
+      pass
+    try:
+      yield  -(
+          -(math.sqrt( ((b*x) + e)**2.0 - (4.0*c*( (x*((a*x) + d)) + f)) )) + (b*x) + e
+          ) / (
+              2.0*c
+        )
+    except:
+      #traceback.print_exc()
+      pass
+
+  if c == 0.0 and ((b*x)+e) != 0.0:
+    try:
+      yield -( (x*( (a*x) + d )) + f ) / ( (b*x) + e )
+    except:
+      #traceback.print_exc()
+      pass
 
 def main(args=sys.argv):
   root = Tk()
   root_w = 1400
   root_h = 900
   bottom_ui_h = 150
+
+  coeficient_min = -100.0
+  coeficient_max = -100.0
+
+  graph_x_min = -10.0
+  graph_x_max = 10.0
+  graph_y_min = -10.0
+  graph_y_max = 10.0
+  graph_draw_resolution = 0.002
+
   root.geometry(f'{root_w}x{root_h}')
   root.title('Conic Playground')
 
@@ -47,12 +112,75 @@ def main(args=sys.argv):
   q_btn = ttk.Button(controls_frm, text='Quit', command=root.destroy)
   q_btn.pack(side='right', fill='both', expand=False)
 
-  a_label = Label(controls_frm, text="a")
-  a_label.pack(side='left')
+  coeficients = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+
+  currently_redrawing = False
+
+  def redraw_canvas():
+    nonlocal coeficients, canvas, root, currently_redrawing
+    if currently_redrawing:
+      return
+    currently_redrawing = True
+    try:
+      canvas_w = float(canvas.winfo_width())
+      canvas_h = float(canvas.winfo_height())
+      #print(f'canvas = {canvas_w} x {canvas_h}')
+      canvas.create_rectangle((0, 0), (canvas_w, canvas_h), fill='black') # clear
+      for x in float_range(graph_x_min, graph_x_max, graph_draw_resolution):
+        for y in all_conic_y_vals(x, coeficients):
+          # Transform x and y into screen pixel coords
+          px_x = ((x - graph_x_min) / (graph_x_max - graph_x_min)) * canvas_w
+          px_y = ((y - graph_y_min) / (graph_y_max - graph_y_min)) * canvas_h
+          #print(f' {x:.2f}, {y:.2f} screen coords {px_x:.2f}, {px_y:.2f}')
+          if px_y > 0.0 and px_y < canvas_h:
+            # Paint this pixel white
+            canvas.create_rectangle((px_x, px_y), (px_x, px_y), fill='white', outline='')
+
+
+    except:
+      traceback.print_exc()
+    currently_redrawing = False
+
+  sliders_col = ttk.Frame(controls_frm, padding=5)
+  sliders_col.pack(side='left')
+
+  def update_a_val(slider_val):
+    nonlocal a_in, coeficients
+    try:
+      coeficients[A] = float(slider_val)
+      redraw_canvas()
+    except:
+      traceback.print_exc()
+
+  a_frm = ttk.Frame(sliders_col, padding=5)
+  a_frm.pack(side='bottom')
   
-  a_in = ttk.Scale(controls_frm, from_=8, to=50, orient=HORIZONTAL, length=300)
-  a_in.set(30)
-  a_in.pack(side='left')
+  a_label = ttk.Label(a_frm, text="A")
+  a_label.pack(side='left')
+
+  a_in = ttk.Scale(a_frm, from_=coeficient_min, to=coeficient_max, orient=HORIZONTAL, length=300, command=update_a_val)
+  a_in.set(1)
+  a_in.pack(side='right')
+
+
+  def update_b_val(slider_val):
+    nonlocal b_in, coeficients
+    try:
+      coeficients[B] = float(slider_val)
+      redraw_canvas()
+    except:
+      traceback.print_exc()
+
+  b_frm = ttk.Frame(sliders_col, padding=5)
+  b_frm.pack(side='bottom')
+  
+  b_label = ttk.Label(b_frm, text="B")
+  b_label.pack(side='left')
+
+  b_in = ttk.Scale(b_frm, from_=coeficient_min, to=coeficient_max, orient=HORIZONTAL, length=300, command=update_a_val)
+  b_in.set(1)
+  b_in.pack(side='right')
+
 
   float_next_window_async() # Unecessary actually, I've got a rule someplace for tkinter to float
   root.mainloop()
