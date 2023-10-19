@@ -89,7 +89,7 @@ def main(args=sys.argv):
   graph_x_max = 10.0
   graph_y_min = -10.0
   graph_y_max = 10.0
-  graph_draw_resolution_stop = 0.002
+  graph_draw_resolution_stop = 0.0004
 
   root.geometry(f'{root_w}x{root_h}')
   root.title('Conic Playground')
