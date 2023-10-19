@@ -5,6 +5,7 @@ import subprocess
 import math
 import traceback
 import json
+import re
 
 # Ought to come w/ python, if not see your OS's package manager for a copy pf python-tkinter
 import tkinter
@@ -132,6 +133,21 @@ def main(args=sys.argv):
   formula_txt = tkinter.Text(right_leftmost_rows)
   formula_txt.pack(side='top', fill='x', expand=False)
 
+  def read_formula():
+    # Parse f'({a}*(x^2)) + ({b}*x*y) + ({c}*(y^2)) + ({d}*x) + ({e}*y) + {f} = 0'
+    formula_s = formula_txt.get("1.0", tkinter.END)
+    #print(f'formula_s = {formula_s}')
+    formula_nums = [float(x) for x in re.findall(r'[\d\.\d]+', formula_s)]
+    #print(f'formula_nums = {formula_nums}')
+    if len(formula_nums) == 9:
+      a_in.set(formula_nums[0])
+      b_in.set(formula_nums[2])
+      c_in.set(formula_nums[3])
+      d_in.set(formula_nums[5])
+      e_in.set(formula_nums[6])
+      f_in.set(formula_nums[7])
+
+
   def reset_all():
     nonlocal last_coef_sum
     a_in.set(1)
@@ -147,6 +163,9 @@ def main(args=sys.argv):
   right_rightmost_rows = ttk.Frame(right_control_cols, padding=5)
   right_rightmost_rows.pack(side='right')
 
+  read_from_formula = ttk.Button(right_rightmost_rows, text='Read\nFormula', command=read_formula)
+  read_from_formula.pack(side='bottom', fill='both', expand=False)
+  
   reset_btn = ttk.Button(right_rightmost_rows, text='Reset', command=reset_all)
   reset_btn.pack(side='bottom', fill='both', expand=False)
 
