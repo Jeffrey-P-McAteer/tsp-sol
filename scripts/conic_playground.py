@@ -217,16 +217,17 @@ def main(args=sys.argv):
             # Transform x and y into screen pixel coords
             px_x = ((x - graph_x0.get()) / graph_x_width) * canvas_w
             px_y = ((y - graph_y0.get()) / graph_y_height) * canvas_h
-            canvas.create_rectangle((px_x, px_y), (px_x, px_y), fill='red', outline='')
+            if px_x > 0 and px_x < canvas_w and px_y > 0 and px_y < canvas_h:
+              canvas.create_rectangle((px_x, px_y), (px_x, px_y), fill='red', outline='')
 
         # Draw formula
-        for x in float_range(graph_x_min, graph_x_max, last_draw_resolution):
+        for x in float_range(graph_x0.get(), graph_x0.get() + graph_x_width, last_draw_resolution):
           for y in all_conic_y_vals(x, coeficient_vals):
             # Transform x and y into screen pixel coords
             px_x = ((x - graph_x0.get()) / graph_x_width) * canvas_w
             px_y = ((y - graph_y0.get()) / graph_y_height) * canvas_h
             #print(f' {x:.2f}, {y:.2f} screen coords {px_x:.2f}, {px_y:.2f}')
-            if px_y > 0.0 and px_y < canvas_h:
+            if px_x > 0 and px_x < canvas_w and px_y > 0 and px_y < canvas_h:
               # Paint this pixel white
               canvas.create_rectangle((px_x, px_y), (px_x, px_y), fill='white', outline='')
 
