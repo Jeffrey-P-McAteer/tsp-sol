@@ -1512,6 +1512,18 @@ fn multi_pattern_scan(n: usize, bound_granularity: fp, num_multi_steps_to_scan: 
       let (x4, y4) = edge_points_vec[3 * one_sixth_dist];
       let (x5, y5) = edge_points_vec[4 * one_sixth_dist];
       let (x6, y6) = edge_points_vec[edge_points_vec.len() - 1];*/
+
+      let fit_pts_json_file = format!("{}-{:x}-{:x}-edge-points.json", output_multiscan_parabola_txt_file_path, edge_keys.0, edge_keys.1);
+      let mut fit_pts_json_txt = String::new(); //format!("{:?}", edge_points_vec);
+      fit_pts_json_txt += "[";
+      for (point_x, point_y) in edge_points_vec {
+        fit_pts_json_txt += format!("[{point_x}, {point_y}], ").as_str();
+      }
+      fit_pts_json_txt.pop();
+      fit_pts_json_txt.pop(); // Remove last ", " chars
+      fit_pts_json_txt += "]";
+      let mut f = File::create(&fit_pts_json_file).expect("Unable to create file");
+      f.write_all(fit_pts_json_txt.as_bytes()).expect("Unable to write data");
       
       let (a, b, c, d, e, f) = parabolics::solve_for_6pts(
         thread_pool,
