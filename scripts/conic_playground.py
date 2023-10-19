@@ -108,7 +108,7 @@ def main(args=sys.argv):
     with open(graph_edge_points_file, 'r') as fd:
       graph_edge_points = json.load(fd)
 
-  print(f'graph_edge_points = {graph_edge_points}')
+  print(f'graph_edge_points = {len(graph_edge_points)} points')
 
   root.geometry(f'{root_w}x{root_h}')
   root.title('Conic Playground')
