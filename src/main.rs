@@ -1558,7 +1558,7 @@ fn multi_pattern_scan(n: usize, bound_granularity: fp, num_multi_steps_to_scan: 
       for (edge_keys, edge_points_vec) in &functions_edge_points {
         let (a,b,c,d,e,f) = functions_edge_xy_abcdef_coef.get(edge_keys).unwrap_or(&(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)); // we know it exists
 
-        parabola_txt += format!("Edge {:06x} - {:06x} has {} points,  0 = ({} * x**2) + ({} * xy) + ({} * y**2) + ({} * x) + ({} * y) + {} \n",
+        parabola_txt += format!("Edge {:06x} - {:06x} has {} points,  ({} * x**2) + ({} * xy) + ({} * y**2) + ({} * x) + ({} * y) + {} = 0 \n",
           edge_keys.0, edge_keys.1, edge_points_vec.len(), a,b,c,d,e,f
         ).as_str();
         

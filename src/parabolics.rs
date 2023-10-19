@@ -23,8 +23,8 @@ pub fn solve_for_6pts(
     -> (fp, fp, fp, fp, fp, fp)
 {
     
-    const min_guess: fp = -900.0; // cannot do min_guess..max_guess ???
-    const max_guess: fp = 900.0;
+    const min_guess: fp = -3000.0;
+    const max_guess: fp = 3000.0;
     let guess_range = max_guess - min_guess;
 
     let mut best_abcdef = Arc::new(Mutex::new( (0.0, 0.0, 0.0, 0.0, 0.0, 0.0) ));
@@ -35,7 +35,7 @@ pub fn solve_for_6pts(
     // const long_iter_count: usize = 5_000_000_000;
 
     const error_exit_target: fp = 0.19; // randomly permute until we hit < this error
-    const long_iter_error_exit_target: fp = 0.26;
+    const long_iter_error_exit_target: fp = 0.28;
     const long_iter_count: usize = 1_000_000_000;
 
     for _ in 0..NUM_THREADS {

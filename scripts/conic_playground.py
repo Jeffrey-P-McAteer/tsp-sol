@@ -88,6 +88,8 @@ def main(args=sys.argv):
   coeficient_max = float(os.environ.get('COEFICIENT_MAX', '50.0'))
   print(f'COEFICIENT_MIN={coeficient_min} COEFICIENT_MAX={coeficient_max}')
 
+  initial_formula = os.environ.get('INITIAL_FORMULA', '')
+
   graph_x_min = -2.0
   graph_x_max = 16.0
   graph_y_min = -2.0
@@ -133,12 +135,17 @@ def main(args=sys.argv):
 
   formula_txt = tkinter.Text(right_leftmost_rows)
   formula_txt.pack(side='top', fill='x', expand=False)
+  try:
+    formula_txt.delete('1.0', tkinter.END)
+  except:
+    pass
+  formula_txt.insert(tkinter.END, initial_formula)
 
   def read_formula():
     # Parse f'({a}*(x^2)) + ({b}*x*y) + ({c}*(y^2)) + ({d}*x) + ({e}*y) + {f} = 0'
     formula_s = formula_txt.get("1.0", tkinter.END)
     #print(f'formula_s = {formula_s}')
-    formula_nums = [float(x) for x in re.findall(r'[\d\.\d]+', formula_s)]
+    formula_nums = [float(x) for x in re.findall(r'-?[\d\.\d]+', formula_s)]
     #print(f'formula_nums = {formula_nums}')
     if len(formula_nums) == 9:
       a_in.set(formula_nums[0])
@@ -151,12 +158,21 @@ def main(args=sys.argv):
 
   def reset_all():
     nonlocal last_coef_sum
-    a_in.set(1)
-    b_in.set(1)
-    c_in.set(1)
-    d_in.set(1)
-    e_in.set(1)
-    f_in.set(1)
+    if initial_formula is not None and len(initial_formula) > 2:
+      try:
+        formula_txt.delete('1.0', tkinter.END)
+      except:
+        pass
+      formula_txt.insert(tkinter.END, initial_formula)
+      read_formula()
+    else:
+      a_in.set(1)
+      b_in.set(1)
+      c_in.set(1)
+      d_in.set(1)
+      e_in.set(1)
+      f_in.set(1)
+
     x0_in.set(graph_x_min)
     y0_in.set(graph_y_min)
     last_coef_sum = -1.0
@@ -381,7 +397,8 @@ def main(args=sys.argv):
   y0_in.set(graph_y_min)
   y0_in.pack(side='right')
 
-
+  if initial_formula is not None and len(initial_formula) > 2:
+    read_formula()
 
   root.after(150, redraw_canvas)
 
