@@ -3,6 +3,11 @@ import os
 import sys
 import subprocess
 
+# Ought to come w/ python, if not see your OS's package manager for a copy pf python-tkinter
+import tkinter
+from tkinter import *
+from tkinter import ttk
+
 env_path = os.path.join(os.getcwd(), '.py-env')
 os.makedirs(env_path, exist_ok=True)
 sys.path.append(env_path)
@@ -15,28 +20,42 @@ except:
   ])
   import environmentinator
 
-matplotlib = environmentinator.ensure_module('matplotlib')
-numpy = environmentinator.ensure_module('numpy')
+# matplotlib = environmentinator.ensure_module('matplotlib')
 
-import matplotlib.pyplot
+def float_next_window_async():
+  subprocess.run(['swaymsg', 'exec', '''sh -c "sleep 0.4 ; swaymsg 'floating enable'" '''])
 
 
 def main(args=sys.argv):
+  root = Tk()
+  root_w = 1400
+  root_h = 900
+  bottom_ui_h = 150
+  root.geometry(f'{root_w}x{root_h}')
+  root.title('Conic Playground')
 
-  # Hello world from https://stackoverflow.com/questions/30553585/graphing-a-parabola-using-matplotlib-in-python
+  # Useful diagram: https://stackoverflow.com/questions/28089942/difference-between-fill-and-expand-options-for-tkinter-pack-method
+  frm = ttk.Frame(root, padding=0)
+  frm.pack(fill='both', expand=True)
 
-  # create 1000 equally spaced points between -10 and 10
-  x = numpy.linspace(-10, 10, 1000)
+  canvas = tkinter.Canvas(frm, width=root_w-2, height=root_h-bottom_ui_h, bg='black')
+  canvas.pack(fill='both', expand=True)
 
-  # calculate the y value for each element of the x vector
-  #y = x**2 + 2*x + 2  
-  y = x**2 + 2*x + 2  
+  controls_frm = ttk.Frame(frm, padding=0)
+  controls_frm.pack(side='bottom', fill='x', expand=True)
 
-  fig, ax = matplotlib.pyplot.subplots()
-  ax.plot(x, y)
+  q_btn = ttk.Button(controls_frm, text='Quit', command=root.destroy)
+  q_btn.pack(side='right', fill='both', expand=False)
 
-  subprocess.run(['swaymsg', 'exec', '''sh -c "sleep 0.4 ; swaymsg 'floating enable'" '''])
-  matplotlib.pyplot.show(block=True)
+  a_label = Label(controls_frm, text="a")
+  a_label.pack(side='left')
+  
+  a_in = ttk.Scale(controls_frm, from_=8, to=50, orient=HORIZONTAL, length=300)
+  a_in.set(30)
+  a_in.pack(side='left')
+
+  float_next_window_async() # Unecessary actually, I've got a rule someplace for tkinter to float
+  root.mainloop()
 
   if 'code' in args or 'i' in args:
     import code

@@ -30,9 +30,13 @@ pub fn solve_for_6pts(
     let mut best_abcdef = Arc::new(Mutex::new( (0.0, 0.0, 0.0, 0.0, 0.0, 0.0) ));
     let mut smallest_error = Arc::new(Mutex::new( 99999999.0 ));
 
-    const error_exit_target: fp = 0.30; // randomly permute until we hit < this error
-    const long_iter_error_exit_target: fp = 0.95;
-    const long_iter_count: usize = 5_000_000_000;
+    // const error_exit_target: fp = 0.30; // randomly permute until we hit < this error
+    // const long_iter_error_exit_target: fp = 0.95;
+    // const long_iter_count: usize = 5_000_000_000;
+
+    const error_exit_target: fp = 0.15; // randomly permute until we hit < this error
+    const long_iter_error_exit_target: fp = 0.25;
+    const long_iter_count: usize = 50_000_000_000;
 
     for _ in 0..NUM_THREADS {
         // Copy vars to be moved into thread
@@ -79,7 +83,7 @@ pub fn solve_for_6pts(
                     break; // we're done, other threads will check in 5,000 or so random checks and exit.
                 }
 
-                if loop_i % 2000 == 0 {
+                if loop_i % 2_000_000 == 0 {
                     // Should we exit b/c another thread found & exited?
                     let mut smallest_err_guard = smallest_error.lock().unwrap();
                     if *smallest_err_guard < error_exit_target {
