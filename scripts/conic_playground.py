@@ -84,8 +84,9 @@ def main(args=sys.argv):
   root_h = 900
   bottom_ui_h = 150
 
-  coeficient_min = -50.0
-  coeficient_max = 50.0
+  coeficient_min = float(os.environ.get('COEFICIENT_MIN', '-50.0'))
+  coeficient_max = float(os.environ.get('COEFICIENT_MAX', '50.0'))
+  print(f'COEFICIENT_MIN={coeficient_min} COEFICIENT_MAX={coeficient_max}')
 
   graph_x_min = -2.0
   graph_x_max = 16.0
@@ -228,6 +229,31 @@ def main(args=sys.argv):
         px_y = ((y - graph_y0.get()) / graph_y_height) * canvas_h
         if px_x > 0 and px_x < canvas_w and px_y > 0 and px_y < canvas_h:
           canvas.create_text(px_x,px_y,fill='grey',font='Arial 12', text='(0,0)')
+
+        # Draw error text
+        total_error = 0.0
+        for point in graph_edge_points:
+          if len(point) == 2:
+            target_x, target_y = point[0], point[1]
+            closest_y_val = None
+            for calculated_y in all_conic_y_vals(target_x, coeficient_vals):
+              if closest_y_val is None:
+                closest_y_val = calculated_y
+              elif abs(target_y - calculated_y) < abs(closest_y_val - calculated_y):
+                closest_y_val = calculated_y
+            
+            if closest_y_val is None:
+              total_error += 99
+            else:
+              total_error += abs(target_y - closest_y_val)
+
+        avg_error = 0.0
+        if len(graph_edge_points) > 0:
+          avg_error = total_error / float(len(graph_edge_points))
+        #avg_error = max(avg_error, 99.0) # Don't display error amount > 99
+
+        canvas.create_text(canvas_w - 60, canvas_h - 14,fill='grey',font='Arial 12', text=f'E:{avg_error:.2f}')
+
 
         # Draw graph_edge_points as red dots
         for point in graph_edge_points:
