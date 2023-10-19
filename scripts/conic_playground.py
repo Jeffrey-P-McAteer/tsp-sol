@@ -88,7 +88,7 @@ def main(args=sys.argv):
   bottom_ui_h = 150
 
   coeficient_min = -100.0
-  coeficient_max = -100.0
+  coeficient_max = 100.0
 
   graph_x_min = -10.0
   graph_x_max = 10.0
