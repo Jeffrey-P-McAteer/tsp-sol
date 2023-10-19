@@ -94,7 +94,7 @@ def main(args=sys.argv):
   graph_x_max = 10.0
   graph_y_min = -10.0
   graph_y_max = 10.0
-  graph_draw_resolution = 0.002
+  graph_draw_resolution_stop = 0.002
 
   root.geometry(f'{root_w}x{root_h}')
   root.title('Conic Playground')
@@ -123,35 +123,46 @@ def main(args=sys.argv):
 
   currently_redrawing = False
 
+  last_coef_sum = -1.0
+  last_draw_resolution = graph_draw_resolution_stop
+
   def redraw_canvas():
-    nonlocal coeficients, canvas, root, currently_redrawing
+    nonlocal coeficients, canvas, root, currently_redrawing, last_coef_sum, last_draw_resolution
     if currently_redrawing:
       return
     currently_redrawing = True
     try:
       #print(f'coeficients = {coeficients}')
       coeficient_vals = [float(x.get()) for x in coeficients]
-      print(f'coeficient_vals = {coeficient_vals}')
+      got_new_coefs = abs(sum(coeficient_vals) - last_coef_sum) > 0.1
+      if got_new_coefs:
+        last_draw_resolution = 0.5
 
-      canvas_w = float(canvas.winfo_width())
-      canvas_h = float(canvas.winfo_height())
-      #print(f'canvas = {canvas_w} x {canvas_h}')
-      canvas.create_rectangle((0, 0), (canvas_w, canvas_h), fill='black') # clear
-      for x in float_range(graph_x_min, graph_x_max, graph_draw_resolution):
-        for y in all_conic_y_vals(x, coeficient_vals):
-          # Transform x and y into screen pixel coords
-          px_x = ((x - graph_x_min) / (graph_x_max - graph_x_min)) * canvas_w
-          px_y = ((y - graph_y_min) / (graph_y_max - graph_y_min)) * canvas_h
-          #print(f' {x:.2f}, {y:.2f} screen coords {px_x:.2f}, {px_y:.2f}')
-          if px_y > 0.0 and px_y < canvas_h:
-            # Paint this pixel white
-            canvas.create_rectangle((px_x, px_y), (px_x, px_y), fill='white', outline='')
+      if last_draw_resolution > graph_draw_resolution_stop:
+        print(f'coeficient_vals = {coeficient_vals}, last_draw_resolution = {last_draw_resolution}')
 
+        last_draw_resolution /= 2.0 # Double resolution (until <= graph_draw_resolution_stop point)
+
+        last_coef_sum = sum(coeficient_vals)
+
+        canvas_w = float(canvas.winfo_width())
+        canvas_h = float(canvas.winfo_height())
+        #print(f'canvas = {canvas_w} x {canvas_h}')
+        canvas.create_rectangle((0, 0), (canvas_w, canvas_h), fill='black') # clear
+        for x in float_range(graph_x_min, graph_x_max, last_draw_resolution):
+          for y in all_conic_y_vals(x, coeficient_vals):
+            # Transform x and y into screen pixel coords
+            px_x = ((x - graph_x_min) / (graph_x_max - graph_x_min)) * canvas_w
+            px_y = ((y - graph_y_min) / (graph_y_max - graph_y_min)) * canvas_h
+            #print(f' {x:.2f}, {y:.2f} screen coords {px_x:.2f}, {px_y:.2f}')
+            if px_y > 0.0 and px_y < canvas_h:
+              # Paint this pixel white
+              canvas.create_rectangle((px_x, px_y), (px_x, px_y), fill='white', outline='')
 
     except:
       traceback.print_exc()
     currently_redrawing = False
-    root.after(1000, redraw_canvas) # infinite redraw loop at 1 fps
+    root.after(50, redraw_canvas) # infinite redraw loop at 20 fps, but we avoid drawing if the sum of coefficients is within 0.01 of the last draw
 
   sliders_col = ttk.Frame(controls_frm, padding=5)
   sliders_col.pack(side='left')
@@ -169,27 +180,27 @@ def main(args=sys.argv):
 
 
 
-  # b_frm = ttk.Frame(sliders_col, padding=5)
-  # b_frm.pack(side='bottom')
+  b_frm = ttk.Frame(sliders_col, padding=5)
+  b_frm.pack(side='bottom')
   
-  # b_label = ttk.Label(b_frm, text="B")
-  # b_label.pack(side='left')
+  b_label = ttk.Label(b_frm, text="B")
+  b_label.pack(side='left')
 
-  # b_in = ttk.Scale(b_frm, from_=coeficient_min, to=coeficient_max, orient=HORIZONTAL, length=300, variable=coeficients[B])
-  # b_in.set(1)
-  # b_in.pack(side='right')
+  b_in = ttk.Scale(b_frm, from_=coeficient_min, to=coeficient_max, orient=HORIZONTAL, length=300, variable=coeficients[B])
+  b_in.set(1)
+  b_in.pack(side='right')
 
 
 
-  # c_frm = ttk.Frame(sliders_col, padding=5)
-  # c_frm.pack(side='bottom')
+  c_frm = ttk.Frame(sliders_col, padding=5)
+  c_frm.pack(side='bottom')
   
-  # c_label = ttk.Label(c_frm, text="C")
-  # c_label.pack(side='left')
+  c_label = ttk.Label(c_frm, text="C")
+  c_label.pack(side='left')
 
-  # c_in = ttk.Scale(c_frm, from_=coeficient_min, to=coeficient_max, orient=HORIZONTAL, length=300, variable=coeficients[C])
-  # c_in.set(1)
-  # c_in.pack(side='right')
+  c_in = ttk.Scale(c_frm, from_=coeficient_min, to=coeficient_max, orient=HORIZONTAL, length=300, variable=coeficients[C])
+  c_in.set(1)
+  c_in.pack(side='right')
 
 
   redraw_canvas()
