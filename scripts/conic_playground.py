@@ -6,6 +6,7 @@ import math
 import traceback
 import json
 import re
+import shutil
 
 # Ought to come w/ python, if not see your OS's package manager for a copy pf python-tkinter
 import tkinter
@@ -35,7 +36,8 @@ E=4
 F=5
 
 def float_next_window_async():
-  subprocess.run(['swaymsg', 'exec', '''sh -c "sleep 0.4 ; swaymsg 'floating enable'" '''])
+  if shutil.which('swaymsg'):
+    subprocess.run(['swaymsg', 'exec', '''sh -c "sleep 0.4 ; swaymsg 'floating enable'" '''])
 
 def float_range(begin_f, end_f, step_f):
   if begin_f < end_f and step_f < 0.0:
