@@ -83,8 +83,8 @@ def all_conic_y_vals(x, coeficients):
 def main(args=sys.argv):
   root = Tk()
   root_w = 1400
-  root_h = 900
-  bottom_ui_h = 150
+  root_h = 940
+  bottom_ui_h = 180
 
   coeficient_min = float(os.environ.get('COEFICIENT_MIN', '-50.0'))
   coeficient_max = float(os.environ.get('COEFICIENT_MAX', '50.0'))
@@ -97,6 +97,15 @@ def main(args=sys.argv):
   graph_y_min = -2.0
   graph_y_max = 16.0
   graph_draw_resolution_stop = 0.0004
+
+  if os.name == 'nt': # Windows draws pixels real slow
+    graph_draw_resolution_stop = 0.005
+    print(f'Detected windows system, lowering graph_draw_resolution_stop={graph_draw_resolution_stop} for performance reasons!')
+
+  fame_draw_ms = 50
+  if os.name == 'nt': # Windows draws pixels real slow
+    fame_draw_ms = 250
+    print(f'Detected windows system, lowering fame_draw_ms={fame_draw_ms} for performance reasons!')
 
   graph_x_width = graph_x_max - graph_x_min
   graph_y_height = graph_y_max - graph_y_min
@@ -216,7 +225,7 @@ def main(args=sys.argv):
       addtl_vals = [graph_x0.get(), graph_y0.get()]
       got_new_coefs = abs(sum(coeficient_vals + addtl_vals) - last_coef_sum) > 0.1
       if got_new_coefs:
-        last_draw_resolution = 0.5
+        last_draw_resolution = 2.0
 
         # Write formula to text box
         a,b,c,d,e,f = coeficient_vals[A],coeficient_vals[B],coeficient_vals[C],coeficient_vals[D],coeficient_vals[E],coeficient_vals[F],
@@ -297,7 +306,7 @@ def main(args=sys.argv):
     except:
       traceback.print_exc()
     currently_redrawing = False
-    root.after(50, redraw_canvas) # infinite redraw loop at 20 fps, but we avoid drawing if the sum of coefficients is within 0.01 of the last draw
+    root.after(fame_draw_ms, redraw_canvas) # infinite redraw loop at 20 fps, but we avoid drawing if the sum of coefficients is within 0.01 of the last draw
 
   sliders_two_col = ttk.Frame(controls_frm, padding=5)
   sliders_two_col.pack(side='left', expand=False)
