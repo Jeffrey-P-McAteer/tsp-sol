@@ -36,6 +36,18 @@ def maybe(callback, default_return=None):
     traceback.print_exc()
   return default_return
 
+def float_range(begin_f, end_f, step_f):
+  if begin_f < end_f and step_f < 0.0:
+    raise Exception('Infinite float_range!')
+  elif begin_f > end_f and step_f > 0.0:
+    raise Exception('Infinite float_range!')
+
+  val = begin_f
+  while val < end_f:
+    yield val
+    val += step_f
+  yield end_f
+
 def main(args=sys.argv):
   
   A = Symbol('A')
@@ -60,7 +72,11 @@ def main(args=sys.argv):
   print(f'solve(eq, E) = {maybe(lambda: solve(eq, E))}')
   print(f'solve(eq, F) = {maybe(lambda: solve(eq, F))}')
 
-  
+  for x_val in float_range(-5.0, 5.0, 0.25):
+    eq_2 = (A*(x_val**2)) + (B*(x_val*y)) + (C*(y**2)) + (D*x_val) + (E*y) + F
+    print(f'solve(eq_2, y) = {maybe(lambda: solve(eq_2, y))}')
+    
+
 
   if 'code' in args or 'i' in args:
     import code
