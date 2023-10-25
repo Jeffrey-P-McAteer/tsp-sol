@@ -28,7 +28,8 @@ except:
 sympy = environmentinator.ensure_module('sympy')
 from sympy.solvers import solve
 from sympy import Symbol
-  
+from sympy import Eq
+
 def maybe(callback, default_return=None):
   try:
     return callback()
@@ -58,10 +59,12 @@ def main(args=sys.argv):
   F = Symbol('F')
   x = Symbol('x')
   y = Symbol('y')
+  v = Symbol('v') # used as an equality "Value" for the right-hand-side
 
   print(f'solve(x**2 - 1, x) = {maybe(lambda: solve(x**2 - 1, x))}')
 
-  eq = (A*(x**2)) + (B*(x*y)) + (C*(y**2)) + (D*x) + (E*y) + F
+  eq = Eq(v, (A*(x**2)) + (B*(x*y)) + (C*(y**2)) + (D*x) + (E*y) + F).subs(v, 0)
+
   
   print(f'solve(eq, x) = {maybe(lambda: solve(eq, x))}')
   print(f'solve(eq, y) = {maybe(lambda: solve(eq, y))}')
@@ -71,10 +74,25 @@ def main(args=sys.argv):
   print(f'solve(eq, D) = {maybe(lambda: solve(eq, D))}')
   print(f'solve(eq, E) = {maybe(lambda: solve(eq, E))}')
   print(f'solve(eq, F) = {maybe(lambda: solve(eq, F))}')
+  print()
 
   for x_val in float_range(-5.0, 5.0, 0.25):
-    eq_2 = (A*(x_val**2)) + (B*(x_val*y)) + (C*(y**2)) + (D*x_val) + (E*y) + F
-    print(f'solve(eq_2, y) = {maybe(lambda: solve(eq_2, y))}')
+    # parabola: Ax^2 + Dx + Ey = 0
+    eq_2 = Eq(v, (A*(x_val**2)) + (B*(x_val*y)) + (C*(y**2)) + (D*x_val) + (E*y) + F).subs(v, 0)
+    eq_3 = Eq(v, (A*(x_val**2)) + (D*x_val) + (E*y) ).subs(v, 0)
+
+    eqs = [
+      eq_2, eq_3
+    ]
+
+    print(f'solve(eqs, y) = {maybe(lambda: solve(eqs, y))}')
+    print(f'solve(eqs, A) = {maybe(lambda: solve(eqs, A))}')
+    print(f'solve(eqs, B) = {maybe(lambda: solve(eqs, B))}')
+    print(f'solve(eqs, C) = {maybe(lambda: solve(eqs, C))}')
+    print(f'solve(eqs, D) = {maybe(lambda: solve(eqs, D))}')
+    print(f'solve(eqs, E) = {maybe(lambda: solve(eqs, E))}')
+    print(f'solve(eqs, F) = {maybe(lambda: solve(eqs, F))}')
+    print()
     
 
 
