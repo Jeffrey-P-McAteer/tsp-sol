@@ -95,27 +95,31 @@ def main(args=sys.argv):
 #     print()
 
   equations = [
-    Eq(v, (A*(x**2)) + (B*(x*y)) + (C*(y**2)) + (D*x) + (E*y) + F).subs(v, 0)
+    Eq(0, (A*(x**2)) + (B*(x*y)) + (C*(y**2)) + (D*x) + (E*y) + F),
+    Eq(0, (A*(x**2)) + (D*x) + (E*y) ),
   ]
-  known_xys = [
-    # (1.0, 1.0),
-    # #(1.0, -1.0),
-    # (0.0, 0.0),
-    # (-1.0, 1.0),
-    # #(-1.0, -1.0),
-    (-2.0, (-2.0)**2),
-    (-1.0, (-1.0)**2),
-    (0.0, 0.0),
-    (1.0, (1.0)**2),
-    (2.0, (2.0)**2),
-  ]
-  for x_val,y_val in known_xys:
-    equations.append(
-      Eq(v, (A*(x**2)) + (B*(x*y)) + (C*(y**2)) + (D*x) + (E*y) + F)
-         .subs(v, 0)
-         .subs(x, x_val)
-         .subs(y, y_val)
-    )
+#   known_xys = [
+#     # (1.0, 1.0),
+#     # #(1.0, -1.0),
+#     # (0.0, 0.0),
+#     # (-1.0, 1.0),
+#     # #(-1.0, -1.0),
+#     (-2.0, (-2.0)**2),
+#     (-1.0, (-1.0)**2),
+#     (0.0, 0.0),
+#     (1.0, (1.0)**2),
+#     (2.0, (2.0)**2),
+#   ]
+#   for x_val,y_val in known_xys:
+#     equations.append(
+#       Eq(v, (A*(x**2)) + (B*(x*y)) + (C*(y**2)) + (D*x) + (E*y) + F)
+#          .subs(v, 0)
+#          .subs(x, x_val)
+#          .subs(y, y_val)
+#     )
+
+  for e in equations:
+      print(f'e >> {e}')
 
   print(f'solve(equations, x) = {maybe(lambda: solve(equations, x))}')
   print(f'solve(equations, y) = {maybe(lambda: solve(equations, y))}')
