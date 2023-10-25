@@ -76,24 +76,51 @@ def main(args=sys.argv):
   print(f'solve(eq, F) = {maybe(lambda: solve(eq, F))}')
   print()
 
-  for x_val in float_range(-5.0, 5.0, 0.25):
-    # parabola: Ax^2 + Dx + Ey = 0
-    eq_2 = Eq(v, (A*(x_val**2)) + (B*(x_val*y)) + (C*(y**2)) + (D*x_val) + (E*y) + F).subs(v, 0)
-    eq_3 = Eq(v, (A*(x_val**2)) + (D*x_val) + (E*y) ).subs(v, 0)
+#   for x_val in float_range(-5.0, 5.0, 0.25):
+#     # parabola: Ax^2 + Dx + Ey = 0
+#     eq_2 = Eq(v, (A*(x_val**2)) + (B*(x_val*y)) + (C*(y**2)) + (D*x_val) + (E*y) + F).subs(v, 0)
+#     eq_3 = Eq(v, (A*(x_val**2)) + (D*x_val) + (E*y) ).subs(v, 0)
 
-    eqs = [
-      eq_2, eq_3
-    ]
+#     eqs = [
+#       eq_2, eq_3
+#     ]
 
-    print(f'solve(eqs, y) = {maybe(lambda: solve(eqs, y))}')
-    print(f'solve(eqs, A) = {maybe(lambda: solve(eqs, A))}')
-    print(f'solve(eqs, B) = {maybe(lambda: solve(eqs, B))}')
-    print(f'solve(eqs, C) = {maybe(lambda: solve(eqs, C))}')
-    print(f'solve(eqs, D) = {maybe(lambda: solve(eqs, D))}')
-    print(f'solve(eqs, E) = {maybe(lambda: solve(eqs, E))}')
-    print(f'solve(eqs, F) = {maybe(lambda: solve(eqs, F))}')
-    print()
-    
+#     print(f'solve(eqs, y) = {maybe(lambda: solve(eqs, y))}')
+#     print(f'solve(eqs, A) = {maybe(lambda: solve(eqs, A))}')
+#     print(f'solve(eqs, B) = {maybe(lambda: solve(eqs, B))}')
+#     print(f'solve(eqs, C) = {maybe(lambda: solve(eqs, C))}')
+#     print(f'solve(eqs, D) = {maybe(lambda: solve(eqs, D))}')
+#     print(f'solve(eqs, E) = {maybe(lambda: solve(eqs, E))}')
+#     print(f'solve(eqs, F) = {maybe(lambda: solve(eqs, F))}')
+#     print()
+
+  equations = [
+    Eq(v, (A*(x**2)) + (B*(x*y)) + (C*(y**2)) + (D*x) + (E*y) + F).subs(v, 0)
+  ]
+  known_xys = [
+    (1.0, 1.0),
+    #(1.0, -1.0),
+    (0.0, 0.0),
+    (-1.0, 1.0),
+    #(-1.0, -1.0),
+  ]
+  for x_val,y_val in known_xys:
+    equations.append(
+      Eq(v, (A*(x**2)) + (B*(x*y)) + (C*(y**2)) + (D*x) + (E*y) + F)
+         .subs(v, 0)
+         .subs(x, x_val)
+         .subs(y, y_val)
+    )
+
+  print(f'solve(equations, x) = {maybe(lambda: solve(equations, x))}')
+  print(f'solve(equations, y) = {maybe(lambda: solve(equations, y))}')
+  print(f'solve(equations, A) = {maybe(lambda: solve(equations, A))}')
+  print(f'solve(equations, B) = {maybe(lambda: solve(equations, B))}')
+  print(f'solve(equations, C) = {maybe(lambda: solve(equations, C))}')
+  print(f'solve(equations, D) = {maybe(lambda: solve(equations, D))}')
+  print(f'solve(equations, E) = {maybe(lambda: solve(equations, E))}')
+  print(f'solve(equations, F) = {maybe(lambda: solve(equations, F))}')
+  print()
 
 
   if 'code' in args or 'i' in args:
