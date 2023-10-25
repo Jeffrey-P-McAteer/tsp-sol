@@ -125,9 +125,14 @@ def main(args=sys.argv):
 #     print()
 
   equations = [
-    #(A*(x**2)) + (B*(x*y)) + (C*(y**2)) + (D*x) + (E*y) + F,
+    (A*(x**2)) + (B*(x*y)) + (C*(y**2)) + (D*x) + (E*y) + F,
     #(A*(x**2)) + (D*x) + (E*y),
+    (4*A*C) - (B**2),
+
   ]
+  
+  # parabola: (4*A*C)-(B**2) == 0
+
   # y=x**2
 #   known_xys = [
 #     (-2.0, (-2.0)**2),
@@ -147,24 +152,24 @@ def main(args=sys.argv):
   
   known_xys = []
 
-  (a,b,c,d,e,f) = (1.0, -35.0, 1.0, 45.0, 1.0, 1.0)
-  print(f'(a,b,c,d,e,f) = {(a,b,c,d,e,f)}')
-  for x_val in float_range(-10.0, 10.0, 1.0):
-    for y_val in all_conic_y_vals(x_val, (a,b,c,d,e,f)):
-      known_xys.append((x_val, y_val))
-      print(f'>> {x_val}, {y_val}')
+#   (a,b,c,d,e,f) = (1.0, -35.0, 1.0, 45.0, 1.0, 1.0)
+#   print(f'(a,b,c,d,e,f) = {(a,b,c,d,e,f)}')
+#   for x_val in float_range(-10.0, 10.0, 1.0):
+#     for y_val in all_conic_y_vals(x_val, (a,b,c,d,e,f)):
+#       known_xys.append((x_val, y_val))
+#       print(f'>> {x_val}, {y_val}')
 
-  for x_val,y_val in known_xys:
-    equations.append(
-      ((A*(x**2)) + (B*(x*y)) + (C*(y**2)) + (D*x) + (E*y) + F)
-         .subs(x, x_val)
-         .subs(y, y_val)
-    )
-    # equations.append(
-    #   ((A*(x**2)) + (D*x) + (E*y) )
-    #      .subs(x, x_val)
-    #      .subs(y, y_val)
-    # )
+#   for x_val,y_val in known_xys:
+#     equations.append(
+#       ((A*(x**2)) + (B*(x*y)) + (C*(y**2)) + (D*x) + (E*y) + F)
+#          .subs(x, x_val)
+#          .subs(y, y_val)
+#     )
+#     # equations.append(
+#     #   ((A*(x**2)) + (D*x) + (E*y) )
+#     #      .subs(x, x_val)
+#     #      .subs(y, y_val)
+#     # )
 
   for e in equations:
       print(f'e >> {e}')
