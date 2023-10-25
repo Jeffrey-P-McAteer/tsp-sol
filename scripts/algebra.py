@@ -160,11 +160,11 @@ def main(args=sys.argv):
          .subs(x, x_val)
          .subs(y, y_val)
     )
-    equations.append(
-      ((A*(x**2)) + (D*x) + (E*y) )
-         .subs(x, x_val)
-         .subs(y, y_val)
-    )
+    # equations.append(
+    #   ((A*(x**2)) + (D*x) + (E*y) )
+    #      .subs(x, x_val)
+    #      .subs(y, y_val)
+    # )
 
   for e in equations:
       print(f'e >> {e}')
