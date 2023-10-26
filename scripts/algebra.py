@@ -78,6 +78,20 @@ def all_conic_y_vals(x, coeficients):
       #traceback.print_exc()
       pass
 
+def dump_c(msg, caret, possible_list):
+  print(msg)
+  if possible_list is None:
+    possible_list = []
+  for item in possible_list:
+    print(f'{caret}> {item}')
+
+def dump(msg, possible_list):
+  print(msg)
+  if possible_list is None:
+    possible_list = []
+  for item in possible_list:
+    print(f' > {item}')
+
 
 def main(args=sys.argv):
   
@@ -91,7 +105,7 @@ def main(args=sys.argv):
   y = Symbol('y')
   v = Symbol('v') # used as an equality "Value" for the right-hand-side
 
-  print(f'solve(x**2 - 1, x) = {maybe(lambda: solve(x**2 - 1, x))}')
+  # print(f'solve(x**2 - 1, x) = {maybe(lambda: solve(x**2 - 1, x))}')
 
   eq = Eq(v, (A*(x**2)) + (B*(x*y)) + (C*(y**2)) + (D*x) + (E*y) + F).subs(v, 0)
 
@@ -134,13 +148,15 @@ def main(args=sys.argv):
   # parabola: (4*A*C)-(B**2) == 0
 
   # y=x**2
-#   known_xys = [
-#     (-2.0, (-2.0)**2),
-#     (-1.0, (-1.0)**2),
-#     (0.0, (0.0**2)),
-#     (1.0, (1.0)**2),
-#     (2.0, (2.0)**2),
-#   ]
+  known_xys = [
+    (-2.0, (-2.0)**2),
+    (-1.0, (-1.0)**2),
+    (0.0, (0.0**2)),
+    (1.0, (1.0)**2),
+    (2.0, (2.0)**2),
+    (3.0, (3.0)**2),
+    (4.0, (4.0)**2),
+  ]
 #   known_xys = [ # y=x**2, shifted over by 1
 #     (-3.0, (-2.0)**2),
 #     (-2.0, (-1.0)**2),
@@ -150,41 +166,25 @@ def main(args=sys.argv):
 #     (2.0, (3.0)**2),
 #   ]
   
-  known_xys = []
 
-#   (a,b,c,d,e,f) = (1.0, -35.0, 1.0, 45.0, 1.0, 1.0)
-#   print(f'(a,b,c,d,e,f) = {(a,b,c,d,e,f)}')
-#   for x_val in float_range(-10.0, 10.0, 1.0):
-#     for y_val in all_conic_y_vals(x_val, (a,b,c,d,e,f)):
-#       known_xys.append((x_val, y_val))
-#       print(f'>> {x_val}, {y_val}')
+  for x_val,y_val in known_xys:
+    # equations.append(
+    #   ((A*(x**2)) + (B*(x*y)) + (C*(y**2)) + (D*x) + (E*y) + F)
+    #      .subs(x, x_val)
+    #      .subs(y, y_val)
+    # )
+    equations.append(
+      ((A*(x_val**2)) + (B*(x_val*y_val)) + (C*(y_val**2)) + (D*x_val) + (E*y_val) + F)
+    )
 
-#   for x_val,y_val in known_xys:
-#     equations.append(
-#       ((A*(x**2)) + (B*(x*y)) + (C*(y**2)) + (D*x) + (E*y) + F)
-#          .subs(x, x_val)
-#          .subs(y, y_val)
-#     )
-#     # equations.append(
-#     #   ((A*(x**2)) + (D*x) + (E*y) )
-#     #      .subs(x, x_val)
-#     #      .subs(y, y_val)
-#     # )
+  dump_c('Input Equations: ', ' e', equations)
 
-  for e in equations:
-      print(f'e >> {e}')
-
-  print(f'solve(equations, x) = {maybe(lambda: solve(equations, x))}')
-  print(f'solve(equations, y) = {maybe(lambda: solve(equations, y))}')
-  #print(f'solve(equations, A) = {maybe(lambda: solve(equations, A))}')
-  #print(f'solve(equations, B) = {maybe(lambda: solve(equations, B))}')
-  #print(f'solve(equations, C) = {maybe(lambda: solve(equations, C))}')
-  #print(f'solve(equations, D) = {maybe(lambda: solve(equations, D))}')
-  #print(f'solve(equations, E) = {maybe(lambda: solve(equations, E))}')
-  #print(f'solve(equations, F) = {maybe(lambda: solve(equations, F))}')
+  dump(f'solve(equations, x) = ', maybe(lambda: solve(equations, x)))
+  dump(f'solve(equations, y) = ', maybe(lambda: solve(equations, y)))
   print()
 
-  print(f'solve(equations, (A,B,C,D,E,F)) = {maybe(lambda: solve(equations, (A,B,C,D,E,F) ))}')
+  dump(f'solve(equations, (A,B,C,D,E,F)) = ', maybe(lambda: solve(equations, (A,B,C,D,E,F) )))
+
   print()
 
   if 'code' in args or 'i' in args:
