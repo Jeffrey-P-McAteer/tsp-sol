@@ -52,34 +52,29 @@ def float_range(begin_f, end_f, step_f):
 
 def all_conic_y_vals(x, coeficients):
   cx, cy, cz, r, p = coeficients[CX], coeficients[CY], coeficients[CZ], coeficients[R], coeficients[P]
-  # if c != 0:
-  #   try:
-  #     yield -(
-  #           math.sqrt( ((b*x) + e)**2.0 - (4.0*c*( (x*((a*x) + d)) + f)) ) + (b*x) + e
-  #         ) / (
-  #             2.0*c
-  #       )
-  #   except:
-  #     #traceback.print_exc()
-  #     pass
-  #   try:
-  #     yield  -(
-  #         -(math.sqrt( ((b*x) + e)**2.0 - (4.0*c*( (x*((a*x) + d)) + f)) )) + (b*x) + e
-  #         ) / (
-  #             2.0*c
-  #       )
-  #   except:
-  #     #traceback.print_exc()
-  #     pass
+  if r != 0:
+    try:
+      yield (r * (x - cx)) + cy
+    except:
+      #traceback.print_exc()
+      pass
+    try:
+      yield ((-1/r) * (x - cx)) + cy
+    except:
+      #traceback.print_exc()
+      pass
 
-  # if c == 0.0 and ((b*x)+e) != 0.0:
-  #   try:
-  #     yield -( (x*( (a*x) + d )) + f ) / ( (b*x) + e )
-  #   except:
-  #     #traceback.print_exc()
-  #     pass
+  if r == 0.0: # and ((b*x)+e) != 0.0:
+    if x == cx:
+      try:
+        for y in float_range(-100.0, 100.0, 0.03):
+          yield y
+      except:
+        #traceback.print_exc()
+        pass
+    else:
+      yield cy
   
-  yield -1.0
 
 
 def main(args=sys.argv):
@@ -160,13 +155,12 @@ def main(args=sys.argv):
     #print(f'formula_s = {formula_s}')
     formula_nums = [float(x) for x in re.findall(r'-?[\d\.\d]+', formula_s)]
     #print(f'formula_nums = {formula_nums}')
-    if len(formula_nums) == 9:
+    if len(formula_nums) > 4: # TODO update w/ formula changes!
       a_in.set(formula_nums[0])
-      b_in.set(formula_nums[2])
-      c_in.set(formula_nums[3])
-      d_in.set(formula_nums[5])
-      e_in.set(formula_nums[6])
-      # f_in.set(formula_nums[7])
+      b_in.set(formula_nums[1])
+      c_in.set(formula_nums[2])
+      d_in.set(formula_nums[3])
+      e_in.set(formula_nums[4])
 
 
   def reset_all():
