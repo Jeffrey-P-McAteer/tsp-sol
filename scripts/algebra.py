@@ -107,7 +107,7 @@ def main(args=sys.argv):
 
   # print(f'solve(x**2 - 1, x) = {maybe(lambda: solve(x**2 - 1, x))}')
 
-  eq = Eq(v, (A*(x**2)) + (B*(x*y)) + (C*(y**2)) + (D*x) + (E*y) + F).subs(v, 0)
+  eq = Eq(0, (A*(x**2)) + (B*(x*y)) + (C*(y**2)) + (D*x) + (E*y) + F)
 
   
 #   print(f'solve(eq, x) = {maybe(lambda: solve(eq, x))}')
