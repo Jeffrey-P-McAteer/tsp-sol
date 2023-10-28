@@ -187,6 +187,23 @@ def main(args=sys.argv):
 
   print()
 
+
+  print('=' * 18)
+
+  equations = [
+    (A*(x**2)) + (B*(x*y)) + (C*(y**2)) + (D*x) + (E*y) + F,
+
+    (B**2)-(4*A*C),
+  ]
+  
+  dump_c('Input Equations: ', ' e', equations)
+
+  dump(f'solve(equations, (A,B,C,D,E,F)) = ', maybe(lambda: solve(equations, (A,B,C,D,E,F) )))
+
+  dump(f'solve(equations, (y)) = ', maybe(lambda: solve(equations, (y) )))
+  dump(f'solve(equations, (x)) = ', maybe(lambda: solve(equations, (x) )))
+
+
   if 'code' in args or 'i' in args:
     import code
     vars = globals()
