@@ -252,7 +252,8 @@ firefox /tmp/graph.svg
 
  - https://docs.rs/packed_simd/latest/packed_simd/index.html
     - Possible low-level performance bump?
-
+ - https://www.andrews.edu/~rwright/Precalculus-RLW/Text/07-05.html
+ 
 
 # Publishing/data sharing one-liners
 
