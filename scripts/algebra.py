@@ -114,8 +114,14 @@ def main(args=sys.argv):
   eq = Eq(0, (A*(x**2)) + (B*(x*y)) + (C*(y**2)) + (D*x) + (E*y) + F)
 
   equations = [
-    Eq(z**2, (((x*cos(P))-(y*sin(P)))**2) - (((x*sin(P)) + (y*cos(P)))**2)  ),
-    Eq(x**2, (((z*cos(R))-(y*sin(R)))**2) - (((z*sin(R)) + (y*cos(R)))**2)  ),
+    # Eq(z**2, (((x*cos(P))-(y*sin(P)))**2) - (((x*sin(P)) + (y*cos(P)))**2)  ),
+    # Eq(x**2, (((z*cos(R))-(y*sin(R)))**2) - (((z*sin(R)) + (y*cos(R)))**2)  ),
+
+    Eq(x**2, ((( (
+      (((x*cos(P))-(y*sin(P)))**2) - (((x*sin(P)) + (y*cos(P)))**2)
+    ) *cos(R))-(y*sin(R)))**2) - ((( (
+      (((x*cos(P))-(y*sin(P)))**2) - (((x*sin(P)) + (y*cos(P)))**2)
+    ) *sin(R)) + (y*cos(R)))**2)  )
   ]
 
   dump_c('Input Equations: ', ' e', equations)
