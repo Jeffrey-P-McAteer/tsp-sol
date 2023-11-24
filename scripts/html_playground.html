@@ -31,7 +31,7 @@ script {
         <script class="hidden">
 (function(canvas) {
     const context = canvas.getContext('2d');
-    
+
     const funcs = [];
     const postPaints = [];
 
@@ -42,7 +42,7 @@ script {
         postPaints.push(f);
     }
     window.postPaint = postPaint;
-    
+
     function *paint() {
         for (let fi = 0; fi < funcs.length; fi++) {
             const f = funcs[fi];
@@ -152,7 +152,7 @@ function nextPermutation(a) {
     if (i === undefined) {
         a.reverse();
         return false;
-    } 
+    }
 
     // Steps #2-4
     const j = reversedIndices.find(j => a[i] < a[j]);

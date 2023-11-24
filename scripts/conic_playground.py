@@ -110,7 +110,7 @@ def main(args=sys.argv):
   graph_x_width = graph_x_max - graph_x_min
   graph_y_height = graph_y_max - graph_y_min
 
-  graph_x0 = tkinter.DoubleVar(value=graph_x_min) # Used to provide run-time changes of x_min and y_min. 
+  graph_x0 = tkinter.DoubleVar(value=graph_x_min) # Used to provide run-time changes of x_min and y_min.
   graph_y0 = tkinter.DoubleVar(value=graph_y_min)
 
   graph_edge_points = [] # [ [x,y], ] in graph space
@@ -193,7 +193,7 @@ def main(args=sys.argv):
 
   read_from_formula = ttk.Button(right_rightmost_rows, text='Read\nFormula', command=read_formula)
   read_from_formula.pack(side='bottom', fill='both', expand=False)
-  
+
   reset_btn = ttk.Button(right_rightmost_rows, text='Reset', command=reset_all)
   reset_btn.pack(side='bottom', fill='both', expand=False)
 
@@ -268,7 +268,7 @@ def main(args=sys.argv):
                 closest_y_val = calculated_y
               elif abs(target_y - calculated_y) < abs(closest_y_val - calculated_y):
                 closest_y_val = calculated_y
-            
+
             if closest_y_val is None:
               total_error += 99
             else:
@@ -314,10 +314,10 @@ def main(args=sys.argv):
   sliders_col1 = ttk.Frame(sliders_two_col, padding=5)
   sliders_col1.pack(side='left', expand=False)
 
-  
+
   a_frm = ttk.Frame(sliders_col1, padding=5)
   a_frm.pack(side='top')
-  
+
   a_label = ttk.Label(a_frm, text="A")
   a_label.pack(side='left')
 
@@ -328,7 +328,7 @@ def main(args=sys.argv):
 
   b_frm = ttk.Frame(sliders_col1, padding=5)
   b_frm.pack(side='top')
-  
+
   b_label = ttk.Label(b_frm, text="B")
   b_label.pack(side='left')
 
@@ -340,7 +340,7 @@ def main(args=sys.argv):
 
   c_frm = ttk.Frame(sliders_col1, padding=5)
   c_frm.pack(side='top')
-  
+
   c_label = ttk.Label(c_frm, text="C")
   c_label.pack(side='left')
 
@@ -352,7 +352,7 @@ def main(args=sys.argv):
 
   x0_frm = ttk.Frame(sliders_col1, padding=5)
   x0_frm.pack(side='top')
-  
+
   x0_label = ttk.Label(x0_frm, text="X0")
   x0_label.pack(side='left')
 
@@ -367,7 +367,7 @@ def main(args=sys.argv):
 
   d_frm = ttk.Frame(sliders_col2, padding=5)
   d_frm.pack(side='top')
-  
+
   d_label = ttk.Label(d_frm, text="D")
   d_label.pack(side='left')
 
@@ -379,7 +379,7 @@ def main(args=sys.argv):
 
   e_frm = ttk.Frame(sliders_col2, padding=5)
   e_frm.pack(side='top')
-  
+
   e_label = ttk.Label(e_frm, text="E")
   e_label.pack(side='left')
 
@@ -390,7 +390,7 @@ def main(args=sys.argv):
 
   f_frm = ttk.Frame(sliders_col2, padding=5)
   f_frm.pack(side='top')
-  
+
   f_label = ttk.Label(f_frm, text="F")
   f_label.pack(side='left')
 
@@ -400,7 +400,7 @@ def main(args=sys.argv):
 
   y0_frm = ttk.Frame(sliders_col2, padding=5)
   y0_frm.pack(side='top')
-  
+
   y0_label = ttk.Label(y0_frm, text="Y0")
   y0_label.pack(side='left')
 

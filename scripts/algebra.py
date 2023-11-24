@@ -94,7 +94,7 @@ def dump(msg, possible_list):
 
 
 def main(args=sys.argv):
-  
+
   A = Symbol('A')
   B = Symbol('B')
   C = Symbol('C')
@@ -109,7 +109,7 @@ def main(args=sys.argv):
 
   eq = Eq(0, (A*(x**2)) + (B*(x*y)) + (C*(y**2)) + (D*x) + (E*y) + F)
 
-  
+
 #   print(f'solve(eq, x) = {maybe(lambda: solve(eq, x))}')
 #   print(f'solve(eq, y) = {maybe(lambda: solve(eq, y))}')
 #   print(f'solve(eq, A) = {maybe(lambda: solve(eq, A))}')
@@ -144,7 +144,7 @@ def main(args=sys.argv):
     (4*A*C) - (B**2),
 
   ]
-  
+
   # parabola: (4*A*C)-(B**2) == 0
 
   # y=x**2
@@ -165,7 +165,7 @@ def main(args=sys.argv):
 #     (1.0, (2.0)**2),
 #     (2.0, (3.0)**2),
 #   ]
-  
+
 
   for x_val,y_val in known_xys:
     # equations.append(
@@ -195,7 +195,7 @@ def main(args=sys.argv):
 
     (B**2)-(4*A*C),
   ]
-  
+
   dump_c('Input Equations: ', ' e', equations)
 
   dump(f'solve(equations, (A,B,C,D,E,F)) = ', maybe(lambda: solve(equations, (A,B,C,D,E,F) )))
