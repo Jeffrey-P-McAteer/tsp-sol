@@ -29,6 +29,7 @@ sympy = environmentinator.ensure_module('sympy')
 from sympy.solvers import solve
 from sympy import Symbol
 from sympy import Eq
+from sympy import sin, cos
 
 def maybe(callback, default_return=None):
   try:
@@ -101,107 +102,32 @@ def main(args=sys.argv):
   D = Symbol('D')
   E = Symbol('E')
   F = Symbol('F')
+
+  R = Symbol('R') # Roll
+  P = Symbol('P') # Pitch
+
   x = Symbol('x')
   y = Symbol('y')
+  z = Symbol('z')
   v = Symbol('v') # used as an equality "Value" for the right-hand-side
-
-  # print(f'solve(x**2 - 1, x) = {maybe(lambda: solve(x**2 - 1, x))}')
 
   eq = Eq(0, (A*(x**2)) + (B*(x*y)) + (C*(y**2)) + (D*x) + (E*y) + F)
 
-
-#   print(f'solve(eq, x) = {maybe(lambda: solve(eq, x))}')
-#   print(f'solve(eq, y) = {maybe(lambda: solve(eq, y))}')
-#   print(f'solve(eq, A) = {maybe(lambda: solve(eq, A))}')
-#   print(f'solve(eq, B) = {maybe(lambda: solve(eq, B))}')
-#   print(f'solve(eq, C) = {maybe(lambda: solve(eq, C))}')
-#   print(f'solve(eq, D) = {maybe(lambda: solve(eq, D))}')
-#   print(f'solve(eq, E) = {maybe(lambda: solve(eq, E))}')
-#   print(f'solve(eq, F) = {maybe(lambda: solve(eq, F))}')
-#   print()
-
-#   for x_val in float_range(-5.0, 5.0, 0.25):
-#     # parabola: Ax^2 + Dx + Ey = 0
-#     eq_2 = Eq(v, (A*(x_val**2)) + (B*(x_val*y)) + (C*(y**2)) + (D*x_val) + (E*y) + F).subs(v, 0)
-#     eq_3 = Eq(v, (A*(x_val**2)) + (D*x_val) + (E*y) ).subs(v, 0)
-
-#     eqs = [
-#       eq_2, eq_3
-#     ]
-
-#     print(f'solve(eqs, y) = {maybe(lambda: solve(eqs, y))}')
-#     print(f'solve(eqs, A) = {maybe(lambda: solve(eqs, A))}')
-#     print(f'solve(eqs, B) = {maybe(lambda: solve(eqs, B))}')
-#     print(f'solve(eqs, C) = {maybe(lambda: solve(eqs, C))}')
-#     print(f'solve(eqs, D) = {maybe(lambda: solve(eqs, D))}')
-#     print(f'solve(eqs, E) = {maybe(lambda: solve(eqs, E))}')
-#     print(f'solve(eqs, F) = {maybe(lambda: solve(eqs, F))}')
-#     print()
-
   equations = [
-    (A*(x**2)) + (B*(x*y)) + (C*(y**2)) + (D*x) + (E*y) + F,
-    #(A*(x**2)) + (D*x) + (E*y),
-    (4*A*C) - (B**2),
-
+    Eq(z**2, (((x*cos(P))-(y*sin(P)))**2) - (((x*sin(P)) + (y*cos(P)))**2)  ),
+    Eq(x**2, (((z*cos(R))-(y*sin(R)))**2) - (((z*sin(R)) + (y*cos(R)))**2)  ),
   ]
-
-  # parabola: (4*A*C)-(B**2) == 0
-
-  # y=x**2
-  known_xys = [
-    (-2.0, (-2.0)**2),
-    (-1.0, (-1.0)**2),
-    (0.0, (0.0**2)),
-    (1.0, (1.0)**2),
-    (2.0, (2.0)**2),
-    (3.0, (3.0)**2),
-    (4.0, (4.0)**2),
-  ]
-#   known_xys = [ # y=x**2, shifted over by 1
-#     (-3.0, (-2.0)**2),
-#     (-2.0, (-1.0)**2),
-#     (-1.0, 0.0),
-#     (0.0, (1.0)**2),
-#     (1.0, (2.0)**2),
-#     (2.0, (3.0)**2),
-#   ]
-
-
-  for x_val,y_val in known_xys:
-    # equations.append(
-    #   ((A*(x**2)) + (B*(x*y)) + (C*(y**2)) + (D*x) + (E*y) + F)
-    #      .subs(x, x_val)
-    #      .subs(y, y_val)
-    # )
-    equations.append(
-      ((A*(x_val**2)) + (B*(x_val*y_val)) + (C*(y_val**2)) + (D*x_val) + (E*y_val) + F)
-    )
 
   dump_c('Input Equations: ', ' e', equations)
 
   dump(f'solve(equations, x) = ', maybe(lambda: solve(equations, x)))
   dump(f'solve(equations, y) = ', maybe(lambda: solve(equations, y)))
+  dump(f'solve(equations, z) = ', maybe(lambda: solve(equations, z)))
   print()
 
-  dump(f'solve(equations, (A,B,C,D,E,F)) = ', maybe(lambda: solve(equations, (A,B,C,D,E,F) )))
+  # dump(f'solve(equations, (A,B,C,D,E,F)) = ', maybe(lambda: solve(equations, (A,B,C,D,E,F) )))
 
   print()
-
-
-  print('=' * 18)
-
-  equations = [
-    (A*(x**2)) + (B*(x*y)) + (C*(y**2)) + (D*x) + (E*y) + F,
-
-    (B**2)-(4*A*C),
-  ]
-
-  dump_c('Input Equations: ', ' e', equations)
-
-  dump(f'solve(equations, (A,B,C,D,E,F)) = ', maybe(lambda: solve(equations, (A,B,C,D,E,F) )))
-
-  dump(f'solve(equations, (y)) = ', maybe(lambda: solve(equations, (y) )))
-  dump(f'solve(equations, (x)) = ', maybe(lambda: solve(equations, (x) )))
 
 
   if 'code' in args or 'i' in args:
