@@ -30,6 +30,7 @@ const NUM_THREADS: usize = 32;
 
 pub fn solve_for_6pts(
   thread_pool: &ThreadPool,
+  gpu_device: &Option<Device>,
   (x1, y1): (fp, fp),
   (x2, y2): (fp, fp),
   (x3, y3): (fp, fp),
@@ -55,102 +56,109 @@ pub fn solve_for_6pts(
     const long_iter_error_exit_target: fp = 0.18;
     const long_iter_count: usize = 9_000_000_000;
 
-    for _ in 0..NUM_THREADS {
-        // Copy vars to be moved into thread
-        let (x1, y1, x2, y2, x3, y3, x4, y4, x5, y5, x6, y6) = (x1, y1, x2, y2, x3, y3, x4, y4, x5, y5, x6, y6);
-        let best_abcdef = best_abcdef.clone();
-        let smallest_error = smallest_error.clone();
-        thread_pool.execute(move || {
+    if let Some(gpu_device) = gpu_device {
 
-            let mut local_best_abcdef = (0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
-            let mut local_smallest_error = 99999999.0;
+    }
+    else {
+        // Fall back to CPU
+        println!("Falling back to CPU in solve_for_6pts!");
+        for _ in 0..NUM_THREADS {
+            // Copy vars to be moved into thread
+            let (x1, y1, x2, y2, x3, y3, x4, y4, x5, y5, x6, y6) = (x1, y1, x2, y2, x3, y3, x4, y4, x5, y5, x6, y6);
+            let best_abcdef = best_abcdef.clone();
+            let smallest_error = smallest_error.clone();
+            thread_pool.execute(move || {
 
-            let mut loop_i = 0;
-            loop {
-                loop_i += 1;
+                let mut local_best_abcdef = (0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+                let mut local_smallest_error = 99999999.0;
 
-                let a = (fastrand::f32() * guess_range) + min_guess;
-                let b = (fastrand::f32() * guess_range) + min_guess;
-                let c = (fastrand::f32() * guess_range) + min_guess;
-                let d = (fastrand::f32() * guess_range) + min_guess;
-                let e = (fastrand::f32() * guess_range) + min_guess;
-                let f = (fastrand::f32() * guess_range) + min_guess;
+                let mut loop_i = 0;
+                loop {
+                    loop_i += 1;
 
-                let shp_test = (b*b) - (4.0*a*c);
+                    let a = (fastrand::f32() * guess_range) + min_guess;
+                    let b = (fastrand::f32() * guess_range) + min_guess;
+                    let c = (fastrand::f32() * guess_range) + min_guess;
+                    let d = (fastrand::f32() * guess_range) + min_guess;
+                    let e = (fastrand::f32() * guess_range) + min_guess;
+                    let f = (fastrand::f32() * guess_range) + min_guess;
 
-                let is_hyperbola = shp_test > 0.0;
-                if !is_hyperbola {
-                    continue; // We only want hyperbola formulas!
-                }
+                    let shp_test = (b*b) - (4.0*a*c);
 
-                // let is_parabola = shp_test < 0.001 && shp_test > -0.001; // test near-zero b/c of how our brute force is setup; TODO math the others out of the equation!
-                // if !is_parabola {
-                //     continue; // We only want parabola formulas!
-                // }
-
-                let this_coefs = (a,b,c,d,e,f);
-                let c_y1 = evaluate_parabolic_for_x_absonly(x1, this_coefs);
-                let c_y2 = evaluate_parabolic_for_x_absonly(x2, this_coefs);
-                let c_y3 = evaluate_parabolic_for_x_absonly(x3, this_coefs);
-                let c_y4 = evaluate_parabolic_for_x_absonly(x4, this_coefs);
-                let c_y5 = evaluate_parabolic_for_x_absonly(x5, this_coefs);
-                let c_y6 = evaluate_parabolic_for_x_absonly(x6, this_coefs);
-
-                let this_error = (c_y1 - y1.abs()).abs() +
-                                 (c_y2 - y2.abs()).abs() +
-                                 (c_y3 - y3.abs()).abs() +
-                                 (c_y4 - y4.abs()).abs() +
-                                 (c_y5 - y5.abs()).abs() +
-                                 (c_y6 - y6.abs()).abs();
-
-                if this_error < local_smallest_error {
-                    local_best_abcdef = this_coefs;
-                    local_smallest_error = this_error;
-                }
-
-                if local_smallest_error < error_exit_target {
-                    break; // we're done, other threads will check in 5,000 or so random checks and exit.
-                }
-
-                if loop_i % 2_000_000 == 0 {
-                    // Should we exit b/c another thread found & exited?
-                    let mut smallest_err_guard = smallest_error.lock().unwrap();
-                    if *smallest_err_guard < error_exit_target {
-                        break;
+                    let is_hyperbola = shp_test > 0.0;
+                    if !is_hyperbola {
+                        continue; // We only want hyperbola formulas!
                     }
-                    if loop_i > long_iter_count {
-                        if *smallest_err_guard < long_iter_error_exit_target {
-                            break;
-                        }
-                    }
-                }
 
-                if loop_i > long_iter_count {
-                    if this_error < long_iter_error_exit_target {
+                    // let is_parabola = shp_test < 0.001 && shp_test > -0.001; // test near-zero b/c of how our brute force is setup; TODO math the others out of the equation!
+                    // if !is_parabola {
+                    //     continue; // We only want parabola formulas!
+                    // }
+
+                    let this_coefs = (a,b,c,d,e,f);
+                    let c_y1 = evaluate_parabolic_for_x_absonly(x1, this_coefs);
+                    let c_y2 = evaluate_parabolic_for_x_absonly(x2, this_coefs);
+                    let c_y3 = evaluate_parabolic_for_x_absonly(x3, this_coefs);
+                    let c_y4 = evaluate_parabolic_for_x_absonly(x4, this_coefs);
+                    let c_y5 = evaluate_parabolic_for_x_absonly(x5, this_coefs);
+                    let c_y6 = evaluate_parabolic_for_x_absonly(x6, this_coefs);
+
+                    let this_error = (c_y1 - y1.abs()).abs() +
+                                     (c_y2 - y2.abs()).abs() +
+                                     (c_y3 - y3.abs()).abs() +
+                                     (c_y4 - y4.abs()).abs() +
+                                     (c_y5 - y5.abs()).abs() +
+                                     (c_y6 - y6.abs()).abs();
+
+                    if this_error < local_smallest_error {
                         local_best_abcdef = this_coefs;
                         local_smallest_error = this_error;
                     }
-                    if local_smallest_error < long_iter_error_exit_target {
+
+                    if local_smallest_error < error_exit_target {
                         break; // we're done, other threads will check in 5,000 or so random checks and exit.
                     }
+
+                    if loop_i % 2_000_000 == 0 {
+                        // Should we exit b/c another thread found & exited?
+                        let mut smallest_err_guard = smallest_error.lock().unwrap();
+                        if *smallest_err_guard < error_exit_target {
+                            break;
+                        }
+                        if loop_i > long_iter_count {
+                            if *smallest_err_guard < long_iter_error_exit_target {
+                                break;
+                            }
+                        }
+                    }
+
+                    if loop_i > long_iter_count {
+                        if this_error < long_iter_error_exit_target {
+                            local_best_abcdef = this_coefs;
+                            local_smallest_error = this_error;
+                        }
+                        if local_smallest_error < long_iter_error_exit_target {
+                            break; // we're done, other threads will check in 5,000 or so random checks and exit.
+                        }
+                    }
+
                 }
 
-            }
-
-            {
-                let mut smallest_err_guard = smallest_error.lock().unwrap();
-                let mut best_abcdef_guard = best_abcdef.lock().unwrap();
-                if local_smallest_error < *smallest_err_guard {
-                    *smallest_err_guard = local_smallest_error;
-                    *best_abcdef_guard = local_best_abcdef;
+                {
+                    let mut smallest_err_guard = smallest_error.lock().unwrap();
+                    let mut best_abcdef_guard = best_abcdef.lock().unwrap();
+                    if local_smallest_error < *smallest_err_guard {
+                        *smallest_err_guard = local_smallest_error;
+                        *best_abcdef_guard = local_best_abcdef;
+                    }
                 }
-            }
-            // Mutexes are unlocked
+                // Mutexes are unlocked
 
-        });
+            });
+        }
+
+        thread_pool.join();
     }
-
-    thread_pool.join();
 
     println!("Curve Error: {}", *smallest_error.lock().unwrap() );
 

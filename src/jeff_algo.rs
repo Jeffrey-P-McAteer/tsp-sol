@@ -1,16 +1,16 @@
 /**
  *  tsp-sol - an experimental environment for traveling salesman solution analysis
  *  Copyright (C) 2023  Jeffrey McAteer <jeffrey@jmcateer.com>
- *  
+ *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; version 2 of the License ONLY.
- * 
+ *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- * 
+ *
  *  You should have received a copy of the GNU General Public License along
  *  with this program; if not, write to the Free Software Foundation, Inc.,
  *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
@@ -20,7 +20,7 @@ use super::*;
 
 pub fn solve(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>, weights: &Vec<Vec<CityWeight>>, save_run_prefix: Option<String>) -> Vec<usize> {
   let mut ordered_visits = compute_largest_triangle(node_coordinates, weights);
-  
+
   // let mut indicies_and_citynums_removed_so_far: Vec<(usize, CityNum)> = vec![];
 
   while ordered_visits.len() < weights.len() {
@@ -63,7 +63,7 @@ pub fn solve(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>, weight
     }
     None => { }
   }
-  
+
   return ordered_visits;
 }
 
@@ -157,7 +157,7 @@ pub fn next_step(
   weights: &Vec<Vec<CityWeight>>,
   next_city_num_fn: &dyn Fn(&Vec<CityNum>, &Vec<Vec<CityWeight>>) -> CityNum) -> Vec<CityNum>
 {
-  
+
   let mut ordered_visits: Vec<CityNum> = ordered_visits.clone();
 
   // let mut citynum_to_insert = 0;
@@ -235,7 +235,7 @@ pub fn next_step(
 
   // Scan + swap anything that decreases tour
   // perform_swaps(&mut ordered_visits, weights);
-  
+
   return ordered_visits;
 }
 
@@ -247,7 +247,7 @@ pub fn next_step_3_deep(
   weights: &Vec<Vec<CityWeight>>,
   next_city_num_fn: &dyn Fn(&Vec<CityNum>, &Vec<Vec<CityWeight>>) -> CityNum) -> Vec<CityNum>
 {
-  
+
   let mut ordered_visits: Vec<CityNum> = ordered_visits.clone();
 
   let citynum_to_insert = next_city_num_fn(&ordered_visits, weights);
@@ -335,7 +335,7 @@ pub fn next_step_3_deep(
 
   // Scan + swap anything that decreases tour
   // perform_swaps(&mut ordered_visits, weights);
-  
+
   return ordered_visits;
 }
 
@@ -346,7 +346,7 @@ pub fn next_step_4_deep(
   weights: &Vec<Vec<CityWeight>>,
   next_city_num_fn: &dyn Fn(&Vec<CityNum>, &Vec<Vec<CityWeight>>) -> CityNum) -> Vec<CityNum>
 {
-  
+
   let mut ordered_visits: Vec<CityNum> = ordered_visits.clone();
 
   let citynum_to_insert = next_city_num_fn(&ordered_visits, weights);
@@ -426,7 +426,7 @@ pub fn next_step_4_deep(
           remove_point_step(&mut ordered_visits, node_coordinates, weights, removed_citynum_l);
           remove_point_step(&mut ordered_visits, node_coordinates, weights, removed_citynum_k);
           remove_point_step(&mut ordered_visits, node_coordinates, weights, citynum_to_insert);
-          
+
           ordered_visits.insert(k, removed_citynum_k);
 
         }
@@ -456,7 +456,7 @@ pub fn next_step_4_deep(
 
   // Scan + swap anything that decreases tour
   // perform_swaps(&mut ordered_visits, weights);
-  
+
   return ordered_visits;
 }
 
@@ -468,7 +468,7 @@ pub fn next_step_5_deep(
   weights: &Vec<Vec<CityWeight>>,
   next_city_num_fn: &dyn Fn(&Vec<CityNum>, &Vec<Vec<CityWeight>>) -> CityNum) -> Vec<CityNum>
 {
-  
+
   let mut ordered_visits: Vec<CityNum> = ordered_visits.clone();
 
   let citynum_to_insert = next_city_num_fn(&ordered_visits, weights);
@@ -530,14 +530,14 @@ pub fn next_step_5_deep(
 
           for j in 0..ordered_visits.len() {
             let removed_citynum_j = ordered_visits.remove(j);
-    
+
             let j_left_citynum = ordered_visits[ (j + ordered_visits.len() - 1) % ordered_visits.len() ];
             let j_right_citynum = ordered_visits[ (j) % ordered_visits.len() ];
-    
+
             // Delta must begin with the removal of 2 edges above
             let mut this_delta: fp = this_delta;
             this_delta += (-weights[j_left_citynum][removed_citynum_j]) + (-weights[removed_citynum_j][j_right_citynum]) + weights[j_left_citynum][j_right_citynum];
-    
+
             this_delta += insert_point_step(&mut ordered_visits, node_coordinates, weights, citynum_to_insert);
             this_delta += insert_point_step(&mut ordered_visits, node_coordinates, weights, removed_citynum_j);
             this_delta += insert_point_step(&mut ordered_visits, node_coordinates, weights, removed_citynum_k);
@@ -564,9 +564,9 @@ pub fn next_step_5_deep(
             remove_point_step(&mut ordered_visits, node_coordinates, weights, citynum_to_insert);
 
             ordered_visits.insert(j, removed_citynum_j);
-            
+
           }
-          
+
           ordered_visits.insert(k, removed_citynum_k);
 
         }
@@ -598,7 +598,7 @@ pub fn next_step_5_deep(
 
   // Scan + swap anything that decreases tour
   // perform_swaps(&mut ordered_visits, weights);
-  
+
   return ordered_visits;
 }
 
@@ -611,9 +611,9 @@ pub fn next_step_n_deep(
   ordered_visits: &mut Vec<CityNum>,
   node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>,
   weights: &Vec<Vec<CityWeight>>,
-  
+
   citynum_to_insert: CityNum,
-  
+
   num_steps: usize,
 
   mut this_delta: fp, // tracks per-recursive-call deltas as edges are inserted/removed
@@ -632,7 +632,7 @@ pub fn next_step_n_deep(
   if !is_final_iter {
     indicies_and_citynums_removed_so_far.push( (0, ordered_visits[0]) ); // last item will track value of N in the following loop
   }
-  
+
   let indicies_removed_i = indicies_and_citynums_removed_so_far.len() - 1;
 
   for n in 0..ordered_visits.len() {
@@ -643,7 +643,7 @@ pub fn next_step_n_deep(
     if !is_final_iter {
       indicies_and_citynums_removed_so_far[ indicies_removed_i ] = (n, removed_citynum_n);
     }
-    
+
     let n_left_citynum = ordered_visits[ (n + ordered_visits.len() - 1) % ordered_visits.len() ];
     let n_right_citynum = ordered_visits[ (n) % ordered_visits.len() ];
 
@@ -651,14 +651,14 @@ pub fn next_step_n_deep(
     this_delta += (-weights[n_left_citynum][removed_citynum_n]) + (-weights[removed_citynum_n][n_right_citynum]) + weights[n_left_citynum][n_right_citynum];
 
     if is_final_iter {
-      
+
       //println!("PRE insert_point_step({:?} citynum_to_insert={})", ordered_visits, citynum_to_insert);
       this_delta += insert_point_step(ordered_visits, node_coordinates, weights, citynum_to_insert);
       //println!("POST insert_point_step({:?} citynum_to_insert={})", ordered_visits, citynum_to_insert);
       //println!("PRE insert_all_point_steps({:?} indicies_and_citynums_removed_so_far={:?})", ordered_visits, indicies_and_citynums_removed_so_far);
       this_delta += insert_all_point_steps(ordered_visits, node_coordinates, weights, &indicies_and_citynums_removed_so_far);
       //println!("POST insert_all_point_steps({:?} indicies_and_citynums_removed_so_far={:?})", ordered_visits, indicies_and_citynums_removed_so_far);
-      
+
       if this_delta < best_tour_delta {
         // Keep changes, update best_tour_delta
         best_tour_delta = this_delta;
@@ -672,7 +672,7 @@ pub fn next_step_n_deep(
       //println!("PRE remove_point_step({:?} citynum_to_insert={})", ordered_visits, citynum_to_insert);
       this_delta += remove_point_step(ordered_visits, node_coordinates, weights, citynum_to_insert);
       //println!("POST remove_point_step({:?} citynum_to_insert={})", ordered_visits, citynum_to_insert);
-      
+
     }
     else {
       // Go one step lower, return value is meaningless here
@@ -707,7 +707,7 @@ pub fn next_step_n_deep(
 
   if is_final_iter {
     // Actually do the change for all indicies_and_citynums_removed_so_far
-    
+
     indicies_and_citynums_removed_so_far.push( (best_tour_n, ordered_visits[best_tour_n]) );
     println!("before insert_point_step ordered_visits={:?}", ordered_visits);
 
@@ -765,17 +765,17 @@ fn insert_point_step(
 {
   let mut ideal_insert_dist_delta: CityWeight = fp::INFINITY;
   let mut ins_idx0 = 0; // 0 indicates a split of the edge that runs between 0 -> 1
-  
+
   for from_i in 0..ordered_visits.len() {
     let to_i = (from_i+1) % ordered_visits.len();
     let from_elm = ordered_visits[from_i];
     let to_elm = ordered_visits[to_i];
-    
-    let this_dist_delta: CityWeight = 
+
+    let this_dist_delta: CityWeight =
       (-weights[from_elm][to_elm]) +    // removed edge counts negative
       weights[from_elm][citynum_to_insert] + // add edge from -> new
       weights[citynum_to_insert][to_elm];    // add edge new -> end
-    
+
     if this_dist_delta < ideal_insert_dist_delta {
       ideal_insert_dist_delta = this_dist_delta;
       ins_idx0 = from_i;
@@ -809,7 +809,7 @@ fn remove_point_step(
   let from_elm = ordered_visits[from_i];
   let to_elm = ordered_visits[to_i];
 
-  let this_dist_delta: CityWeight = 
+  let this_dist_delta: CityWeight =
       weights[from_elm][to_elm] +    // Added edge counts positive
       (-weights[from_elm][citynum_to_insert]) + // removed edge from -> new
       (-weights[citynum_to_insert][to_elm]);    // removed edge new -> end
@@ -838,7 +838,7 @@ fn compute_largest_triangle(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXY
     ordered_visits[2] = (ordered_visits[2]+1) % weights.len();
   }
 
-  // Given the longest edge, find 
+  // Given the longest edge, find
   // weight(0, 2) + weight(1, 2) (weights of both edges going to "2")
   let mut current_longest_point_len = weights[ordered_visits[0]][ordered_visits[2]] + weights[ordered_visits[1]][ordered_visits[2]];
   for r in 0..weights.len() {
@@ -874,7 +874,7 @@ fn compute_smallest_triangle(node_coordinates: &Vec<(CityNum, CityXYCoord, CityX
     ordered_visits[2] = (ordered_visits[2]+1) % weights.len();
   }
 
-  // Given the shortest edge, find 
+  // Given the shortest edge, find
   // weight(0, 2) + weight(1, 2) (weights of both edges going to "2")
   let mut current_shortest_point_len = weights[ordered_visits[0]][ordered_visits[2]] + weights[ordered_visits[1]][ordered_visits[2]];
   for r in 0..weights.len() {

@@ -6,16 +6,16 @@
 /**
  *  tsp-sol - an experimental environment for traveling salesman solution analysis
  *  Copyright (C) 2023  Jeffrey McAteer <jeffrey@jmcateer.com>
- *  
+ *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; version 2 of the License ONLY.
- * 
+ *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- * 
+ *
  *  You should have received a copy of the GNU General Public License along
  *  with this program; if not, write to the Free Software Foundation, Inc.,
  *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
@@ -37,6 +37,8 @@ use threadpool::ThreadPool;
 use num_cpus;
 
 use once_cell::sync::Lazy;
+
+use emu_core::prelude::*;
 
 use std::fs;
 use std::fs::{File,create_dir};
@@ -134,7 +136,7 @@ pub const HTML_BEGIN: &'static str = r#"
         var canvas_elm = document.getElementById("overlay-canvas");
         var ctx = canvas_elm.getContext("2d");
         ctx.clearRect(0, 0, canvas_elm.width, canvas_elm.height);
-        
+
         try {
           var initial_coords_s = document.getElementById("initial-sol").getAttribute("c").split(" ");
           var initial_coords = [];
@@ -168,7 +170,7 @@ pub const HTML_BEGIN: &'static str = r#"
         catch (e) {
           console.log(e);
         }
-        
+
         ctx.lineWidth = 2;
         ctx.strokeStyle = 'black';
         ctx.setLineDash([10,10]);
@@ -247,7 +249,7 @@ fn main() {
   timed_main();
   let exec_duration = begin_time.elapsed();
   println!("=== Elapsed time: {:?} ===", exec_duration);
-  
+
   // Flush any brute algo cache we may have
   if brute_algo::use_brute_cache_env_val() {
     if let Err(e) = brute_algo::PICKLE_DB.get_mut().dump() {
@@ -266,14 +268,29 @@ fn timed_main() {
     usage();
     return;
   }
-  
+
   if cfg!(windows) {
     attempt_to_raise_priority();
   }
-  
+
   let thread_pool = ThreadPool::new( num_cpus::get_physical() );
   println!("Brute force algo thread pool size: {}", thread_pool.max_count());
-  
+
+  // Initialize GPU
+  futures::executor::block_on(assert_device_pool_initialized());
+
+  // Grab largest device, report sizes, and pass this to downstream funcs which may either use the
+  // thread_pool OR the emu device object to schedule work across
+  let gpu_device = get_best_gpu();
+  if let Some(ref device) = gpu_device {
+    if let Some(ref info) = device.info {
+      println!("GPU device = {:?}", info);
+    }
+  }
+  else {
+    println!("NO GPU");
+  }
+
   let file_arg = args.get(1).unwrap();
 
   let mut use_jalgo = true;
@@ -313,19 +330,19 @@ fn timed_main() {
       args.get(2).unwrap_or(&"5".to_string()).parse().unwrap(), // given number OR 5
       args.get(3).unwrap_or(&"0.25".to_string()).parse().unwrap(), // given number OR 0.25
       "views/pattern-scan.png",
-      &thread_pool
+      &thread_pool, &gpu_device
     );
     return;
   }
 
   if file_arg == "multi-pattern-scan" {
     // Same as pattern-scan, but take in 2 cities and perform
-    // pattern_scan in steps 
+    // pattern_scan in steps
     multi_pattern_scan(
       args.get(2).unwrap_or(&"5".to_string()).parse().unwrap(), // given number OR 5 - number of cities
       args.get(3).unwrap_or(&"0.25".to_string()).parse().unwrap(), // given number OR 0.25 - resolution to generate a SINGLE multi pattern at
       args.get(4).unwrap_or(&"10".to_string()).parse().unwrap(), // number of steps to put between 2 cities, aka total number of pattern_scans to run.
-      &thread_pool
+      &thread_pool, &gpu_device
     );
     return;
   }
@@ -335,18 +352,18 @@ fn timed_main() {
       args.get(2).unwrap_or(&"5".to_string()).parse().unwrap(), // given number OR 5 - number of cities
       args.get(3).unwrap_or(&"0.25".to_string()).parse().unwrap(), // given number OR 0.25 - resolution to generate a SINGLE multi pattern at
       args.get(4).unwrap_or(&"100".to_string()).parse().unwrap(), // number of sprays to perform
-      &thread_pool
+      &thread_pool, &gpu_device
     );
     return;
   }
-  
+
   if file_arg == "delta" {
     let num = 1000;
     let num_failed = delta(num, 4, 8, &thread_pool); // test the algorithm on a thousand generated cities, between 4-8 points each.
     println!("Failed {} out of {}", num_failed, num);
     return;
   }
-  
+
   if file_arg == "selective" {
     // generate increasing city size until failure (jeff() != brute()), then go back and map a large range of points
     let max_cities_to_test: usize = args.get(2).unwrap_or(&"11".to_string()).parse().unwrap();  // arg after "selective" OR 11
@@ -359,18 +376,18 @@ fn timed_main() {
     selective(
       min_cities_to_ignore,
       max_cities_to_test,
-      &thread_pool
+      &thread_pool, &gpu_device
     );
     return;
   }
-  
+
   if file_arg == "spray" {
     // Generate random N points then add a grid of points and track where insertion
     // results in a non-optimal path.
     spray(
       args.get(2).unwrap_or(&"5".to_string()).parse().unwrap(), // given number OR 5
       args.get(3).unwrap_or(&"0.25".to_string()).parse().unwrap(), // given number OR 0.25
-      &thread_pool
+      &thread_pool, &gpu_device
     );
     return;
   }
@@ -390,7 +407,7 @@ fn timed_main() {
   }
   env_s += "'";
   println!("{}", env_s);
-  
+
   if use_jalgo {
     let solution_p = if write_solution_out_to_views {
       jeff_algo::solve(&node_coordinates, &weights, Some( "./views/tsp_problem".to_string() ))
@@ -401,7 +418,7 @@ fn timed_main() {
     println!("====== jeff_algo::solve ======");
     print_path_metadata(&solution_p, &weights);
   }
-  
+
   if use_brute {
     let solution_p = if write_solution_out_to_views {
       let all_solutions = brute_algo::solve_all(&node_coordinates, &weights, Some( "./views/tsp_problem".to_string() ), &thread_pool);
@@ -414,6 +431,40 @@ fn timed_main() {
     print_path_metadata(&solution_p, &weights);
   }
 
+}
+
+fn get_best_gpu() -> Option<Device> {
+  let emu_preferred_device_name = std::env::var("PREF_GPU");
+
+  // Check for NO gpu set; mostly for debugging
+  if let Ok(ref preferred_device_name) = emu_preferred_device_name {
+    if preferred_device_name.contains("NONE") || preferred_device_name.contains("None") || preferred_device_name.contains("none") {
+      return None;
+    }
+  }
+
+  for device in futures::executor::block_on(Device::all()) {
+    if let Some(ref info) = device.info {
+      // println!("device.info = {:?}", info);
+
+      if let Ok(ref preferred_device_name) = emu_preferred_device_name {
+        if info.name().contains(preferred_device_name) {
+          return Some(device);
+        }
+      }
+      else {
+        if info.device_type() == DeviceType::DiscreteGpu {
+          return Some(device);
+        }
+      }
+    }
+  }
+  // Just grab the first one
+  for device in futures::executor::block_on(Device::all()) {
+    return Some(device);
+  }
+  // If no devices,
+  return None;
 }
 
 fn attempt_to_raise_priority() {
@@ -453,19 +504,19 @@ fn delta(num_tests: usize, lower_city_size: usize, upper_city_size: usize, threa
 
 fn delta_test(city_size: usize, thread_pool: &ThreadPool) -> bool {
   let (node_coordinates, weights) = gen_tsp_problem(city_size, 0.0, 10.0, 0.0, 10.0);
-  
+
   let jeff_sol = jeff_algo::solve(&node_coordinates, &weights, None);
   let brute_sol = brute_algo::solve(&node_coordinates, &weights, None, thread_pool);
-  
+
   let jeff_sol_len = compute_dist(&weights, &jeff_sol);
   let brute_sol_len = compute_dist(&weights, &brute_sol);
-  
+
   let distance_diff = jeff_sol_len - brute_sol_len;
-  
+
   if distance_diff.abs() > fp_epsilon && !is_identical_path(&jeff_sol, &brute_sol) { // account for floating point errors
     // re-do test, saving results
     let r_test_num: usize = rand::thread_rng().gen_range(0, 10000000);
-    
+
     let prefix_dir = format!("./views/{:02}-{}/", weights.len(), r_test_num);
     jeff_algo::solve(&node_coordinates, &weights, Some(prefix_dir.clone()));
     brute_algo::solve_all(&node_coordinates, &weights, Some(prefix_dir.clone()), thread_pool);
@@ -503,13 +554,13 @@ fn compute_dist(weights: &Vec<Vec<fp>>, path: &[usize]) -> fp {
 fn gen_tsp_problem(num_points: usize, min_x: fp, max_x: fp, min_y: fp, max_y: fp) -> (Vec<(usize, fp, fp)>, Vec<Vec<fp>>) {
   let mut rng = rand::thread_rng();
   let mut node_coordinates: Vec<(usize, fp, fp)> = vec![];
-  
+
   for i in 0..num_points {
     node_coordinates.push(
       (i, rng.gen_range(min_x, max_x), rng.gen_range(min_y, max_y))
     );
   }
-  
+
   // Compute 2x matrix of edge weights (assumes 2d euclidian geometry)
   let mut weights: Vec<Vec<fp>> = Vec::with_capacity(node_coordinates.len());
   {
@@ -520,13 +571,13 @@ fn gen_tsp_problem(num_points: usize, min_x: fp, max_x: fp, min_y: fp, max_y: fp
           (row_r.1 - col_r.1).powf(2.0) + // x1 + x2 squared
           (row_r.2 - col_r.2).powf(2.0)   // y1 + y2 squared
         ).sqrt();
-        
+
         row_weight_v.push(weight);
       }
       weights.push(row_weight_v);
     }
   }
-  
+
   return (node_coordinates, weights);
 }
 
@@ -543,7 +594,7 @@ fn open_tsp_problem(file_arg: String) -> Option<(Vec<(usize, fp, fp)>, Vec<Vec<f
       return None;
     }
   };
-  
+
   // Use tsp lib to parse file
   let instance = match tsplib::parse( BufReader::new(file) ) {
     Ok(i) => i,
@@ -552,7 +603,7 @@ fn open_tsp_problem(file_arg: String) -> Option<(Vec<(usize, fp, fp)>, Vec<Vec<f
       return None;
     }
   };
-  
+
   let node_coordinates: Vec<(usize, f32, f32)> = match instance.node_coord {
     Some(node_c) => match node_c {
       NodeCoord::Two(vec_count_loc_loc) => vec_count_loc_loc,
@@ -566,15 +617,15 @@ fn open_tsp_problem(file_arg: String) -> Option<(Vec<(usize, fp, fp)>, Vec<Vec<f
       return None;
     }
   };
-  
+
   let node_coordinates: Vec<(usize, fp, fp)> = node_coordinates.iter().map(|(a, b, c)| (*a, *b as fp, *c as fp) ).collect();
 
   // Compute 2x matrix of edge weights (assumes 2d euclidian geometry)
   let weights = compute_weight_coords(&node_coordinates);
-  
+
   println!("City has {} points", weights.len());
   // remember weights is 2d square matrix (could be triangle, meh.)
-  
+
   return Some( (node_coordinates, weights) );
 }
 
@@ -583,12 +634,12 @@ fn open_tsp_problem(file_arg: String) -> Option<(Vec<(usize, fp, fp)>, Vec<Vec<f
 fn compute_center(path: &Vec<usize>, locations: &Vec<(usize, fp, fp)>) -> (fp, fp) {
   let mut x_tot: fp = 0.0;
   let mut y_tot: fp = 0.0;
-  
+
   for p in path {
     x_tot += locations[*p].1;
     y_tot += locations[*p].2;
   }
-  
+
   x_tot /= path.len() as fp;
   y_tot /= path.len() as fp;
   return (x_tot, y_tot);
@@ -625,36 +676,36 @@ fn save_state_image<I: Into<String>>(file_path: I, path: &Vec<usize>, locations:
 
   let x_range: fp = largest_x - smallest_x;
   let y_range: fp = largest_y - smallest_y;
-  
+
   let font = Font::try_from_bytes(include_bytes!("../resources/NotoSans-Bold.ttf")).unwrap();
 
   for i in 0..locations.len() {
     let loc = locations[i];
     let (loc_x,loc_y) = scale_xy(width, height, x_range as u32, y_range as u32, smallest_x, smallest_y, loc.1, loc.2);
-    
+
     // Set all location pixels to be red // r,g,b
     //image.get_pixel_mut(loc_x, loc_y).data = [255, 0, 0];
     //circle_it(&mut image, loc_x, loc_y, [255, 0, 0]);
     draw_hollow_circle_mut(&mut image, (loc_x as i32, loc_y as i32), 10 /*radius*/, Rgb([255, 0, 0]));
-    
+
     // Also draw an index number
     let font_height = 18.0;
     let font_scale = Scale { x: font_height, y: font_height };
     draw_text_mut(&mut image, Rgb([225, 225, 255]), loc_x as u32, loc_y as u32, font_scale, &font, format!("{}", i).as_str());
   }
-  
+
   for i in 0..path.len() {
     let pt_from = path[i];
     let pt_to =   path[(i+1) % path.len()];
     //println!("pt_from = {}, pt_to = {}", pt_from, pt_to);
-    
+
     let from_loc = locations[pt_from];
     let (from_loc_x,from_loc_y) = scale_xy(width, height, x_range as u32, y_range as u32, smallest_x, smallest_y, from_loc.1, from_loc.2);
-    
+
     let to_loc = locations[pt_to];
     let (pt_to_x,pt_to_y) = scale_xy(width, height, x_range as u32, y_range as u32, smallest_x, smallest_y, to_loc.1, to_loc.2);
     //println!("Going from {} to {}", pt_from, pt_to);
-    
+
     draw_line_segment_mut(&mut image,
       (pt_to_x as f32,pt_to_y as f32), // start
       (from_loc_x as f32,from_loc_y as f32), // end
@@ -666,7 +717,7 @@ fn save_state_image<I: Into<String>>(file_path: I, path: &Vec<usize>, locations:
   let file_parent_dir = std::path::PathBuf::from(file_path.clone());
   let file_parent_dir = file_parent_dir.parent().expect("All image paths should have a parent");
   std::fs::create_dir_all(&file_parent_dir).unwrap_or(());
-  
+
   image.save(file_path).unwrap();
 }
 
@@ -674,51 +725,51 @@ fn save_state_image_center<I: Into<String>>(file_path: I, path: &Vec<usize>, loc
   let file_path = file_path.into();
   let (width, height) = (600, 600);
   let mut image = RgbImage::new(width + 5, height + 5); // width, height
-  
+
   let (smallest_x, largest_y, largest_x, smallest_y) = get_point_extents(locations);
   let x_range: fp = largest_x - smallest_x;
   let y_range: fp = largest_y - smallest_y;
-  
+
   let font = Font::try_from_bytes(include_bytes!("../resources/NotoSans-Bold.ttf")).unwrap();
 
   for i in 0..locations.len() {
     let loc = locations[i];
     let (loc_x,loc_y) = scale_xy(width, height, x_range as u32, y_range as u32, smallest_x, smallest_y, loc.1, loc.2);
-    
+
     // Set all location pixels to be red // r,g,b
     //image.get_pixel_mut(loc_x, loc_y).data = [255, 0, 0];
     //circle_it(&mut image, loc_x, loc_y, [255, 0, 0]);
     draw_hollow_circle_mut(&mut image, (loc_x as i32, loc_y as i32), 10 /*radius*/, Rgb([255, 0, 0]));
-    
+
     // Also draw an index number
     let font_height = 14.0;
     let font_scale = Scale { x: font_height, y: font_height };
     draw_text_mut(&mut image, Rgb([225, 225, 255]), loc_x as u32, loc_y as u32, font_scale, &font, format!("{}", i).as_str());
   }
-  
+
   for i in 0..path.len() {
     let pt_from = path[i];
     let pt_to =   path[(i+1) % path.len()];
     //println!("pt_from = {}, pt_to = {}", pt_from, pt_to);
-    
+
     let from_loc = locations[pt_from];
     let (from_loc_x,from_loc_y) = scale_xy(width, height, x_range as u32, y_range as u32, smallest_x, smallest_y, from_loc.1, from_loc.2);
-    
+
     let to_loc = locations[pt_to];
     let (pt_to_x,pt_to_y) = scale_xy(width, height, x_range as u32, y_range as u32, smallest_x, smallest_y, to_loc.1, to_loc.2);
     //println!("Going from {} to {}", pt_from, pt_to);
-    
+
     draw_line_segment_mut(&mut image,
       (pt_to_x as f32,pt_to_y as f32), // start
       (from_loc_x as f32,from_loc_y as f32), // end
       Rgb([200, 200, 200])
     );
   }
-  
+
   // center is green cross
   let (center_img_x, center_img_y) = scale_xy(width, height, x_range as u32, y_range as u32, smallest_x, smallest_y, center.0, center.1);
   draw_cross_mut(&mut image, Rgb([0, 255, 0]), center_img_x as i32, center_img_y as i32);
-  
+
   image.save(file_path).unwrap();
 }
 
@@ -776,7 +827,7 @@ fn compute_weight_coords(node_coordinates: &Vec<(usize, fp, fp)>) -> Vec<Vec<fp>
           (row_r.1 - col_r.1).powf(2.0) + // x1 + x2 squared
           (row_r.2 - col_r.2).powf(2.0)   // y1 + y2 squared
         ).sqrt();
-        
+
         row_weight_v.push(weight);
       }
       weights.push(row_weight_v);
@@ -785,13 +836,13 @@ fn compute_weight_coords(node_coordinates: &Vec<(usize, fp, fp)>) -> Vec<Vec<fp>
   return weights;
 }
 
-fn selective(min_cities_to_ignore: usize, max_cities_to_test: usize, thread_pool: &ThreadPool) {
+fn selective(min_cities_to_ignore: usize, max_cities_to_test: usize, thread_pool: &ThreadPool, gpu_device: &Option<Device>,) {
   println!("Performing selective failure from {} points to {} points...", min_cities_to_ignore, max_cities_to_test);
   // Bounding box for all points
-  
+
   let mut rng = rand::thread_rng();
   let mut node_coordinates: Vec<(usize, fp, fp)> = vec![];
-  
+
   // Just add 3 to begin with
   for i in 0..3 {
     let new_r_city = (
@@ -813,7 +864,7 @@ fn selective(min_cities_to_ignore: usize, max_cities_to_test: usize, thread_pool
     );
     node_coordinates.push(new_r_city);
   }
-  
+
   // If we hit 11 cities without a failure we'll recurse and start from min_cities_to_ignore again.
   for city_num in min_cities_to_ignore..max_cities_to_test {
     let new_r_city = (
@@ -822,40 +873,40 @@ fn selective(min_cities_to_ignore: usize, max_cities_to_test: usize, thread_pool
       rng.gen_range(y_min, y_max),
     );
     node_coordinates.push(new_r_city); // we can pop() if we fail
-    
+
     let city_weights = compute_weight_coords(&node_coordinates);
-    
+
     let jeff_sol = jeff_algo::solve(&node_coordinates, &city_weights, None);
     let brute_sol = brute_algo::solve(&node_coordinates, &city_weights, None, thread_pool);
-    
+
     let jeff_sol_len = compute_dist(&city_weights, &jeff_sol);
     let brute_sol_len = compute_dist(&city_weights, &brute_sol);
     let distance_diff = jeff_sol_len - brute_sol_len;
-    
+
     if distance_diff.abs() > fp_epsilon && !is_identical_path(&jeff_sol, &brute_sol) { // account for floating point errors
       println!("We have broken jeff_algo at {} points!", city_num+1);
       // we have added a city which breaks things!
       node_coordinates.pop();
       let city_weights = compute_weight_coords(&node_coordinates);
-      
+
       // Now we have a city right before our failure.
-      
+
       // Save the correct solution
       brute_algo::solve_all(&node_coordinates, &city_weights, Some("./views/selective/".to_string()), thread_pool);
       jeff_algo::solve(&node_coordinates, &city_weights, Some("./views/selective/".to_string()));
-      
+
       // compute a 2d matrix of points and plot blue if they result in correct, red if they do not.
       // perform_matrix_image_gen("./views/selective-map.png", node_coordinates, city_weights, );
-      
+
       // UPDATE: this is now done by spray() as a separate step.
-      
+
       return;
     }
   }
-  
+
   println!("Failed to break after {}, resetting...", max_cities_to_test);
-  selective(min_cities_to_ignore, max_cities_to_test, thread_pool);
-  
+  selective(min_cities_to_ignore, max_cities_to_test, thread_pool, gpu_device);
+
 }
 
 fn is_identical_path(path_a: &[usize], path_b: &[usize]) -> bool {
@@ -924,7 +975,7 @@ fn get_env_or_random_node_coordinates(n: usize, env_var_name: &str, _x_min: fp, 
   return node_coordinates;
 }
 
-fn spray(n: usize, mut bound_granularity: fp, thread_pool: &ThreadPool) {
+fn spray(n: usize, mut bound_granularity: fp, thread_pool: &ThreadPool, gpu_device: &Option<Device>,) {
   println!("Spraying {} cities...", n);
 
   if bound_granularity < 0.025 {
@@ -932,20 +983,20 @@ fn spray(n: usize, mut bound_granularity: fp, thread_pool: &ThreadPool) {
     bound_granularity = 0.025;
   }
   let bound_granularity = bound_granularity;
-  
-  
+
+
   let node_coordinates: Vec<(usize, fp, fp)> = get_env_or_random_node_coordinates(n, "TSP_INITIAL_COORDS", x_min, x_max, y_min, y_max);
   println!("Initial node_coordinates={:?}", &node_coordinates);
-  
+
   // Generate partial image
   let file_path = "views/spray.png";
   let (width, height) = (900, 900);
   let mut image = RgbImage::new(width + 15, height + 15); // width, height
-  
+
   let (smallest_x, largest_y, largest_x, smallest_y) = (x_min_bound, y_max_bound, x_max_bound, y_min_bound);
   let x_range: fp = largest_x - smallest_x;
   let y_range: fp = largest_y - smallest_y;
-  
+
   // Use jalgo to compute the first N-1 insertions...
   let city_weights = compute_weight_coords(&node_coordinates);
   let first_ordered_visits = jeff_algo::solve(&node_coordinates, &city_weights, None);
@@ -965,45 +1016,45 @@ fn spray(n: usize, mut bound_granularity: fp, thread_pool: &ThreadPool) {
   // Now test a grid of points every bound_granularity units,
   // computing the ideal and jalgo. When the two do not match, make a dot on
   // the spray image we generate.
-  
+
   let mut num_failures = 0;
-  
+
   let mut point_y = y_min_bound;
   loop {
     if point_y > y_max_bound {
       break;
     }
-    
+
     let mut point_x = x_min_bound;
     loop {
       if point_x > x_max_bound {
         break;
       }
-      
+
       let mut node_coordinates = node_coordinates.clone(); // Prevent us from mutating the initial set of points
       node_coordinates.push(
         (node_coordinates.len(), point_x, point_y)
       );
       // Now add (point_x, point_y) and see if it breaks jalgo
-      
+
       let city_weights = compute_weight_coords(&node_coordinates);
-      
+
       //let jeff_sol = jeff_algo::solve(&node_coordinates, &city_weights, None);
       //println!("=============");
       //let jeff_sol = jeff_algo::next_step(&first_ordered_visits, &node_coordinates, &city_weights, &None);
       let jeff_sol = jeff_algo::solve(&node_coordinates, &city_weights, None);
       //println!("jeff_sol={:?}", &jeff_sol);
-      
+
       let brute_sol = brute_algo::solve(&node_coordinates, &city_weights, None, thread_pool);
-      
+
       let jeff_sol_len = compute_dist(&city_weights, &jeff_sol);
       let brute_sol_len = compute_dist(&city_weights, &brute_sol);
       let distance_diff = jeff_sol_len - brute_sol_len;
       //println!("jeff_sol_len={}   brute_sol_len={}  distance_diff={}", jeff_sol_len, brute_sol_len, distance_diff);
-      
+
       let loc = (point_x, point_y);
       let (loc_x,loc_y) = scale_xy(width, height, x_range as u32, y_range as u32, smallest_x, smallest_y, loc.0, loc.1);
-      
+
       if distance_diff.abs() > fp_epsilon && !is_identical_path(&jeff_sol, &brute_sol) {
         // jalgo broke, paint red pixel
         *image.get_pixel_mut(loc_x, loc_y) = Rgb([255, 0, 0]);
@@ -1017,10 +1068,10 @@ fn spray(n: usize, mut bound_granularity: fp, thread_pool: &ThreadPool) {
         // BUT only if bound_granularity > 0.1 as a performance improvement to high-res sprays
         if bound_granularity >= 0.2 {
           let prefix_dir = format!("./views/spray-jalgo-f{:03}", num_failures);
-          
+
           // Debugging jeff_algo::next_step(&first_ordered_visits, &node_coordinates, &city_weights, &Some(format!("{}-jeff-next_step", prefix_dir.clone() ) ));
           //jeff_algo::solve(&node_coordinates, &city_weights, Some(prefix_dir.clone()));
-          
+
           //brute_algo::solve(&node_coordinates, &city_weights, Some(prefix_dir.clone()));
           // Also dump brute_algo solutions for node_coordinates N-1, n-2, etc... until 3
 
@@ -1033,33 +1084,33 @@ fn spray(n: usize, mut bound_granularity: fp, thread_pool: &ThreadPool) {
             jeff_algo::solve(&delta_node_coords, &city_weights, Some(prefix_dir.clone()));
             brute_algo::solve_all(&delta_node_coords, &city_weights, Some(prefix_dir.clone()), thread_pool);
           }
-          
+
         }
       }
       else {
         // jalgo got it correct, paint green
         *image.get_pixel_mut(loc_x, loc_y) = Rgb([0, 255, 0]);
       }
-      
+
       point_x += bound_granularity;
     }
-    
+
     point_y += bound_granularity;
   }
 
-  let font = Font::try_from_bytes(include_bytes!("../resources/NotoSans-Bold.ttf")).unwrap();  
-  
+  let font = Font::try_from_bytes(include_bytes!("../resources/NotoSans-Bold.ttf")).unwrap();
+
   for i in 0..node_coordinates.len() {
     let loc = node_coordinates[i];
     let (loc_x,loc_y) = scale_xy(width, height, x_range as u32, y_range as u32, smallest_x, smallest_y, loc.1, loc.2);
-    
+
     // Set all location pixels to be red // r,g,b
     //image.get_pixel_mut(loc_x, loc_y).data = [255, 0, 0];
     //circle_it(&mut image, loc_x, loc_y, [255, 0, 0]);
     draw_hollow_circle_mut(&mut image, (loc_x as i32, loc_y as i32), 10 /*radius*/, Rgb([255, 0, 0]));
-    
+
     // Also draw an index number
-    
+
     let font_height = 18.0;
     let font_scale = Scale { x: font_height, y: font_height };
     draw_text_mut(&mut image, Rgb([225, 225, 255]), loc_x as u32, loc_y as u32, font_scale, &font, format!("{}", i).as_str());
@@ -1069,14 +1120,14 @@ fn spray(n: usize, mut bound_granularity: fp, thread_pool: &ThreadPool) {
   if let Err(e) = image.save(file_path) {
     println!("Please create the directory ./views/ before running tests!");
   }
-  
+
   println!("{} failures", num_failures);
-  
+
 }
 
-fn pattern_scan(n: usize, bound_granularity: fp, file_path: &str, thread_pool: &ThreadPool) {
+fn pattern_scan(n: usize, bound_granularity: fp, file_path: &str, thread_pool: &ThreadPool, gpu_device: &Option<Device>) {
   let node_coordinates: Vec<(usize, fp, fp)> = get_env_or_random_node_coordinates(n, "TSP_INITIAL_COORDS", x_min, x_max, y_min, y_max);
-  pattern_scan_coords(n, bound_granularity, file_path, node_coordinates, thread_pool, nop_closure);
+  pattern_scan_coords(n, bound_granularity, file_path, node_coordinates, thread_pool, gpu_device, nop_closure);
 }
 
 
@@ -1089,7 +1140,8 @@ fn pattern_scan_coords<F>(
   file_path: &str,
   node_coordinates: Vec<(usize, fp, fp)>,
   thread_pool: &ThreadPool,
-  mut addtl_logging_fn: F
+  gpu_device: &Option<Device>,
+  mut addtl_logging_fn: F,
 ) -> ()
   where F: std::ops::FnMut(&Vec<Vec<CityWeight>>, &Vec<CityNum>, &(fp, fp), &(u8, u8, u8)) -> (),
 {
@@ -1099,18 +1151,18 @@ fn pattern_scan_coords<F>(
     bound_granularity = 0.010;
   }
   let bound_granularity = bound_granularity;
-  
+
   println!("Initial node_coordinates={:?}", &node_coordinates);
 
   // Generate partial image
   // let file_path = "views/pattern-scan.png";
   let (width, height) = (900, 900);
   let mut image = RgbImage::new(width + 15, height + 15); // width, height
-  
+
   let (smallest_x, largest_y, largest_x, smallest_y) = (x_min_bound, y_max_bound, x_max_bound, y_min_bound);
   let x_range: fp = largest_x - smallest_x;
   let y_range: fp = largest_y - smallest_y;
-  
+
   let city_weights = compute_weight_coords(&node_coordinates);
 
   let mut unique_solution_spaces_points: HashMap<(u8, u8, u8), Vec<(fp, fp)>> = HashMap::new();
@@ -1132,21 +1184,21 @@ fn pattern_scan_coords<F>(
     if increment_nonce_on_row {
       brute_sol_nonce += 1; // bump so exactly-two are staggered at each row
     }
-    
+
     let mut point_x = x_min_bound;
     loop {
       if point_x > x_max_bound {
         break;
       }
-      
+
       let mut node_coordinates = node_coordinates.clone(); // Prevent us from mutating the initial set of points
       node_coordinates.push(
         (node_coordinates.len(), point_x, point_y)
       );
       // Now add (point_x, point_y) and see if it breaks jalgo
-      
+
       let city_weights = compute_weight_coords(&node_coordinates);
-      
+
       let brute_solutions = brute_algo::solve_all(&node_coordinates, &city_weights, None, thread_pool);
       let num_sols: i32 = brute_solutions.len() as i32;
       //let rand_idx: i32 = rand::thread_rng().gen_range(0, num_sols);
@@ -1154,10 +1206,10 @@ fn pattern_scan_coords<F>(
       let picked_idx: i32 = (brute_sol_nonce % brute_solutions.len()) as i32;
       let brute_sol: Vec<CityNum> = brute_solutions[ picked_idx as usize ].clone(); // Vec<CityNum>
       brute_sol_nonce += 1;
-      
+
       let loc = (point_x, point_y);
       let (loc_x,loc_y) = scale_xy(width, height, x_range as u32, y_range as u32, smallest_x, smallest_y, loc.0, loc.1);
-      
+
       // Paint according to brute_sol order
       let (r, g, b) = path_to_rgb(&brute_sol, &city_weights);
 
@@ -1173,7 +1225,7 @@ fn pattern_scan_coords<F>(
         &(point_x, point_y),
         &rgb_key
       );
-      
+
       // println!("RGB of {:?} is {}, {}, {}", brute_sol, r, g, b);
 
       //*image.get_pixel_mut(loc_x, loc_y) = Rgb([r, g, b]);
@@ -1185,26 +1237,26 @@ fn pattern_scan_coords<F>(
         *image.get_pixel_mut(loc_x+1, loc_y+1) = Rgb([r, g, b]);
         *image.get_pixel_mut(loc_x, loc_y+1) = Rgb([r, g, b]);
       }
-      
+
       point_x += bound_granularity;
     }
-    
+
     point_y += bound_granularity;
   }
 
-  let font = Font::try_from_bytes(include_bytes!("../resources/NotoSans-Bold.ttf")).unwrap();  
-  
+  let font = Font::try_from_bytes(include_bytes!("../resources/NotoSans-Bold.ttf")).unwrap();
+
   for i in 0..node_coordinates.len() {
     let loc = node_coordinates[i];
     let (loc_x,loc_y) = scale_xy(width, height, x_range as u32, y_range as u32, smallest_x, smallest_y, loc.1, loc.2);
-    
+
     // Set all location pixels to be red // r,g,b
     //image.get_pixel_mut(loc_x, loc_y).data = [255, 0, 0];
     //circle_it(&mut image, loc_x, loc_y, [255, 0, 0]);
     draw_hollow_circle_mut(&mut image, (loc_x as i32, loc_y as i32), 10 /*radius*/, Rgb([255, 0, 0]));
-    
+
     // Also draw an index number
-    
+
     let font_height = 18.0;
     let font_scale = Scale { x: font_height, y: font_height };
     draw_text_mut(&mut image, Rgb([225, 225, 255]), loc_x as u32, loc_y as u32, font_scale, &font, format!("{}", i).as_str());
@@ -1227,13 +1279,13 @@ fn pattern_scan_coords<F>(
     }
     let avg_x = sum_x / (inserted_points.len() as fp);
     let avg_y = sum_y / (inserted_points.len() as fp);
-    
+
     // Draw text
     let (loc_x,loc_y) = scale_xy(width, height, x_range as u32, y_range as u32, smallest_x, smallest_y, avg_x, avg_y);
     let rgb_text = format!("{:02x}{:02x}{:02x}", rgb_key.0, rgb_key.1, rgb_key.2 );
     let font_height = 18.0;
     let font_scale = Scale { x: font_height, y: font_height };
-    
+
     // Apply a random += y delta for the label to prevent labels from overlapping in outputs
     //let loc_y = ( loc_y as i32 + ( rand::thread_rng().gen_range(-32, 32) as i32 ) ) as u32;
 
@@ -1271,7 +1323,7 @@ fn pattern_scan_coords<F>(
 
     let parent_prefix_dir = format!("views/{}", file_path_name);
     std::fs::create_dir_all(&parent_prefix_dir).unwrap_or(());
-    
+
     let prefix_dir = format!("views/{}/{}-center", file_path_name, rgb_text);
     for i in 3..(node_coordinates.len()+1) {
       let mut delta_node_coords = vec![];
@@ -1295,7 +1347,7 @@ fn pattern_scan_coords<F>(
 
 }
 
-fn multi_pattern_scan(n: usize, bound_granularity: fp, num_multi_steps_to_scan: usize, thread_pool: &ThreadPool) {
+fn multi_pattern_scan(n: usize, bound_granularity: fp, num_multi_steps_to_scan: usize, thread_pool: &ThreadPool, gpu_device: &Option<Device>,) {
   println!("Muti-pattern scanning {} cities...", n);
 
   let node_coordinates_a: Vec<(usize, fp, fp)> = get_env_or_random_node_coordinates(n, "TSP_INITIAL_COORDS", x_min, x_max, y_min, y_max);
@@ -1306,6 +1358,7 @@ fn multi_pattern_scan(n: usize, bound_granularity: fp, num_multi_steps_to_scan: 
 
   let mut output_scan_files = vec![];
   let mut output_multiscan_parabola_file_paths = vec![];
+
   for multi_step_i in 0..=num_multi_steps_to_scan {
     let converged_cities = converge_coordinates(&node_coordinates_a, &node_coordinates_b, multi_step_i, num_multi_steps_to_scan);
     let converged_cities_weights = compute_weight_coords(&converged_cities);
@@ -1313,11 +1366,11 @@ fn multi_pattern_scan(n: usize, bound_granularity: fp, num_multi_steps_to_scan: 
     let output_multiscan_file_path = format!("views/multi-pattern-scan-{:03}.png", multi_step_i);
     let html_path = format!("views/multi-pattern-scan-{:03}.html", multi_step_i);
     let mut html_content = HTML_BEGIN.to_string();
-    
+
     // [(x, y, rgb_usize, ) ... ]
     let mut tsp_point_colors: Vec<(fp, fp, usize)> = vec![];
 
-    pattern_scan_coords(n, bound_granularity, &output_multiscan_file_path, converged_cities.clone(), thread_pool, |city_weights, brute_sol, (tsp_point_x, tsp_point_y), rgb_key| {
+    pattern_scan_coords(n, bound_granularity, &output_multiscan_file_path, converged_cities.clone(), thread_pool, gpu_device, |city_weights, brute_sol, (tsp_point_x, tsp_point_y), rgb_key| {
       let point_x: isize = (tsp_point_x * HTML_POINT_SCALE) as isize;
       let point_y: isize = (tsp_point_y * HTML_POINT_SCALE) as isize;
 
@@ -1330,7 +1383,7 @@ fn multi_pattern_scan(n: usize, bound_granularity: fp, num_multi_steps_to_scan: 
           c += format!("{},{} ", point_x, point_y).as_str();
         }
       }
-      
+
       let city_weights = normalize_weights(city_weights);
       html_content += format!(
         "<div style=\"width:5px;height:5px;position:absolute;left:{}px;top:{}px;background-color:#{:02x}{:02x}{:02x}\" onclick=\"draw_path(this);\" c=\"{}\">{}</div>",
@@ -1352,22 +1405,22 @@ fn multi_pattern_scan(n: usize, bound_granularity: fp, num_multi_steps_to_scan: 
     let output_multiscan_parabola_txt_file_path = format!("views/multi-pattern-scan-{:03}-parabola.txt", multi_step_i);
     // Edge detection w/ tsp_points_colors
     let mut parabola_points: HashMap<usize, Vec<(fp, fp)>> = HashMap::new(); // RGB color string -> list of points on ... exterior.. hmm.
-    
+
     // We know tsp_point_colors contains a square, so compute width & height so we can index into neighbors for edge detection
     let tsp_square_size: isize = (f64::sqrt(tsp_point_colors.len() as f64) as isize /*+ 1*/) as isize;
 
     for y in 0..tsp_square_size {
       for x in 0..tsp_square_size {
         let (tsp_point_x, tsp_point_y, rgb_key) = tsp_point_colors[((y * tsp_square_size) + x) as usize];
-        
+
         // First question; are our neighbors rgb_key s different?
-        
+
         // "y-minus-one-index", "x-plus-one-index", etc.
         let ym1i: isize = ((y-1) * tsp_square_size) + x;
         let yp1i: isize = ((y+1) * tsp_square_size) + x;
         let xm1i: isize = (y*tsp_square_size) + (x-1);
         let xp1i: isize = (y*tsp_square_size) + (x+1);
-        
+
         if ym1i <= 0 || yp1i >= tsp_point_colors.len() as isize || xm1i <= 0 || xp1i >= tsp_point_colors.len() as isize  {
           continue; // off-square! (incl. borders to avoid comparing pixel colors against black in output files)
         }
@@ -1402,12 +1455,12 @@ fn multi_pattern_scan(n: usize, bound_granularity: fp, num_multi_steps_to_scan: 
     }
 
     // now use each set of key, list of parabola_points to predict N polynominals
-    
+
     // Iterate all TSP edge points + store lists of continuous strings w/ different (a color, b color) sides;
     // these will be our parabolic edges which we can algebra functions out of?
 
     // List of A -> B MIDPOINTS; average x,y of two most-nearby points as we iterate forwards along both.
-    // We expect each pair of lines to have within 1-2 number of the same points. 
+    // We expect each pair of lines to have within 1-2 number of the same points.
     // keys are (std::cmp::min(A, B), std::cmp::max(A, B)) so we keep both color data and collection order does not matter.
     let mut functions_edge_points: HashMap<(usize, usize), Vec<(fp, fp)>> = HashMap::new();
 
@@ -1471,7 +1524,7 @@ fn multi_pattern_scan(n: usize, bound_granularity: fp, num_multi_steps_to_scan: 
 
         let avg_pt_x: fp = total_pt_x / ((rgb_key_b_nearby_positions.len()+1) as fp);
         let avg_pt_y: fp = total_pt_y / ((rgb_key_b_nearby_positions.len()+1) as fp);
-        
+
         let functions_edge_points_key: (usize, usize) = (
           std::cmp::min(*rgb_key_a, *other_rgb_key_b_val),
           std::cmp::max(*rgb_key_a, *other_rgb_key_b_val)
@@ -1503,7 +1556,7 @@ fn multi_pattern_scan(n: usize, bound_granularity: fp, num_multi_steps_to_scan: 
       // Grab 6 equi-distant points to use in gomez to solve the general conics equations
       // to find A, B, C, D, E, and F for
       // Ax^2 + Bxy + Cy^2 + Dx + Ey + F == 0
-      
+
       let one_sixth_dist = edge_points_vec.len() / 6;
 
       /*let (x1, y1) = edge_points_vec[0];
@@ -1524,9 +1577,9 @@ fn multi_pattern_scan(n: usize, bound_granularity: fp, num_multi_steps_to_scan: 
       fit_pts_json_txt += "]";
       let mut f = File::create(&fit_pts_json_file).expect("Unable to create file");
       f.write_all(fit_pts_json_txt.as_bytes()).expect("Unable to write data");
-      
+
       let (a, b, c, d, e, f) = parabolics::solve_for_6pts(
-        thread_pool,
+        thread_pool, gpu_device,
         edge_points_vec[0],
         edge_points_vec[1 * one_sixth_dist],
         edge_points_vec[2 * one_sixth_dist],
@@ -1554,14 +1607,14 @@ fn multi_pattern_scan(n: usize, bound_granularity: fp, num_multi_steps_to_scan: 
       parabola_txt += "=== === === ===\n";
       parabola_txt += "===  EDGES  ===\n";
       parabola_txt += "=== === === ===\n";
-      
+
       for (edge_keys, edge_points_vec) in &functions_edge_points {
         let (a,b,c,d,e,f) = functions_edge_xy_abcdef_coef.get(edge_keys).unwrap_or(&(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)); // we know it exists
 
         parabola_txt += format!("Edge {:06x} - {:06x} has {} points,  ({} * x**2) + ({} * xy) + ({} * y**2) + ({} * x) + ({} * y) + {} = 0 \n",
           edge_keys.0, edge_keys.1, edge_points_vec.len(), a,b,c,d,e,f
         ).as_str();
-        
+
         for (edge_tsp_x, edge_tsp_y) in edge_points_vec {
           parabola_txt += format!("  {}, {}\n", edge_tsp_x, edge_tsp_y).as_str();
         }
@@ -1578,7 +1631,7 @@ fn multi_pattern_scan(n: usize, bound_granularity: fp, num_multi_steps_to_scan: 
       let (width, height) = (900, 900);
       let mut image = RgbImage::new(width + 15, height + 15); // width, height
       let font = Font::try_from_bytes(include_bytes!("../resources/NotoSans-Bold.ttf")).unwrap();
-      
+
       let (smallest_x, largest_y, largest_x, smallest_y) = (x_min_bound, y_max_bound, x_max_bound, y_min_bound);
       let x_range: fp = largest_x - smallest_x;
       let y_range: fp = largest_y - smallest_y;
@@ -1593,7 +1646,7 @@ fn multi_pattern_scan(n: usize, bound_granularity: fp, num_multi_steps_to_scan: 
           if skip_nonce % 6 != 0 { // 1/6 of the time put a pixel down - we want spaces to differentiate lines with
             continue;
           }
-          
+
           let r: u8 = ((rgb_key >> 16) & 0xff) as u8;
           let g: u8 = ((rgb_key >>  8) & 0xff) as u8;
           let b: u8 = ((rgb_key >>  0) & 0xff) as u8;
@@ -1619,7 +1672,7 @@ fn multi_pattern_scan(n: usize, bound_granularity: fp, num_multi_steps_to_scan: 
         let col_r: u8 = ( (((rgb_key_1 >> 16) & 0xff)+((rgb_key_2 >> 16) & 0xff)) /2) as u8;
         let col_g: u8 = ( (((rgb_key_1 >> 8) & 0xff)+((rgb_key_2 >> 8) & 0xff)) /2) as u8;
         let col_b: u8 = ( (((rgb_key_1 >> 0) & 0xff)+((rgb_key_2 >> 0) & 0xff)) /2) as u8;
-        
+
         // Draw in steps from smallest_x -> largest_x, keeping where Y falls into range.
         let mut x = smallest_x;
         let mut curve_total_x: fp = 0.0;
@@ -1637,7 +1690,7 @@ fn multi_pattern_scan(n: usize, bound_granularity: fp, num_multi_steps_to_scan: 
               curve_total_x += x;
               curve_total_y += y;
               curve_num_pts += 1;
-            
+
               //let r: u8 = 255;
               //let g: u8 = 255;
               //let b: u8 = 255;
@@ -1717,7 +1770,7 @@ fn multi_pattern_scan(n: usize, bound_granularity: fp, num_multi_steps_to_scan: 
   }
   println!("See {}", gif_output_file);
 
-  
+
   // Parabola gif as well
   let gif_output_file = "views/multi-pattern-scan-parabola.gif";
 
@@ -1729,7 +1782,7 @@ fn multi_pattern_scan(n: usize, bound_granularity: fp, num_multi_steps_to_scan: 
       }
     }
   }
-  
+
 
 }
 
@@ -1764,9 +1817,9 @@ static PATH_TO_RGB_CACHE: Lazy<Mutex<HashMap<usize, (u8, u8, u8) >>> = Lazy::new
 });
 
 pub fn path_to_rgb(path: &[usize], city_weights: &Vec<Vec<fp>>) -> (u8, u8, u8) {
-  
+
   // Iterate city from zero_i to end_i, calculating a hash in both directions.
-  
+
   let mut zero_i = 0;
   for i in 0..path.len() {
     if path[i] == 0 {
@@ -1776,12 +1829,12 @@ pub fn path_to_rgb(path: &[usize], city_weights: &Vec<Vec<fp>>) -> (u8, u8, u8) 
   let zero_i = zero_i;
 
   let end_i = (zero_i + (path.len() - 1) ) % path.len();
-  
+
   let mut left_i = zero_i;
   let mut right_i = end_i;
   let mut left_hash = std::collections::hash_map::DefaultHasher::default();
   let mut right_hash = std::collections::hash_map::DefaultHasher::default();
-  
+
   path[zero_i].hash(&mut right_hash); // right hash must visit 0 first to prevent off-by-one during flipped path comparisons.
 
   loop {
@@ -1833,7 +1886,7 @@ pub fn path_to_rgb(path: &[usize], city_weights: &Vec<Vec<fp>>) -> (u8, u8, u8) 
 
 
 
-fn spray_pattern_search(n: usize, bound_granularity: fp, num_sprays_to_perform: usize, thread_pool: &ThreadPool) {
+fn spray_pattern_search(n: usize, bound_granularity: fp, num_sprays_to_perform: usize, thread_pool: &ThreadPool, gpu_device: &Option<Device>,) {
   println!("Spray pattern searching {} cities for {} sprays...", n, num_sprays_to_perform);
 
   if brute_algo::use_brute_cache_env_val() {
@@ -1844,7 +1897,7 @@ fn spray_pattern_search(n: usize, bound_granularity: fp, num_sprays_to_perform: 
   for spray_i in 0..num_sprays_to_perform {
     // Generate random N-city
     let node_coordinates: Vec<(usize, fp, fp)> = get_env_or_random_node_coordinates(n, "SHOULD_NEVER_BE_COORDS_HERE!!__$%@!#@#!#&(*#@_INVALID_CHARS", x_min, x_max, y_min, y_max);
-    
+
     println!("");
     println!("spray_i={:03} node_coordinates={:?}", spray_i, node_coordinates);
 
@@ -1852,10 +1905,10 @@ fn spray_pattern_search(n: usize, bound_granularity: fp, num_sprays_to_perform: 
     let html_path = format!("views/spray-pattern-search-{:03}.html", spray_i);
     let mut html_content = HTML_BEGIN.to_string();
 
-    pattern_scan_coords(n, bound_granularity, &file_path, node_coordinates.clone(), thread_pool, |city_weights, brute_sol, (point_x, point_y), rgb_key| {
+    pattern_scan_coords(n, bound_granularity, &file_path, node_coordinates.clone(), thread_pool, gpu_device, |city_weights, brute_sol, (point_x, point_y), rgb_key| {
       let point_x: isize = (point_x * HTML_POINT_SCALE) as isize;
       let point_y: isize = (point_y * HTML_POINT_SCALE) as isize;
-      
+
       let city_weights = normalize_weights(city_weights);
       html_content += format!(
         "<div style=\"width:5px;height:5px;position:absolute;left:{}px;top:{}px;background-color:#{:02x}{:02x}{:02x}\" onclick=\"draw_path(this);\">{}</div>",
@@ -1895,7 +1948,7 @@ fn normalize_weights(weights: &Vec<Vec<fp>>) -> Vec<Vec<fp>> {
       }
     }
   }
-  
+
   let corrective_ratio = 1.0 as fp / heaviest_weight;
 
   let mut normalized_weights = vec![];

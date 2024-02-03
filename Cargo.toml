@@ -24,6 +24,9 @@ engiffen = "0.8"
 linreg = "0.2"
 fastrand = "2.0"
 
+emu_core = "0.1"
+futures = "0.3"
+
 
 [target.'cfg(not(windows))'.dependencies]
 fasthash = "0.4"
