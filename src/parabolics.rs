@@ -27,11 +27,11 @@ use super::*;
 use std::sync::{Mutex, RwLock, Arc}; // 48-core-xeon threading go brrrr
 
 const NUM_THREADS: usize = 32;
-const GPU_THREAD_BLOCKS: u32 = 1024;
+const GPU_THREAD_BLOCKS: usize = 1024;
 
 pub fn solve_for_6pts(
   thread_pool: &ThreadPool,
-  gpu_device: &mut Option<Device>,
+  gpu_device: &mut Option<wgpu::Adapter>,
   (x1, y1): (fp, fp),
   (x2, y2): (fp, fp),
   (x3, y3): (fp, fp),
@@ -58,48 +58,6 @@ pub fn solve_for_6pts(
     const long_iter_count: usize = 9_000_000_000;
 
     if let Some(ref mut gpu_device) = gpu_device {
-        let mut gpu_best_abcdef: DeviceBox<[fp]> = gpu_device.create_with_size(std::mem::size_of::<fp>() * 6); // len == 6; can we pass a tuple to GPU?
-        let mut gpu_smallest_error: DeviceBox<fp> = gpu_device.create_with_size(std::mem::size_of::<fp>());
-        let mut gpu_xy_array: DeviceBox<[fp]> = gpu_device.create_with_size(std::mem::size_of::<fp>() * 2 * 6); // len == 12: x1,y1 x2,y2, x3,y3...
-
-        let mut gpu_fn = build_gpu_solve_program();
-
-        let r = unsafe {
-            spawn(GPU_THREAD_BLOCKS).launch(call!(gpu_fn, &mut gpu_best_abcdef, &mut gpu_smallest_error, &mut gpu_xy_array ))
-        };
-        if let Err(e) = r {
-            println!("Some fatal GPU error = {:?}", e);
-        }
-
-        let gpu_best_abcdef_fin = futures::executor::block_on(gpu_best_abcdef.get()).expect("Failed to read GPU memory!");
-
-        {
-            let mut best_abcdef_guard = best_abcdef.lock().unwrap();
-            *best_abcdef_guard = (
-                gpu_best_abcdef_fin[0], gpu_best_abcdef_fin[1], gpu_best_abcdef_fin[2],
-                gpu_best_abcdef_fin[3], gpu_best_abcdef_fin[4], gpu_best_abcdef_fin[5]
-            );
-
-            let this_coefs = (
-                gpu_best_abcdef_fin[0], gpu_best_abcdef_fin[1], gpu_best_abcdef_fin[2],
-                gpu_best_abcdef_fin[3], gpu_best_abcdef_fin[4], gpu_best_abcdef_fin[5]
-            );
-            let c_y1 = evaluate_parabolic_for_x_absonly(x1, this_coefs);
-            let c_y2 = evaluate_parabolic_for_x_absonly(x2, this_coefs);
-            let c_y3 = evaluate_parabolic_for_x_absonly(x3, this_coefs);
-            let c_y4 = evaluate_parabolic_for_x_absonly(x4, this_coefs);
-            let c_y5 = evaluate_parabolic_for_x_absonly(x5, this_coefs);
-            let c_y6 = evaluate_parabolic_for_x_absonly(x6, this_coefs);
-
-            let mut smallest_err_guard = smallest_error.lock().unwrap();
-
-            *smallest_err_guard =(c_y1 - y1.abs()).abs() +
-                                 (c_y2 - y2.abs()).abs() +
-                                 (c_y3 - y3.abs()).abs() +
-                                 (c_y4 - y4.abs()).abs() +
-                                 (c_y5 - y5.abs()).abs() +
-                                 (c_y6 - y6.abs()).abs();
-        }
 
     }
     else {
@@ -267,39 +225,11 @@ pub fn evaluate_parabolic_for_x_absonly(x: fp, (a, b, c, d, e, f): (fp, fp, fp, 
     return y;
 }
 
-
-
-fn build_gpu_solve_program() -> Arc<DeviceFnMut> {
-    compile::<Glsl, GlslCompile, _, GlobalCache>(
-        Glsl::new()
-            .set_entry_point_name("main")
-            .add_param_mut::<[fp]>() // gpu_best_abcdef: DeviceBox<[fp]>
-            .add_param_mut::<fp>() // gpu_smallest_error: DeviceBox<fp>
-            .add_param_mut::<[fp]>() // gpu_xy_array: DeviceBox<[fp]>
-            .set_code_with_glsl(
-            r#"
-#version 450
-layout(local_size_x = 1) in; // our thread block size is 1, that is we only have 1 thread per block
-
-// make sure to use only a single set and keep all your n parameters in n storage buffers in bindings 0 to n-1
-// you shouldn't use push constants or anything OTHER than storage buffers for passing stuff into the kernel
-// just use buffers with one buffer per binding
-layout(set = 0, binding = 0) buffer InputData {
-    float[6] gpu_best_abcdef;
-    float gpu_smallest_error;
-    float[12] gpu_xy_array;
-}; // this is used as both input and output for convenience
-
-
-// there should be only one entry point and it should be named "main"
-// ultimately, Emu has to kind of restrict how you use GLSL because it is compute focused
-void main() {
-    uint index = gl_GlobalInvocationID.x; // this gives us the index in the x dimension of the thread space
-    //rectangles[index] = flip(rectangles[index]);
-
-}
-            "#,
-        )
-    ).expect("Cannot compile GLSL! (1)").finish().expect("Cannot compile GLSL! (2)")
+#[repr(C)]
+#[derive(Copy, Clone, Default, Debug)]
+struct GPUData {
+    xy_array: [fp; 12],
+    best_abcdef: [fp; 6],
+    smallest_error: fp,
 }
 

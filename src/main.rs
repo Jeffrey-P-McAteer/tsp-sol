@@ -38,7 +38,7 @@ use num_cpus;
 
 use once_cell::sync::Lazy;
 
-use emu_core::prelude::*;
+use wgpu::util::DeviceExt;
 
 use std::fs;
 use std::fs::{File,create_dir};
@@ -277,15 +277,12 @@ fn timed_main() {
   println!("Brute force algo thread pool size: {}", thread_pool.max_count());
 
   // Initialize GPU
-  futures::executor::block_on(assert_device_pool_initialized());
 
   // Grab largest device, report sizes, and pass this to downstream funcs which may either use the
   // thread_pool OR the emu device object to schedule work across
-  let mut gpu_device = get_best_gpu();
-  if let Some(ref device) = gpu_device {
-    if let Some(ref info) = device.info {
-      println!("GPU device = {:?}", info);
-    }
+  let mut gpu_adapter = get_best_gpu();
+  if let Some(ref adapter) = gpu_adapter {
+    println!("GPU device = {:?}", adapter.get_info());
   }
   else {
     println!("NO GPU");
@@ -330,7 +327,7 @@ fn timed_main() {
       args.get(2).unwrap_or(&"5".to_string()).parse().unwrap(), // given number OR 5
       args.get(3).unwrap_or(&"0.25".to_string()).parse().unwrap(), // given number OR 0.25
       "views/pattern-scan.png",
-      &thread_pool, &mut gpu_device
+      &thread_pool, &mut gpu_adapter
     );
     return;
   }
@@ -342,7 +339,7 @@ fn timed_main() {
       args.get(2).unwrap_or(&"5".to_string()).parse().unwrap(), // given number OR 5 - number of cities
       args.get(3).unwrap_or(&"0.25".to_string()).parse().unwrap(), // given number OR 0.25 - resolution to generate a SINGLE multi pattern at
       args.get(4).unwrap_or(&"10".to_string()).parse().unwrap(), // number of steps to put between 2 cities, aka total number of pattern_scans to run.
-      &thread_pool, &mut gpu_device
+      &thread_pool, &mut gpu_adapter
     );
     return;
   }
@@ -352,7 +349,7 @@ fn timed_main() {
       args.get(2).unwrap_or(&"5".to_string()).parse().unwrap(), // given number OR 5 - number of cities
       args.get(3).unwrap_or(&"0.25".to_string()).parse().unwrap(), // given number OR 0.25 - resolution to generate a SINGLE multi pattern at
       args.get(4).unwrap_or(&"100".to_string()).parse().unwrap(), // number of sprays to perform
-      &thread_pool, &mut gpu_device
+      &thread_pool, &mut gpu_adapter
     );
     return;
   }
@@ -376,7 +373,7 @@ fn timed_main() {
     selective(
       min_cities_to_ignore,
       max_cities_to_test,
-      &thread_pool, &mut gpu_device
+      &thread_pool, &mut gpu_adapter
     );
     return;
   }
@@ -387,7 +384,7 @@ fn timed_main() {
     spray(
       args.get(2).unwrap_or(&"5".to_string()).parse().unwrap(), // given number OR 5
       args.get(3).unwrap_or(&"0.25".to_string()).parse().unwrap(), // given number OR 0.25
-      &thread_pool, &mut gpu_device
+      &thread_pool, &mut gpu_adapter
     );
     return;
   }
@@ -433,35 +430,60 @@ fn timed_main() {
 
 }
 
-fn get_best_gpu() -> Option<Device> {
-  let emu_preferred_device_name = std::env::var("PREF_GPU");
+fn get_best_gpu() -> Option<wgpu::Adapter> {
+  let preferred_device_name = std::env::var("PREF_GPU");
 
   // Check for NO gpu set; mostly for debugging
-  if let Ok(ref preferred_device_name) = emu_preferred_device_name {
+  if let Ok(ref preferred_device_name) = preferred_device_name {
     if preferred_device_name.contains("NONE") || preferred_device_name.contains("None") || preferred_device_name.contains("none") {
       return None;
     }
   }
 
-  for device in futures::executor::block_on(Device::all()) {
-    if let Some(ref info) = device.info {
-      // println!("device.info = {:?}", info);
+  let mut print_adapter_infos = false;
+  if let Ok(ref preferred_device_name) = preferred_device_name {
+    if preferred_device_name.contains("dump") || preferred_device_name.contains("print") || preferred_device_name.contains("list") {
+      print_adapter_infos = true;
+    }
+  }
+  let print_adapter_infos = print_adapter_infos;
 
-      if let Ok(ref preferred_device_name) = emu_preferred_device_name {
-        if info.name().contains(preferred_device_name) {
-          return Some(device);
-        }
+  let adapters = wgpu::Instance::new(wgpu::InstanceDescriptor {
+    // backends: wgpu::Backends::all(),
+    backends: wgpu::Backends::VULKAN,
+
+    // flags: wgpu::InstanceFlags::empty(),
+    flags: wgpu::InstanceFlags::DEBUG | wgpu::InstanceFlags::VALIDATION,
+
+    dx12_shader_compiler: wgpu::Dx12Compiler::Fxc, // windorks only concern
+
+    gles_minor_version: wgpu::Gles3MinorVersion::Automatic,
+
+  });
+
+  if print_adapter_infos {
+    for adapter in adapters.enumerate_adapters(wgpu::Backends::VULKAN) {
+      let info = adapter.get_info();
+      println!("Adapter info = {:?}", info);
+    }
+  }
+
+  for adapter in adapters.enumerate_adapters(wgpu::Backends::VULKAN) {
+    let info = adapter.get_info();
+    if let Ok(ref preferred_device_name) = preferred_device_name {
+      if info.name.contains(preferred_device_name) {
+        return Some(adapter);
       }
-      else {
-        if info.device_type() == DeviceType::DiscreteGpu {
-          return Some(device);
-        }
+    }
+    else {
+      if info.device_type == wgpu::DeviceType::DiscreteGpu {
+        return Some(adapter);
       }
     }
   }
   // Just grab the first one
-  for device in futures::executor::block_on(Device::all()) {
-    return Some(device);
+  for adapter in adapters.enumerate_adapters(wgpu::Backends::VULKAN) {
+    return Some(adapter);
   }
   // If no devices,
   return None;
@@ -836,7 +858,7 @@ fn compute_weight_coords(node_coordinates: &Vec<(usize, fp, fp)>) -> Vec<Vec<fp>
   return weights;
 }
 
-fn selective(min_cities_to_ignore: usize, max_cities_to_test: usize, thread_pool: &ThreadPool, gpu_device: &mut Option<Device>,) {
+fn selective(min_cities_to_ignore: usize, max_cities_to_test: usize, thread_pool: &ThreadPool, gpu_adapter: &mut Option<wgpu::Adapter>,) {
   println!("Performing selective failure from {} points to {} points...", min_cities_to_ignore, max_cities_to_test);
   // Bounding box for all points
 
@@ -905,7 +927,7 @@ fn selective(min_cities_to_ignore: usize, max_cities_to_test: usize, thread_pool
   }
 
   println!("Failed to break after {}, resetting...", max_cities_to_test);
-  selective(min_cities_to_ignore, max_cities_to_test, thread_pool, gpu_device);
+  selective(min_cities_to_ignore, max_cities_to_test, thread_pool, gpu_adapter);
 
 }
 
@@ -975,7 +997,7 @@ fn get_env_or_random_node_coordinates(n: usize, env_var_name: &str, _x_min: fp, 
   return node_coordinates;
 }
 
-fn spray(n: usize, mut bound_granularity: fp, thread_pool: &ThreadPool, gpu_device: &mut Option<Device>,) {
+fn spray(n: usize, mut bound_granularity: fp, thread_pool: &ThreadPool, gpu_adapter: &mut Option<wgpu::Adapter>,) {
   println!("Spraying {} cities...", n);
 
   if bound_granularity < 0.025 {
@@ -1125,9 +1147,9 @@ fn spray(n: usize, mut bound_granularity: fp, thread_pool: &ThreadPool, gpu_devi
 
 }
 
-fn pattern_scan(n: usize, bound_granularity: fp, file_path: &str, thread_pool: &ThreadPool, gpu_device: &mut Option<Device>) {
+fn pattern_scan(n: usize, bound_granularity: fp, file_path: &str, thread_pool: &ThreadPool, gpu_adapter: &mut Option<wgpu::Adapter>) {
   let node_coordinates: Vec<(usize, fp, fp)> = get_env_or_random_node_coordinates(n, "TSP_INITIAL_COORDS", x_min, x_max, y_min, y_max);
-  pattern_scan_coords(n, bound_granularity, file_path, node_coordinates, thread_pool, gpu_device, nop_closure);
+  pattern_scan_coords(n, bound_granularity, file_path, node_coordinates, thread_pool, gpu_adapter, nop_closure);
 }
 
 
@@ -1140,7 +1162,7 @@ fn pattern_scan_coords<F>(
   file_path: &str,
   node_coordinates: Vec<(usize, fp, fp)>,
   thread_pool: &ThreadPool,
-  gpu_device: &mut Option<Device>,
+  gpu_adapter: &mut Option<wgpu::Adapter>,
   mut addtl_logging_fn: F,
 ) -> ()
   where F: std::ops::FnMut(&Vec<Vec<CityWeight>>, &Vec<CityNum>, &(fp, fp), &(u8, u8, u8)) -> (),
@@ -1347,7 +1369,7 @@ fn pattern_scan_coords<F>(
 
 }
 
-fn multi_pattern_scan(n: usize, bound_granularity: fp, num_multi_steps_to_scan: usize, thread_pool: &ThreadPool, gpu_device: &mut Option<Device>,) {
+fn multi_pattern_scan(n: usize, bound_granularity: fp, num_multi_steps_to_scan: usize, thread_pool: &ThreadPool, gpu_adapter: &mut Option<wgpu::Adapter>,) {
   println!("Muti-pattern scanning {} cities...", n);
 
   let node_coordinates_a: Vec<(usize, fp, fp)> = get_env_or_random_node_coordinates(n, "TSP_INITIAL_COORDS", x_min, x_max, y_min, y_max);
@@ -1370,7 +1392,7 @@ fn multi_pattern_scan(n: usize, bound_granularity: fp, num_multi_steps_to_scan: 
     // [(x, y, rgb_usize, ) ... ]
     let mut tsp_point_colors: Vec<(fp, fp, usize)> = vec![];
 
-    pattern_scan_coords(n, bound_granularity, &output_multiscan_file_path, converged_cities.clone(), thread_pool, gpu_device, |city_weights, brute_sol, (tsp_point_x, tsp_point_y), rgb_key| {
+    pattern_scan_coords(n, bound_granularity, &output_multiscan_file_path, converged_cities.clone(), thread_pool, gpu_adapter, |city_weights, brute_sol, (tsp_point_x, tsp_point_y), rgb_key| {
       let point_x: isize = (tsp_point_x * HTML_POINT_SCALE) as isize;
       let point_y: isize = (tsp_point_y * HTML_POINT_SCALE) as isize;
 
@@ -1579,7 +1601,7 @@ fn multi_pattern_scan(n: usize, bound_granularity: fp, num_multi_steps_to_scan: 
       f.write_all(fit_pts_json_txt.as_bytes()).expect("Unable to write data");
 
       let (a, b, c, d, e, f) = parabolics::solve_for_6pts(
-        thread_pool, gpu_device,
+        thread_pool, gpu_adapter,
         edge_points_vec[0],
         edge_points_vec[1 * one_sixth_dist],
         edge_points_vec[2 * one_sixth_dist],
@@ -1886,7 +1908,7 @@ pub fn path_to_rgb(path: &[usize], city_weights: &Vec<Vec<fp>>) -> (u8, u8, u8) 
 
 
 
-fn spray_pattern_search(n: usize, bound_granularity: fp, num_sprays_to_perform: usize, thread_pool: &ThreadPool, gpu_device: &mut Option<Device>,) {
+fn spray_pattern_search(n: usize, bound_granularity: fp, num_sprays_to_perform: usize, thread_pool: &ThreadPool, gpu_adapter: &mut Option<wgpu::Adapter>,) {
   println!("Spray pattern searching {} cities for {} sprays...", n, num_sprays_to_perform);
 
   if brute_algo::use_brute_cache_env_val() {
@@ -1905,7 +1927,7 @@ fn spray_pattern_search(n: usize, bound_granularity: fp, num_sprays_to_perform: 
     let html_path = format!("views/spray-pattern-search-{:03}.html", spray_i);
     let mut html_content = HTML_BEGIN.to_string();
 
-    pattern_scan_coords(n, bound_granularity, &file_path, node_coordinates.clone(), thread_pool, gpu_device, |city_weights, brute_sol, (point_x, point_y), rgb_key| {
+    pattern_scan_coords(n, bound_granularity, &file_path, node_coordinates.clone(), thread_pool, gpu_adapter, |city_weights, brute_sol, (point_x, point_y), rgb_key| {
       let point_x: isize = (point_x * HTML_POINT_SCALE) as isize;
       let point_y: isize = (point_y * HTML_POINT_SCALE) as isize;
 
