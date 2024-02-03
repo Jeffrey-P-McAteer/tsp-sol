@@ -40,8 +40,8 @@ pub fn solve_for_6pts(
     -> (fp, fp, fp, fp, fp, fp)
 {
 
-    const min_guess: fp = -1000.0;
-    const max_guess: fp = 1000.0;
+    const min_guess: fp = -2000.0;
+    const max_guess: fp = 2000.0;
     let guess_range = max_guess - min_guess;
 
     let mut best_abcdef = Arc::new(Mutex::new( (0.0, 0.0, 0.0, 0.0, 0.0, 0.0) ));

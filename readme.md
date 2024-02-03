@@ -192,6 +192,11 @@ feh -d $( find views -iname '*-parabola.png' )
 INITIAL_FORMULA="(-2279.5137 * x**2) + (2301.4355 * xy) + (-519.5718 * y**2) + (1271.6567 * x) + (-1471.1874 * y) + 2721.0815 = 0" COEFICIENT_MIN=-4000.0 COEFICIENT_MAX=4000.0 python scripts/conic_playground.py ./views/multi-pattern-scan-002-parabola.txt-6073b6-8c7a38-edge-points.json COEFICIENT_MIN=-4000.0 COEFICIENT_MAX=4000.0 graph_edge_points_file=./views/multi-pattern-scan-002-parabola.txt-6073b6-8c7a38-edge-points.json
 
 
+# 2024-02-03 stuff
+TSP_INITIAL_COORDS='3.0,11.0 12.0,11.0 5.0,9.0 ' TSP_ENDING_COORDS='3.0,11.0 12.0,11.0 7.0,9.0 ' cargo run --release -- multi-pattern-scan 3 0.027 4
+
+
+
 
 ```
 
