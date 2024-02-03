@@ -201,10 +201,10 @@ This was collected by running `spray-pattern-search` of size `city size` and sca
 the largest number of distinct tours with:
 
 ```bash
-find views -mindepth 1 -maxdepth 1 -type d -exec sh -c "ls {} | wc -l " \; 
+find views -mindepth 1 -maxdepth 1 -type d -exec sh -c "ls {} | wc -l " \;
 
 # Print folder names for detailed inspections
-find views -mindepth 1 -maxdepth 1 -type d -print -exec sh -c "ls {} | wc -l " \; 
+find views -mindepth 1 -maxdepth 1 -type d -print -exec sh -c "ls {} | wc -l " \;
 
 # Print max(numbers) for the lazy researcher
 find views -mindepth 1 -maxdepth 1 -type d -exec sh -c "ls {} | wc -l " \; | sort -n | tail -n 1

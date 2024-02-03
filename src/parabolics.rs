@@ -2,6 +2,23 @@
 // used to solve the 6-parameter equation of parabolics given some points
 // (A*(x^2)) + (B*x*y) + (C*(y^2)) + (D*x) + (E*y) + F = 0
 
+/* https://www.varsitytutors.com/hotmath/hotmath_help/topics/conic-sections-and-standard-forms-of-equations
+
+ The general equation for any conic section is
+
+ Ax2+Bxy+Cy2+Dx+Ey+F=0
+
+   where A,B,C,D,E and F are constants.
+
+As we change the values of some of the constants, the shape of the corresponding conic will also change.  It is important to know the differences in the equations to help quickly identify the type of conic that is represented by a given equation.
+      If B2−4AC is less than zero, if a conic exists, it will be either a circle or an ellipse.
+      If B2−4AC equals zero, if a conic exists, it will be a parabola.
+      If B2−4AC is greater than zero, if a conic exists, it will be a hyperbola.
+
+*/
+
+
+
 #![allow(non_upper_case_globals)]
 #![allow(unused_mut)]
 
@@ -22,9 +39,9 @@ pub fn solve_for_6pts(
 )
     -> (fp, fp, fp, fp, fp, fp)
 {
-    
-    const min_guess: fp = -3000.0;
-    const max_guess: fp = 3000.0;
+
+    const min_guess: fp = -1000.0;
+    const max_guess: fp = 1000.0;
     let guess_range = max_guess - min_guess;
 
     let mut best_abcdef = Arc::new(Mutex::new( (0.0, 0.0, 0.0, 0.0, 0.0, 0.0) ));
@@ -34,9 +51,9 @@ pub fn solve_for_6pts(
     // const long_iter_error_exit_target: fp = 0.95;
     // const long_iter_count: usize = 5_000_000_000;
 
-    const error_exit_target: fp = 0.19; // randomly permute until we hit < this error
-    const long_iter_error_exit_target: fp = 0.28;
-    const long_iter_count: usize = 1_000_000_000;
+    const error_exit_target: fp = 0.11; // randomly permute until we hit < this error
+    const long_iter_error_exit_target: fp = 0.18;
+    const long_iter_count: usize = 9_000_000_000;
 
     for _ in 0..NUM_THREADS {
         // Copy vars to be moved into thread
@@ -44,7 +61,7 @@ pub fn solve_for_6pts(
         let best_abcdef = best_abcdef.clone();
         let smallest_error = smallest_error.clone();
         thread_pool.execute(move || {
-            
+
             let mut local_best_abcdef = (0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
             let mut local_smallest_error = 99999999.0;
 
@@ -59,6 +76,18 @@ pub fn solve_for_6pts(
                 let e = (fastrand::f32() * guess_range) + min_guess;
                 let f = (fastrand::f32() * guess_range) + min_guess;
 
+                let shp_test = (b*b) - (4.0*a*c);
+
+                let is_hyperbola = shp_test > 0.0;
+                if !is_hyperbola {
+                    continue; // We only want hyperbola formulas!
+                }
+
+                // let is_parabola = shp_test < 0.001 && shp_test > -0.001; // test near-zero b/c of how our brute force is setup; TODO math the others out of the equation!
+                // if !is_parabola {
+                //     continue; // We only want parabola formulas!
+                // }
+
                 let this_coefs = (a,b,c,d,e,f);
                 let c_y1 = evaluate_parabolic_for_x_absonly(x1, this_coefs);
                 let c_y2 = evaluate_parabolic_for_x_absonly(x2, this_coefs);
@@ -66,14 +95,14 @@ pub fn solve_for_6pts(
                 let c_y4 = evaluate_parabolic_for_x_absonly(x4, this_coefs);
                 let c_y5 = evaluate_parabolic_for_x_absonly(x5, this_coefs);
                 let c_y6 = evaluate_parabolic_for_x_absonly(x6, this_coefs);
-                
+
                 let this_error = (c_y1 - y1.abs()).abs() +
                                  (c_y2 - y2.abs()).abs() +
                                  (c_y3 - y3.abs()).abs() +
                                  (c_y4 - y4.abs()).abs() +
                                  (c_y5 - y5.abs()).abs() +
                                  (c_y6 - y6.abs()).abs();
-                
+
                 if this_error < local_smallest_error {
                     local_best_abcdef = this_coefs;
                     local_smallest_error = this_error;

@@ -34,8 +34,10 @@ debug = 1
 # https://deterministic.space/high-performance-rust.html
 lto = "fat"
 codegen-units = 1
+opt-level = 3
 panic = "abort"
 debug-assertions = false
+incremental = false
 
 # We have RUSTFLAGS="-C target-cpu=native" in our profile
 
