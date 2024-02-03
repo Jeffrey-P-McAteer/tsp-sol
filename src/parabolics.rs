@@ -30,7 +30,7 @@ const NUM_THREADS: usize = 32;
 
 pub fn solve_for_6pts(
   thread_pool: &ThreadPool,
-  gpu_device: &Option<Device>,
+  gpu_device: &mut Option<Device>,
   (x1, y1): (fp, fp),
   (x2, y2): (fp, fp),
   (x3, y3): (fp, fp),
@@ -56,7 +56,7 @@ pub fn solve_for_6pts(
     const long_iter_error_exit_target: fp = 0.18;
     const long_iter_count: usize = 9_000_000_000;
 
-    if let Some(gpu_device) = gpu_device {
+    if let Some(ref mut gpu_device) = gpu_device {
 
     }
     else {

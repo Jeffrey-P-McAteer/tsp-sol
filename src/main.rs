@@ -281,7 +281,7 @@ fn timed_main() {
 
   // Grab largest device, report sizes, and pass this to downstream funcs which may either use the
   // thread_pool OR the emu device object to schedule work across
-  let gpu_device = get_best_gpu();
+  let mut gpu_device = get_best_gpu();
   if let Some(ref device) = gpu_device {
     if let Some(ref info) = device.info {
       println!("GPU device = {:?}", info);
@@ -330,7 +330,7 @@ fn timed_main() {
       args.get(2).unwrap_or(&"5".to_string()).parse().unwrap(), // given number OR 5
       args.get(3).unwrap_or(&"0.25".to_string()).parse().unwrap(), // given number OR 0.25
       "views/pattern-scan.png",
-      &thread_pool, &gpu_device
+      &thread_pool, &mut gpu_device
     );
     return;
   }
@@ -342,7 +342,7 @@ fn timed_main() {
       args.get(2).unwrap_or(&"5".to_string()).parse().unwrap(), // given number OR 5 - number of cities
       args.get(3).unwrap_or(&"0.25".to_string()).parse().unwrap(), // given number OR 0.25 - resolution to generate a SINGLE multi pattern at
       args.get(4).unwrap_or(&"10".to_string()).parse().unwrap(), // number of steps to put between 2 cities, aka total number of pattern_scans to run.
-      &thread_pool, &gpu_device
+      &thread_pool, &mut gpu_device
     );
     return;
   }
@@ -352,7 +352,7 @@ fn timed_main() {
       args.get(2).unwrap_or(&"5".to_string()).parse().unwrap(), // given number OR 5 - number of cities
       args.get(3).unwrap_or(&"0.25".to_string()).parse().unwrap(), // given number OR 0.25 - resolution to generate a SINGLE multi pattern at
       args.get(4).unwrap_or(&"100".to_string()).parse().unwrap(), // number of sprays to perform
-      &thread_pool, &gpu_device
+      &thread_pool, &mut gpu_device
     );
     return;
   }
@@ -376,7 +376,7 @@ fn timed_main() {
     selective(
       min_cities_to_ignore,
       max_cities_to_test,
-      &thread_pool, &gpu_device
+      &thread_pool, &mut gpu_device
     );
     return;
   }
@@ -387,7 +387,7 @@ fn timed_main() {
     spray(
       args.get(2).unwrap_or(&"5".to_string()).parse().unwrap(), // given number OR 5
       args.get(3).unwrap_or(&"0.25".to_string()).parse().unwrap(), // given number OR 0.25
-      &thread_pool, &gpu_device
+      &thread_pool, &mut gpu_device
     );
     return;
   }
@@ -836,7 +836,7 @@ fn compute_weight_coords(node_coordinates: &Vec<(usize, fp, fp)>) -> Vec<Vec<fp>
   return weights;
 }
 
-fn selective(min_cities_to_ignore: usize, max_cities_to_test: usize, thread_pool: &ThreadPool, gpu_device: &Option<Device>,) {
+fn selective(min_cities_to_ignore: usize, max_cities_to_test: usize, thread_pool: &ThreadPool, gpu_device: &mut Option<Device>,) {
   println!("Performing selective failure from {} points to {} points...", min_cities_to_ignore, max_cities_to_test);
   // Bounding box for all points
 
@@ -975,7 +975,7 @@ fn get_env_or_random_node_coordinates(n: usize, env_var_name: &str, _x_min: fp, 
   return node_coordinates;
 }
 
-fn spray(n: usize, mut bound_granularity: fp, thread_pool: &ThreadPool, gpu_device: &Option<Device>,) {
+fn spray(n: usize, mut bound_granularity: fp, thread_pool: &ThreadPool, gpu_device: &mut Option<Device>,) {
   println!("Spraying {} cities...", n);
 
   if bound_granularity < 0.025 {
@@ -1125,7 +1125,7 @@ fn spray(n: usize, mut bound_granularity: fp, thread_pool: &ThreadPool, gpu_devi
 
 }
 
-fn pattern_scan(n: usize, bound_granularity: fp, file_path: &str, thread_pool: &ThreadPool, gpu_device: &Option<Device>) {
+fn pattern_scan(n: usize, bound_granularity: fp, file_path: &str, thread_pool: &ThreadPool, gpu_device: &mut Option<Device>) {
   let node_coordinates: Vec<(usize, fp, fp)> = get_env_or_random_node_coordinates(n, "TSP_INITIAL_COORDS", x_min, x_max, y_min, y_max);
   pattern_scan_coords(n, bound_granularity, file_path, node_coordinates, thread_pool, gpu_device, nop_closure);
 }
@@ -1140,7 +1140,7 @@ fn pattern_scan_coords<F>(
   file_path: &str,
   node_coordinates: Vec<(usize, fp, fp)>,
   thread_pool: &ThreadPool,
-  gpu_device: &Option<Device>,
+  gpu_device: &mut Option<Device>,
   mut addtl_logging_fn: F,
 ) -> ()
   where F: std::ops::FnMut(&Vec<Vec<CityWeight>>, &Vec<CityNum>, &(fp, fp), &(u8, u8, u8)) -> (),
@@ -1347,7 +1347,7 @@ fn pattern_scan_coords<F>(
 
 }
 
-fn multi_pattern_scan(n: usize, bound_granularity: fp, num_multi_steps_to_scan: usize, thread_pool: &ThreadPool, gpu_device: &Option<Device>,) {
+fn multi_pattern_scan(n: usize, bound_granularity: fp, num_multi_steps_to_scan: usize, thread_pool: &ThreadPool, gpu_device: &mut Option<Device>,) {
   println!("Muti-pattern scanning {} cities...", n);
 
   let node_coordinates_a: Vec<(usize, fp, fp)> = get_env_or_random_node_coordinates(n, "TSP_INITIAL_COORDS", x_min, x_max, y_min, y_max);
@@ -1886,7 +1886,7 @@ pub fn path_to_rgb(path: &[usize], city_weights: &Vec<Vec<fp>>) -> (u8, u8, u8) 
 
 
 
-fn spray_pattern_search(n: usize, bound_granularity: fp, num_sprays_to_perform: usize, thread_pool: &ThreadPool, gpu_device: &Option<Device>,) {
+fn spray_pattern_search(n: usize, bound_granularity: fp, num_sprays_to_perform: usize, thread_pool: &ThreadPool, gpu_device: &mut Option<Device>,) {
   println!("Spray pattern searching {} cities for {} sprays...", n, num_sprays_to_perform);
 
   if brute_algo::use_brute_cache_env_val() {
