@@ -26,7 +26,7 @@ use super::*;
 
 use std::sync::{Mutex, RwLock, Arc}; // 48-core-xeon threading go brrrr
 
-const NUM_THREADS: usize = 4;
+const NUM_THREADS: usize = 32;
 
 pub fn solve_for_6pts(
   thread_pool: &ThreadPool,
