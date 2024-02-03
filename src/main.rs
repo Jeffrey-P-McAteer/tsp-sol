@@ -462,10 +462,12 @@ fn get_best_gpu() -> Option<wgpu::Adapter> {
   });
 
   if print_adapter_infos {
+    println!("============ GPUs Detected ==================");
     for adapter in adapters.enumerate_adapters(wgpu::Backends::VULKAN) {
       let info = adapter.get_info();
       println!("Adapter info = {:?}", info);
     }
+    println!("============ GPUs Detected ==================");
   }
 
   for adapter in adapters.enumerate_adapters(wgpu::Backends::VULKAN) {

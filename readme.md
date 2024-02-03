@@ -195,6 +195,11 @@ INITIAL_FORMULA="(-2279.5137 * x**2) + (2301.4355 * xy) + (-519.5718 * y**2) + (
 # 2024-02-03 stuff
 TSP_INITIAL_COORDS='3.0,11.0 12.0,11.0 5.0,9.0 ' TSP_ENDING_COORDS='3.0,11.0 12.0,11.0 7.0,9.0 ' cargo run --release -- multi-pattern-scan 3 0.027 4
 
+# GPU env var values
+PREF_GPU=print cargo run --release -- # prints all detected GPUs
+PREF_GPU=none  cargo run --release -- # forces CPU even if a GPU is attached
+PREF_GPU=intel cargo run --release -- # selects first GPU with "intel" in the name
+
 
 
 
