@@ -29,6 +29,8 @@ use std::sync::{Mutex, RwLock, Arc}; // 48-core-xeon threading go brrrr
 const NUM_THREADS: usize = 32;
 const GPU_THREAD_BLOCKS: usize = 1024;
 
+const PARABOLICS_SHADER_CODE: &'static str = include_str!("parabolics_shader.wgsl");
+
 pub fn solve_for_6pts(
   thread_pool: &ThreadPool,
   gpu_device: &mut Option<wgpu::Adapter>,
@@ -58,7 +60,22 @@ pub fn solve_for_6pts(
     const long_iter_count: usize = 9_000_000_000;
 
     if let Some(ref mut gpu_device) = gpu_device {
-
+        let device_desc = wgpu::DeviceDescriptor {
+            label: None,
+            required_features: wgpu::Features::empty(),
+            required_limits: wgpu::Limits::downlevel_defaults()
+        };
+        if let Ok((ref mut device, ref mut queue)) = futures::executor::block_on(gpu_device.request_device(&device_desc, None)) {
+            let cs_module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: None, source: wgpu::ShaderSource::Wgsl(std::borrow::Cow::Borrowed(PARABOLICS_SHADER_CODE)),
+            });
+            let gpu_data: [fp; 6] = [
+                x1,y1, x2,y2, x3,y3 // so on...
+            ];
+            let size = std::mem::size_of_val(&gpu_data) as wgpu::BufferAddress;
+            println!("gpu_data = {:?} size = {:?}", gpu_data, size);
+            
+        }
     }
     else {
         // Fall back to CPU
