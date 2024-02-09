@@ -483,6 +483,15 @@ fn get_best_gpu() -> Option<wgpu::Adapter> {
       }
     }
   }
+
+  // We didn't get our preferred, return the first DiscreteGpu
+  for adapter in adapters.enumerate_adapters(wgpu::Backends::VULKAN) {
+    let info = adapter.get_info();
+    if info.device_type == wgpu::DeviceType::DiscreteGpu {
+      return Some(adapter);
+    }
+  }
+
   // Just grab the first one
   for adapter in adapters.enumerate_adapters(wgpu::Backends::VULKAN) {
     return Some(adapter);
