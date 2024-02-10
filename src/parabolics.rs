@@ -66,15 +66,125 @@ pub fn solve_for_6pts(
             required_limits: wgpu::Limits::downlevel_defaults()
         };
         if let Ok((ref mut device, ref mut queue)) = futures::executor::block_on(gpu_device.request_device(&device_desc, None)) {
+
             let cs_module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
                 label: None, source: wgpu::ShaderSource::Wgsl(std::borrow::Cow::Borrowed(PARABOLICS_SHADER_CODE)),
             });
-            let gpu_data: [fp; 6] = [
-                x1,y1, x2,y2, x3,y3 // so on...
-            ];
+
+            let gpu_data = AllGpuThreadData::default();
+
             let size = std::mem::size_of_val(&gpu_data) as wgpu::BufferAddress;
+
             println!("gpu_data = {:?} size = {:?}", gpu_data, size);
-            
+
+
+            // Instantiates buffer without data.
+            // `usage` of buffer specifies how it can be used:
+            //   `BufferUsage::MAP_READ` allows it to be read (outside the shader).
+            //   `BufferUsage::COPY_DST` allows it to be the destination of the copy.
+            let staging_buffer = device.create_buffer(&wgpu::BufferDescriptor {
+                label: None,
+                size,
+                usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            });
+
+            // Instantiates buffer with data (`gpu_data`).
+            // Usage allowing the buffer to be:
+            //   A storage buffer (can be bound within a bind group and thus available to a shader).
+            //   The destination of a copy.
+            //   The source of a copy.
+            let storage_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Storage Buffer"),
+                contents: bytemuck::cast_slice(&gpu_data.thread_data),
+                usage: wgpu::BufferUsages::STORAGE
+                    | wgpu::BufferUsages::COPY_DST
+                    | wgpu::BufferUsages::COPY_SRC,
+            });
+
+            // A bind group defines how buffers are accessed by shaders.
+            // It is to WebGPU what a descriptor set is to Vulkan.
+            // `binding` here refers to the `binding` of a buffer in the shader (`layout(set = 0, binding = 0) buffer`).
+
+            // A pipeline specifies the operation of a shader
+
+            // Instantiates the pipeline.
+            let compute_pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: None,
+                layout: None,
+                module: &cs_module,
+                entry_point: "main",
+            });
+
+            // Instantiates the bind group, once again specifying the binding of buffers.
+            let bind_group_layout = compute_pipeline.get_bind_group_layout(0);
+            let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: None,
+                layout: &bind_group_layout,
+                entries: &[wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: storage_buffer.as_entire_binding(),
+                }],
+            });
+
+            // A command encoder executes one or many pipelines.
+            // It is to WebGPU what a command buffer is to Vulkan.
+            let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+            {
+                let mut cpass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor { label: None, timestamp_writes: None });
+                cpass.set_pipeline(&compute_pipeline);
+                cpass.set_bind_group(0, &bind_group, &[]);
+                // cpass.insert_debug_marker("compute collatz iterations");
+                cpass.dispatch_workgroups(gpu_data.thread_data.len() as u32, 1, 1); // Number of cells to run, the (x,y,z) size of item being processed
+            }
+            // Sets adds copy operation to command encoder.
+            // Will copy data from storage buffer on GPU to staging buffer on CPU.
+            encoder.copy_buffer_to_buffer(&storage_buffer, 0, &staging_buffer, 0, size);
+
+            // Submits command encoder for processing
+            queue.submit(Some(encoder.finish()));
+
+            // Note that we're not calling `.await` here.
+            let buffer_slice = staging_buffer.slice(..);
+            // Gets the future representing when `staging_buffer` can be read from
+            buffer_slice.map_async(wgpu::MapMode::Read, move |_| { } );
+
+            // Poll the device in a blocking manner so that our future resolves.
+            // In an actual application, `device.poll(...)` should
+            // be called in an event loop or on another thread.
+            device.poll(wgpu::Maintain::Wait);
+
+            // Awaits until `buffer_future` can be read from
+            {
+                // Gets contents of buffer
+                let data = buffer_slice.get_mapped_range();
+                // Since contents are got in bytes, this converts these bytes back to u32
+                let result: Vec<SingleGpuThreadData> = data
+                    .chunks_exact(4) // Oh crap, we have to parse SingleGpuThreadData from bytes -_- TODO saturday
+                    .map(|b| u32::from_ne_bytes(b.try_into().unwrap()))
+                    .collect();
+
+                // With the current interface, we have to make sure all mapped views are
+                // dropped before we unmap the buffer.
+                drop(data);
+                staging_buffer.unmap(); // Unmaps buffer from memory
+                                        // If you are familiar with C++ these 2 lines can be thought of similarly to:
+                                        //   delete myPointer;
+                                        //   myPointer = NULL;
+                                        // It effectively frees the memory
+
+                // Returns data from buffer
+                // result
+
+                // TODO use result!
+                println!("DONE! result = {:?}", result);
+
+            }
+            /*else {
+                println!("failed to run compute on gpu!")
+            }*/
+
+
         }
     }
     else {
@@ -243,10 +353,28 @@ pub fn evaluate_parabolic_for_x_absonly(x: fp, (a, b, c, d, e, f): (fp, fp, fp, 
 }
 
 #[repr(C)]
-#[derive(Copy, Clone, Default, Debug)]
-struct GPUData {
+#[derive(Copy, Clone, Default, Debug, bytemuck::NoUninit)]
+struct SingleGpuThreadData {
     xy_array: [fp; 12],
     best_abcdef: [fp; 6],
     smallest_error: fp,
 }
+
+#[repr(C)]
+#[derive(Copy, Clone, Debug, bytemuck::NoUninit)]
+struct AllGpuThreadData {
+    thread_data: [SingleGpuThreadData; GPU_THREAD_BLOCKS],
+}
+
+impl Default for AllGpuThreadData {
+    fn default() -> AllGpuThreadData {
+        AllGpuThreadData {
+            thread_data: [SingleGpuThreadData::default(); GPU_THREAD_BLOCKS]
+        }
+    }
+}
+
+
+
+
 
