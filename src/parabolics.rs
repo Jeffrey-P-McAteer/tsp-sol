@@ -27,7 +27,7 @@ use super::*;
 use std::sync::{Mutex, RwLock, Arc}; // 48-core-xeon threading go brrrr
 
 const NUM_THREADS: usize = 32;
-const GPU_THREAD_BLOCKS: usize = 1024;
+const GPU_THREAD_BLOCKS: usize = 128;
 
 const PARABOLICS_SHADER_CODE: &'static str = include_str!("parabolics_shader.wgsl");
 
@@ -72,7 +72,10 @@ pub fn solve_for_6pts(
                 source: wgpu::ShaderSource::Wgsl(std::borrow::Cow::Borrowed(PARABOLICS_SHADER_CODE)),
             });
 
-            let gpu_data = AllGpuThreadData::default();
+            //let gpu_data = AllGpuThreadData::default();
+
+            // 12 xy fps, 6 abcdef fps, and a min size fp.
+            let gpu_data: [fp; GPU_THREAD_BLOCKS * ((6*2) + 6 + 1) ] = [0.0; GPU_THREAD_BLOCKS * ((6*2) + 6 + 1) ];
 
             let size = std::mem::size_of_val(&gpu_data) as wgpu::BufferAddress;
 
@@ -97,7 +100,7 @@ pub fn solve_for_6pts(
             //   The source of a copy.
             let storage_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: Some("StorageBuffer"),
-                contents: bytemuck::cast_slice(&gpu_data.thread_data),
+                contents: bytemuck::cast_slice(&gpu_data),
                 usage: wgpu::BufferUsages::STORAGE
                     | wgpu::BufferUsages::COPY_DST
                     | wgpu::BufferUsages::COPY_SRC,
@@ -136,7 +139,7 @@ pub fn solve_for_6pts(
                 cpass.set_pipeline(&compute_pipeline);
                 cpass.set_bind_group(0, &bind_group, &[]);
                 cpass.insert_debug_marker("compute nearest polynominal fit");
-                cpass.dispatch_workgroups(gpu_data.thread_data.len() as u32, 1, 1); // Number of cells to run, the (x,y,z) size of item being processed
+                cpass.dispatch_workgroups(gpu_data.len() as u32, 1, 1); // Number of cells to run, the (x,y,z) size of item being processed
             }
             // Sets adds copy operation to command encoder.
             // Will copy data from storage buffer on GPU to staging buffer on CPU.
@@ -164,9 +167,15 @@ pub fn solve_for_6pts(
                 // Gets contents of buffer
                 let data = buffer_slice.get_mapped_range();
                 // Since contents are got in bytes, this converts these bytes back to u32
-                let result: Vec<SingleGpuThreadData> = data
-                    .chunks_exact( std::mem::size_of::<SingleGpuThreadData>() )
-                    .map(|b| SingleGpuThreadData::from_bytes(b) )
+                let result: Vec<[fp; (6*2) + 6 + 1]> = data
+                    .chunks_exact( std::mem::size_of::<[fp; (6*2) + 6 + 1]>() ) // size of one GPU threads block of numbers
+                    .map(|b| {
+                        unsafe {
+                            std::mem::transmute::<[u8; std::mem::size_of::<[fp; (6*2) + 6 + 1]>() ], [fp; (6*2) + 6 + 1]>(
+                                b.try_into().expect("data.chunks_exact fucked up the calc for std::mem::size_of::<[fp; (6*2) + 6 + 1]>() ")
+                            ).clone()
+                        }
+                    } )
                     .collect();
 
                 // With the current interface, we have to make sure all mapped views are
@@ -357,6 +366,7 @@ pub fn evaluate_parabolic_for_x_absonly(x: fp, (a, b, c, d, e, f): (fp, fp, fp, 
     return y;
 }
 
+/*
 #[repr(C)]
 #[derive(Copy, Clone, Default, Debug, bytemuck::NoUninit)]
 struct SingleGpuThreadData {
@@ -392,6 +402,6 @@ impl SingleGpuThreadData {
         }
     }
 }
-
+*/
 
 
