@@ -24,6 +24,6 @@ var<storage, read_write> gpu_data: array<f32>; // this is used as both input and
 fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     // TODO write search in terms of gpu_data[global_id.x] data.
 
-    gpu_data[(global_id.x * BYTES_PER_T) + ((6*2) + 6) ] = 123.456;  // Point at last f32 in per-thread array
+    gpu_data[(global_id.x * ((6*2) + 6 + 1) ) + ((6*2) + 6) ] = 123.456;  // Point at last f32 in per-thread array
 
 }
