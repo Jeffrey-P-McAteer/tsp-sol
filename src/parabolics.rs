@@ -68,14 +68,15 @@ pub fn solve_for_6pts(
         if let Ok((ref mut device, ref mut queue)) = futures::executor::block_on(gpu_device.request_device(&device_desc, None)) {
 
             let cs_module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-                label: None, source: wgpu::ShaderSource::Wgsl(std::borrow::Cow::Borrowed(PARABOLICS_SHADER_CODE)),
+                label: None,
+                source: wgpu::ShaderSource::Wgsl(std::borrow::Cow::Borrowed(PARABOLICS_SHADER_CODE)),
             });
 
             let gpu_data = AllGpuThreadData::default();
 
             let size = std::mem::size_of_val(&gpu_data) as wgpu::BufferAddress;
 
-            println!("gpu_data = {:?} size = {:?}", gpu_data, size);
+            println!("gpu_data = {:?} size = {:?}\n^^ BEGIN ^^", gpu_data, size);
 
 
             // Instantiates buffer without data.
@@ -134,7 +135,7 @@ pub fn solve_for_6pts(
                 let mut cpass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor { label: None, timestamp_writes: None });
                 cpass.set_pipeline(&compute_pipeline);
                 cpass.set_bind_group(0, &bind_group, &[]);
-                // cpass.insert_debug_marker("compute collatz iterations");
+                cpass.insert_debug_marker("compute nearest polynominal fit");
                 cpass.dispatch_workgroups(gpu_data.thread_data.len() as u32, 1, 1); // Number of cells to run, the (x,y,z) size of item being processed
             }
             // Sets adds copy operation to command encoder.
@@ -181,7 +182,7 @@ pub fn solve_for_6pts(
                 // result
 
                 // TODO use result!
-                println!("DONE! result = {:?}", result);
+                println!("DONE! result = {:?}\n^^ END ^^", result);
 
             }
             /*else {
