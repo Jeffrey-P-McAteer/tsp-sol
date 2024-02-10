@@ -95,7 +95,7 @@ pub fn solve_for_6pts(
             //   The destination of a copy.
             //   The source of a copy.
             let storage_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("Storage Buffer"),
+                label: Some("StorageBuffer"),
                 contents: bytemuck::cast_slice(&gpu_data.thread_data),
                 usage: wgpu::BufferUsages::STORAGE
                     | wgpu::BufferUsages::COPY_DST
@@ -141,8 +141,12 @@ pub fn solve_for_6pts(
             // Will copy data from storage buffer on GPU to staging buffer on CPU.
             encoder.copy_buffer_to_buffer(&storage_buffer, 0, &staging_buffer, 0, size);
 
+            device.poll(wgpu::Maintain::Wait); // Let data settle into place
+
             // Submits command encoder for processing
-            queue.submit(Some(encoder.finish()));
+            let sub_idx = queue.submit(Some(encoder.finish()));
+
+            device.poll(wgpu::Maintain::WaitForSubmissionIndex(sub_idx)); // Blocks until sub_idx's work has completed
 
             // Note that we're not calling `.await` here.
             let buffer_slice = staging_buffer.slice(..);
@@ -383,7 +387,7 @@ impl SingleGpuThreadData {
         unsafe {
             std::mem::transmute::<[u8; std::mem::size_of::<SingleGpuThreadData>() ], SingleGpuThreadData>(
                 bytes.try_into().expect("Did not get right chunk size of bytes for SingleGpuThreadData::from_bytes!")
-            )
+            ).clone() // clone so we no longer ref the GPU bytes
         }
     }
 }
