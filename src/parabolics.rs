@@ -160,8 +160,8 @@ pub fn solve_for_6pts(
                 let data = buffer_slice.get_mapped_range();
                 // Since contents are got in bytes, this converts these bytes back to u32
                 let result: Vec<SingleGpuThreadData> = data
-                    .chunks_exact(4) // Oh crap, we have to parse SingleGpuThreadData from bytes -_- TODO saturday
-                    .map(|b| u32::from_ne_bytes(b.try_into().unwrap()))
+                    .chunks_exact( std::mem::size_of::<SingleGpuThreadData>() )
+                    .map(|b| SingleGpuThreadData::from_bytes(b) )
                     .collect();
 
                 // With the current interface, we have to make sure all mapped views are
@@ -361,10 +361,13 @@ struct SingleGpuThreadData {
 }
 
 #[repr(C)]
-#[derive(Copy, Clone, Debug, bytemuck::NoUninit)]
+#[derive(Copy, Clone, Debug)]
 struct AllGpuThreadData {
     thread_data: [SingleGpuThreadData; GPU_THREAD_BLOCKS],
 }
+
+unsafe impl bytemuck::NoUninit for AllGpuThreadData { } // Solemnly swear I am up to no good
+
 
 impl Default for AllGpuThreadData {
     fn default() -> AllGpuThreadData {
@@ -374,7 +377,16 @@ impl Default for AllGpuThreadData {
     }
 }
 
-
+impl SingleGpuThreadData {
+    pub fn from_bytes(bytes: &[u8]) -> SingleGpuThreadData {
+        // TODO safety engineering
+        unsafe {
+            std::mem::transmute::<[u8; std::mem::size_of::<SingleGpuThreadData>() ], SingleGpuThreadData>(
+                bytes.try_into().expect("Did not get right chunk size of bytes for SingleGpuThreadData::from_bytes!")
+            )
+        }
+    }
+}
 
 
 
