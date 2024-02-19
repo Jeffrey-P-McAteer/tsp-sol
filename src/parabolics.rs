@@ -27,7 +27,9 @@ use super::*;
 use std::sync::{Mutex, RwLock, Arc}; // 48-core-xeon threading go brrrr
 
 const NUM_THREADS: usize = 32;
-const GPU_THREAD_BLOCKS: usize = 128;
+//const GPU_THREAD_BLOCKS: usize = 1024;
+const GPU_THREAD_BLOCKS: usize = 16;
+const FLOATS_PER_GPU_STEP: usize = (6*2) + 6 + 1;
 
 const PARABOLICS_SHADER_CODE: &'static str = include_str!("parabolics_shader.wgsl");
 
@@ -67,21 +69,26 @@ pub fn solve_for_6pts(
         };
         if let Ok((ref mut device, ref mut queue)) = futures::executor::block_on(gpu_device.request_device(&device_desc, None)) {
 
+            let mut replaced_shader_source_code = PARABOLICS_SHADER_CODE.to_string();
+            replaced_shader_source_code = replaced_shader_source_code.replace("FLOATS_PER_GPU_STEP", format!("{}", FLOATS_PER_GPU_STEP).as_str() );
+
             let cs_module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
                 label: None,
-                source: wgpu::ShaderSource::Wgsl(std::borrow::Cow::Borrowed(PARABOLICS_SHADER_CODE)),
+                //source: wgpu::ShaderSource::Wgsl(std::borrow::Cow::Borrowed(PARABOLICS_SHADER_CODE)),
+                source: wgpu::ShaderSource::Wgsl(std::borrow::Cow::from( replaced_shader_source_code )),
             });
 
             //let gpu_data = AllGpuThreadData::default();
 
             // 12 xy fps, 6 abcdef fps, and a min size fp.
-            //let gpu_data: [fp; GPU_THREAD_BLOCKS * ((6*2) + 6 + 1) ] = [0.0; GPU_THREAD_BLOCKS * ((6*2) + 6 + 1) ];
+            //let gpu_data: [fp; GPU_THREAD_BLOCKS * FLOATS_PER_GPU_STEP ] = [0.0; GPU_THREAD_BLOCKS * ((6*2) + 6 + 1) ];
 
             //let gpu_data: Box<[fp; GPU_THREAD_BLOCKS * ((6*2) + 6 + 1) ]> = Box::new([0.0; GPU_THREAD_BLOCKS * ((6*2) + 6 + 1) ]);
-            let gpu_data: [fp; GPU_THREAD_BLOCKS * ((6*2) + 6 + 1) ] = [0.0; GPU_THREAD_BLOCKS * ((6*2) + 6 + 1) ];
-            let gpu_data = Box::<[fp; GPU_THREAD_BLOCKS * ((6*2) + 6 + 1)]>::pin(gpu_data); // might make vulkan happier to not have data move?
+            let gpu_data: [fp; GPU_THREAD_BLOCKS * FLOATS_PER_GPU_STEP ] = [0.0; GPU_THREAD_BLOCKS * FLOATS_PER_GPU_STEP ];
+            let gpu_data = Box::<[fp; GPU_THREAD_BLOCKS * FLOATS_PER_GPU_STEP]>::pin(gpu_data); // might make vulkan happier to not have data move?
 
-            let size = std::mem::size_of_val(&gpu_data) as wgpu::BufferAddress;
+            //let size = std::mem::size_of_val(&gpu_data) as wgpu::BufferAddress;
+            let size = std::mem::size_of::<[fp; GPU_THREAD_BLOCKS * FLOATS_PER_GPU_STEP]>() as wgpu::BufferAddress;
 
             println!("gpu_data = {:?} size = {:?}\n^^ BEGIN ^^", gpu_data, size);
 
@@ -169,40 +176,41 @@ pub fn solve_for_6pts(
             device.poll(wgpu::Maintain::Wait);
 
             // Awaits until `buffer_future` can be read from
-            {
-                // Gets contents of buffer
-                let data = buffer_slice.get_mapped_range();
-                // Since contents are got in bytes, this converts these bytes back to u32
-                let result: Vec<[fp; (6*2) + 6 + 1]> = data
-                    .chunks_exact( std::mem::size_of::<[fp; (6*2) + 6 + 1]>() ) // size of one GPU threads block of numbers
-                    .map(|b| {
-                        unsafe {
-                            std::mem::transmute::<[u8; std::mem::size_of::<[fp; (6*2) + 6 + 1]>() ], [fp; (6*2) + 6 + 1]>(
-                                b.try_into().expect("data.chunks_exact fucked up the calc for std::mem::size_of::<[fp; (6*2) + 6 + 1]>() ")
-                            ).clone()
-                        }
-                    } )
-                    .collect();
+            //{
+            // Gets contents of buffer
+            let data = buffer_slice.get_mapped_range();
+            // Since contents are got in bytes, this converts these bytes back to u32
+            let result: Vec<[fp; FLOATS_PER_GPU_STEP]> = data
+                .chunks_exact( std::mem::size_of::<[fp; FLOATS_PER_GPU_STEP ]>() ) // size of one GPU threads block of numbers
+                .map(|b| {
+                    unsafe {
+                        std::mem::transmute::<[u8; std::mem::size_of::<[fp; FLOATS_PER_GPU_STEP]>() ], [fp; FLOATS_PER_GPU_STEP]>(
+                            b.try_into().expect("data.chunks_exact fucked up the calc for std::mem::size_of::<[fp; (6*2) + 6 + 1]>() ")
+                        ).clone()
+                    }
+                } )
+                .collect();
 
-                // With the current interface, we have to make sure all mapped views are
-                // dropped before we unmap the buffer.
-                drop(data);
-                staging_buffer.unmap(); // Unmaps buffer from memory
-                                        // If you are familiar with C++ these 2 lines can be thought of similarly to:
-                                        //   delete myPointer;
-                                        //   myPointer = NULL;
-                                        // It effectively frees the memory
+            // With the current interface, we have to make sure all mapped views are
+            // dropped before we unmap the buffer.
+            drop(data);
+            staging_buffer.unmap(); // Unmaps buffer from memory
+                                    // If you are familiar with C++ these 2 lines can be thought of similarly to:
+                                    //   delete myPointer;
+                                    //   myPointer = NULL;
+                                    // It effectively frees the memory
 
-                // Returns data from buffer
-                // result
+            // Returns data from buffer
+            // result
 
-                // TODO use result!
-                println!("DONE! result = {:?}\n^^ END ^^", result);
+            // TODO use result!
+            println!("DONE! result = {:?}\n^^ END ^^", result);
 
-            }
+            // }
 
             device.poll(wgpu::Maintain::Wait);
             device.destroy();
+            println!("After device.destroy()!");
 
             /*else {
                 println!("failed to run compute on gpu!")
