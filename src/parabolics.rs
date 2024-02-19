@@ -75,7 +75,11 @@ pub fn solve_for_6pts(
             //let gpu_data = AllGpuThreadData::default();
 
             // 12 xy fps, 6 abcdef fps, and a min size fp.
+            //let gpu_data: [fp; GPU_THREAD_BLOCKS * ((6*2) + 6 + 1) ] = [0.0; GPU_THREAD_BLOCKS * ((6*2) + 6 + 1) ];
+
+            //let gpu_data: Box<[fp; GPU_THREAD_BLOCKS * ((6*2) + 6 + 1) ]> = Box::new([0.0; GPU_THREAD_BLOCKS * ((6*2) + 6 + 1) ]);
             let gpu_data: [fp; GPU_THREAD_BLOCKS * ((6*2) + 6 + 1) ] = [0.0; GPU_THREAD_BLOCKS * ((6*2) + 6 + 1) ];
+            let gpu_data = Box::<[fp; GPU_THREAD_BLOCKS * ((6*2) + 6 + 1)]>::pin(gpu_data); // might make vulkan happier to not have data move?
 
             let size = std::mem::size_of_val(&gpu_data) as wgpu::BufferAddress;
 
@@ -100,7 +104,7 @@ pub fn solve_for_6pts(
             //   The source of a copy.
             let storage_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: Some("StorageBuffer"),
-                contents: bytemuck::cast_slice(&gpu_data),
+                contents: bytemuck::cast_slice(&gpu_data[..]),
                 usage: wgpu::BufferUsages::STORAGE
                     | wgpu::BufferUsages::COPY_DST
                     | wgpu::BufferUsages::COPY_SRC,
@@ -148,7 +152,9 @@ pub fn solve_for_6pts(
             device.poll(wgpu::Maintain::Wait); // Let data settle into place
 
             // Submits command encoder for processing
-            let sub_idx = queue.submit(Some(encoder.finish()));
+            let work_to_send = Some(encoder.finish());
+            device.poll(wgpu::Maintain::Wait); // Let data settle into place
+            let sub_idx = queue.submit(work_to_send);
 
             device.poll(wgpu::Maintain::WaitForSubmissionIndex(sub_idx)); // Blocks until sub_idx's work has completed
 
@@ -194,6 +200,10 @@ pub fn solve_for_6pts(
                 println!("DONE! result = {:?}\n^^ END ^^", result);
 
             }
+
+            device.poll(wgpu::Maintain::Wait);
+            device.destroy();
+
             /*else {
                 println!("failed to run compute on gpu!")
             }*/

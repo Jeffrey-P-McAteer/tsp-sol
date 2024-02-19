@@ -448,12 +448,32 @@ fn get_best_gpu() -> Option<wgpu::Adapter> {
   }
   let print_adapter_infos = print_adapter_infos;
 
+  let mut backend = wgpu::Backends::VULKAN;
+  if let Ok(backend_name) = std::env::var("PREF_BACKEND") {
+    if backend_name.contains("vulkan") {
+      backend = wgpu::Backends::VULKAN;
+    }
+    else if backend_name.contains("gl") {
+      backend = wgpu::Backends::GL;
+    }
+    else if backend_name.contains("all") {
+      backend = wgpu::Backends::all();
+    }
+  }
+
+  let mut i_flags = wgpu::InstanceFlags::DEBUG | wgpu::InstanceFlags::VALIDATION;
+  if let Ok(inst_flags) = std::env::var("INST_FLAGS") {
+    if inst_flags.contains("empty") || inst_flags.contains("none") {
+      i_flags = wgpu::InstanceFlags::empty();
+    }
+  }
+
   let adapters = wgpu::Instance::new(wgpu::InstanceDescriptor {
     // backends: wgpu::Backends::all(),
-    backends: wgpu::Backends::VULKAN,
+    backends: backend,
 
     // flags: wgpu::InstanceFlags::empty(),
-    flags: wgpu::InstanceFlags::DEBUG | wgpu::InstanceFlags::VALIDATION,
+    flags: i_flags,
 
     dx12_shader_compiler: wgpu::Dx12Compiler::Fxc, // windorks only concern
 
