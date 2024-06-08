@@ -59,7 +59,7 @@ pub fn solve_for_6pts(
 
     const error_exit_target: fp = 0.16; // randomly permute until we hit < this error
     const long_iter_error_exit_target: fp = 0.46;
-    const long_iter_count: usize = 1_000_000;
+    const long_iter_count: usize = 5_000_000;
 
     if let Some(ref mut gpu_device) = gpu_device {
         let device_desc = wgpu::DeviceDescriptor {
@@ -232,16 +232,19 @@ pub fn solve_for_6pts(
                 let mut local_best_abcdef = (0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
                 let mut local_smallest_error = 99999999.0;
 
+                let mut guess_divisor: fp = 1.0;
+
                 let mut loop_i = 0;
                 loop {
+
                     loop_i += 1;
 
-                    let a = (fastrand::f32() * guess_range) + min_guess;
-                    let b = (fastrand::f32() * guess_range) + min_guess;
-                    let c = (fastrand::f32() * guess_range) + min_guess;
-                    let d = (fastrand::f32() * guess_range) + min_guess;
-                    let e = (fastrand::f32() * guess_range) + min_guess;
-                    let f = (fastrand::f32() * guess_range) + min_guess;
+                    let a = (fastrand::f32() * (guess_range / guess_divisor) ) + (min_guess / guess_divisor);
+                    let b = (fastrand::f32() * guess_range / guess_divisor) + (min_guess / guess_divisor);
+                    let c = (fastrand::f32() * guess_range / guess_divisor) + (min_guess / guess_divisor);
+                    let d = (fastrand::f32() * guess_range / guess_divisor) + (min_guess / guess_divisor);
+                    let e = (fastrand::f32() * guess_range / guess_divisor) + (min_guess / guess_divisor);
+                    let f = (fastrand::f32() * guess_range / guess_divisor) + (min_guess / guess_divisor);
 
                     // let mut l_guess_range = guess_range / (f32::max(1.0, loop_i as f32 / 100.0));
                     // if l_guess_range < 2.0 {
@@ -302,7 +305,7 @@ pub fn solve_for_6pts(
                     if this_error < local_smallest_error {
                         local_best_abcdef = this_coefs;
                         local_smallest_error = this_error;
-                        println!("a thread on loop_i={} lowered error to {}", loop_i, this_error);
+                        println!("a thread on loop_i={} guess_divisor={} lowered error to {}", loop_i, guess_divisor, this_error);
                     }
 
                     if local_smallest_error < error_exit_target {
@@ -333,7 +336,12 @@ pub fn solve_for_6pts(
                     }
 
                     if loop_i > (long_iter_count*2) {
-                        break; // Give up
+                        // Reduce range of random guesses and go back to initial state
+                        loop_i = 0;
+                        guess_divisor *= 10.0;
+                        if (guess_range / guess_divisor) < 0.25 {
+                            break; // ran out of guessing space!
+                        }
                     }
 
                 }
