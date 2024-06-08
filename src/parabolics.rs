@@ -61,6 +61,12 @@ pub fn solve_for_6pts(
     const long_iter_error_exit_target: fp = 0.86;
     const long_iter_count: usize = 5_000_000;
 
+    const squeese_amount: fp = 4.0;
+
+    const max_search_seconds: u64 = 120;
+
+    let solve_begin_t = std::time::SystemTime::now();
+
     if let Some(ref mut gpu_device) = gpu_device {
         let device_desc = wgpu::DeviceDescriptor {
             label: None,
@@ -232,19 +238,19 @@ pub fn solve_for_6pts(
                 let mut local_best_abcdef = (0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
                 let mut local_smallest_error = 99999999.0;
 
-                let mut guess_divisor: fp = 1.0;
+                let mut guess_divisor: (fp, fp, fp, fp, fp, fp) = (1.0, 1.0, 1.0, 1.0, 1.0, 1.0);
 
                 let mut loop_i = 0;
                 loop {
 
                     loop_i += 1;
 
-                    let a = (fastrand::f32() * (guess_range / guess_divisor) ) + (min_guess / guess_divisor);
-                    let b = (fastrand::f32() * guess_range / guess_divisor) + (min_guess / guess_divisor);
-                    let c = (fastrand::f32() * guess_range / guess_divisor) + (min_guess / guess_divisor);
-                    let d = (fastrand::f32() * guess_range / guess_divisor) + (min_guess / guess_divisor);
-                    let e = (fastrand::f32() * guess_range / guess_divisor) + (min_guess / guess_divisor);
-                    let f = (fastrand::f32() * guess_range / guess_divisor) + (min_guess / guess_divisor);
+                    let a = (fastrand::f32() * (guess_range / guess_divisor.0) ) + (min_guess / guess_divisor.0);
+                    let b = (fastrand::f32() * (guess_range / guess_divisor.1) ) + (min_guess / guess_divisor.1);
+                    let c = (fastrand::f32() * (guess_range / guess_divisor.2) ) + (min_guess / guess_divisor.2);
+                    let d = (fastrand::f32() * (guess_range / guess_divisor.3) ) + (min_guess / guess_divisor.3);
+                    let e = (fastrand::f32() * (guess_range / guess_divisor.4) ) + (min_guess / guess_divisor.4);
+                    let f = (fastrand::f32() * (guess_range / guess_divisor.5) ) + (min_guess / guess_divisor.5);
 
                     // let mut l_guess_range = guess_range / (f32::max(1.0, loop_i as f32 / 100.0));
                     // if l_guess_range < 2.0 {
@@ -303,16 +309,88 @@ pub fn solve_for_6pts(
                                      (c_y6 - y6.abs()).abs();
 
                     if this_error < local_smallest_error {
+                        // tighten the most-modified 3 variables this iteration
+                        let avg_modification_amnt: fp = (
+                            (a - local_best_abcdef.0).abs() +
+                            (b - local_best_abcdef.1).abs() +
+                            (c - local_best_abcdef.2).abs() +
+                            (d - local_best_abcdef.3).abs() +
+                            (e - local_best_abcdef.4).abs() +
+                            (f - local_best_abcdef.5).abs()
+                        ) / 6.0;
+                        if (a - local_best_abcdef.0).abs() >= avg_modification_amnt {
+                            guess_divisor = (
+                                guess_divisor.0 * (2.0 * squeese_amount),
+                                guess_divisor.1,
+                                guess_divisor.2,
+                                guess_divisor.3,
+                                guess_divisor.4,
+                                guess_divisor.5
+                            );
+                        }
+                        if (b - local_best_abcdef.1).abs() >= avg_modification_amnt {
+                            guess_divisor = (
+                                guess_divisor.0,
+                                guess_divisor.1 * (2.0 * squeese_amount),
+                                guess_divisor.2,
+                                guess_divisor.3,
+                                guess_divisor.4,
+                                guess_divisor.5
+                            );
+                        }
+                        if (c - local_best_abcdef.2).abs() >= avg_modification_amnt {
+                            guess_divisor = (
+                                guess_divisor.0,
+                                guess_divisor.1,
+                                guess_divisor.2 * (2.0 * squeese_amount),
+                                guess_divisor.3,
+                                guess_divisor.4,
+                                guess_divisor.5
+                            );
+                        }
+                        if (d - local_best_abcdef.3).abs() >= avg_modification_amnt {
+                            guess_divisor = (
+                                guess_divisor.0,
+                                guess_divisor.1,
+                                guess_divisor.2,
+                                guess_divisor.3 * (2.0 * squeese_amount),
+                                guess_divisor.4,
+                                guess_divisor.5
+                            );
+                        }
+                        if (e - local_best_abcdef.4).abs() >= avg_modification_amnt {
+                            guess_divisor = (
+                                guess_divisor.0,
+                                guess_divisor.1,
+                                guess_divisor.2,
+                                guess_divisor.3,
+                                guess_divisor.4 * (2.0 * squeese_amount),
+                                guess_divisor.5
+                            );
+                        }
+                        if (f - local_best_abcdef.5).abs() >= avg_modification_amnt {
+                            guess_divisor = (
+                                guess_divisor.0,
+                                guess_divisor.1,
+                                guess_divisor.2,
+                                guess_divisor.3,
+                                guess_divisor.4,
+                                guess_divisor.5 * (2.0 * squeese_amount)
+                            );
+                        }
                         local_best_abcdef = this_coefs;
                         local_smallest_error = this_error;
-                        println!("a thread on loop_i={} guess_divisor={} lowered error to {}", loop_i, guess_divisor, this_error);
+                        println!("a thread on loop_i={} guess_divisor={},{},{},{},{},{} lowered error to {}", loop_i,
+                            guess_divisor.0, guess_divisor.1, guess_divisor.2, guess_divisor.3, guess_divisor.4, guess_divisor.5,
+                            this_error
+                        );
                     }
 
                     if local_smallest_error < error_exit_target {
                         break; // we're done, other threads will check in 5,000 or so random checks and exit.
                     }
 
-                    if loop_i % 1_000_000 == 0 {
+                    if loop_i % (long_iter_count / 2) == 0 {
                         // Should we exit b/c another thread found & exited?
                         let mut smallest_err_guard = smallest_error.lock().unwrap();
                         if *smallest_err_guard < error_exit_target {
@@ -338,16 +416,30 @@ pub fn solve_for_6pts(
                     if loop_i > (long_iter_count*2) {
                         // Reduce range of random guesses and go back to initial state
                         loop_i = 0;
-                        guess_divisor *= 10.0;
-                        if (guess_range / guess_divisor) < 0.04 {
+                        guess_divisor = (
+                            guess_divisor.0 * squeese_amount,
+                            guess_divisor.1 * squeese_amount,
+                            guess_divisor.2 * squeese_amount,
+                            guess_divisor.3 * squeese_amount,
+                            guess_divisor.4 * squeese_amount,
+                            guess_divisor.5 * squeese_amount
+                        );
+                        if (guess_range / ((guess_divisor.0+guess_divisor.1+guess_divisor.2+guess_divisor.3+guess_divisor.4+guess_divisor.5) / 6.0) ) < 0.02 {
                             if local_smallest_error < long_iter_error_exit_target {
                                 break; // ran out of guessing space but we hit our goal!
                             }
                             else {
-                                // Ran out of guessing space, did not hit goal, reset search parameters
+                                // Ran out of guessing space, did not hit goal, reset search parameters if under max run duration
+                                if let Ok(solve_duration) = solve_begin_t.elapsed() {
+                                    if solve_duration.as_secs() > max_search_seconds {
+                                        println!("! Ran out of guessing space, did not hit goal, ran out of time!");
+                                        println!("local_smallest_error = {}, want better than {}", local_smallest_error, long_iter_error_exit_target);
+                                        break;
+                                    }
+                                }
                                 println!("Ran out of guessing space, did not hit goal, reset search parameters");
                                 println!("local_smallest_error = {}, want better than {}", local_smallest_error, long_iter_error_exit_target);
-                                guess_divisor = 1.0;
+                                guess_divisor = (1.0, 1.0, 1.0, 1.0, 1.0, 1.0);
                             }
                         }
                     }
