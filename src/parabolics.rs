@@ -58,8 +58,8 @@ pub fn solve_for_6pts(
     // const long_iter_count: usize = 5_000_000_000;
 
     const error_exit_target: fp = 0.16; // randomly permute until we hit < this error
-    const long_iter_error_exit_target: fp = 0.32;
-    const long_iter_count: usize = 6_000_000;
+    const long_iter_error_exit_target: fp = 0.46;
+    const long_iter_count: usize = 1_000_000;
 
     if let Some(ref mut gpu_device) = gpu_device {
         let device_desc = wgpu::DeviceDescriptor {
@@ -236,14 +236,22 @@ pub fn solve_for_6pts(
                 loop {
                     loop_i += 1;
 
-                    // let a = (fastrand::f32() * guess_range) + min_guess;
-                    // let b = (fastrand::f32() * guess_range) + min_guess;
-                    // let c = (fastrand::f32() * guess_range) + min_guess;
-                    // let d = (fastrand::f32() * guess_range) + min_guess;
-                    // let e = (fastrand::f32() * guess_range) + min_guess;
-                    // let f = (fastrand::f32() * guess_range) + min_guess;
+                    let a = (fastrand::f32() * guess_range) + min_guess;
+                    let b = (fastrand::f32() * guess_range) + min_guess;
+                    let c = (fastrand::f32() * guess_range) + min_guess;
+                    let d = (fastrand::f32() * guess_range) + min_guess;
+                    let e = (fastrand::f32() * guess_range) + min_guess;
+                    let f = (fastrand::f32() * guess_range) + min_guess;
 
-                    let l_guess_range = f32::max(10.0, guess_range / (f32::max(1.0, loop_i as f32 / 10.0)));
+                    // let mut l_guess_range = guess_range / (f32::max(1.0, loop_i as f32 / 100.0));
+                    // if l_guess_range < 2.0 {
+                    //     loop_i = 0; // re-start scanning from high fuzziness -> low fuzziness
+                    // }
+                    // // Force guess range to be huge while error is huge
+                    // if local_smallest_error > 9.0 && l_guess_range < 50.0 {
+                    //     l_guess_range = guess_range / (f32::max(1.0, loop_i as f32 / 1000.0));
+                    // }
+
                     // Min guess is just average of all weights - 0.5 l_guess_range
                     // let l_min_guess = ((local_best_abcdef.0+
                     //                     local_best_abcdef.1+
@@ -255,12 +263,14 @@ pub fn solve_for_6pts(
                     // and instead of looking up best(<a million wide guesses>) we get
                     // a set of best(<a hundred wide guesses>) -> best(<a permutation of the previous best w/ smaller guess deltas>) -> ....
 
-                    let a = local_best_abcdef.0 + ((fastrand::f32() * l_guess_range) - (local_best_abcdef.0 - (l_guess_range / 2.0)) );
-                    let b = local_best_abcdef.1 + ((fastrand::f32() * l_guess_range) - (local_best_abcdef.1 - (l_guess_range / 2.0)) );
-                    let c = local_best_abcdef.2 + ((fastrand::f32() * l_guess_range) - (local_best_abcdef.2 - (l_guess_range / 2.0)) );
-                    let d = local_best_abcdef.3 + ((fastrand::f32() * l_guess_range) - (local_best_abcdef.3 - (l_guess_range / 2.0)) );
-                    let e = local_best_abcdef.4 + ((fastrand::f32() * l_guess_range) - (local_best_abcdef.4 - (l_guess_range / 2.0)) );
-                    let f = local_best_abcdef.5 + ((fastrand::f32() * l_guess_range) - (local_best_abcdef.5 - (l_guess_range / 2.0)) );
+                    // We mutate all variables if local_smallest_error is > 4.0 (or if at a beginning iteration), and then
+                    // We now mutate only 1 variable at a time from the best-case scenario
+                    // let a = local_best_abcdef.0 + if local_smallest_error > 9.0 || loop_i < 10000 || loop_i % 6 == 0 { ((fastrand::f32() * l_guess_range) - (local_best_abcdef.0 - (l_guess_range / 2.0)) ) } else { 0.0 };
+                    // let b = local_best_abcdef.1 + if local_smallest_error > 9.0 || loop_i < 10000 || loop_i % 6 == 1 { ((fastrand::f32() * l_guess_range) - (local_best_abcdef.1 - (l_guess_range / 2.0)) ) } else { 0.0 };
+                    // let c = local_best_abcdef.2 + if local_smallest_error > 9.0 || loop_i < 10000 || loop_i % 6 == 2 { ((fastrand::f32() * l_guess_range) - (local_best_abcdef.2 - (l_guess_range / 2.0)) ) } else { 0.0 };
+                    // let d = local_best_abcdef.3 + if local_smallest_error > 9.0 || loop_i < 10000 || loop_i % 6 == 3 { ((fastrand::f32() * l_guess_range) - (local_best_abcdef.3 - (l_guess_range / 2.0)) ) } else { 0.0 };
+                    // let e = local_best_abcdef.4 + if local_smallest_error > 9.0 || loop_i < 10000 || loop_i % 6 == 4 { ((fastrand::f32() * l_guess_range) - (local_best_abcdef.4 - (l_guess_range / 2.0)) ) } else { 0.0 };
+                    // let f = local_best_abcdef.5 + if local_smallest_error > 9.0 || loop_i < 10000 || loop_i % 6 == 5 { ((fastrand::f32() * l_guess_range) - (local_best_abcdef.5 - (l_guess_range / 2.0)) ) } else { 0.0 };
 
                     let shp_test = (b*b) - (4.0*a*c);
 
@@ -292,13 +302,14 @@ pub fn solve_for_6pts(
                     if this_error < local_smallest_error {
                         local_best_abcdef = this_coefs;
                         local_smallest_error = this_error;
+                        println!("a thread on loop_i={} lowered error to {}", loop_i, this_error);
                     }
 
                     if local_smallest_error < error_exit_target {
                         break; // we're done, other threads will check in 5,000 or so random checks and exit.
                     }
 
-                    if loop_i % 2_000_000 == 0 {
+                    if loop_i % 1_000_000 == 0 {
                         // Should we exit b/c another thread found & exited?
                         let mut smallest_err_guard = smallest_error.lock().unwrap();
                         if *smallest_err_guard < error_exit_target {
