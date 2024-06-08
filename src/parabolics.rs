@@ -46,8 +46,8 @@ pub fn solve_for_6pts(
     -> (fp, fp, fp, fp, fp, fp)
 {
 
-    const min_guess: fp = -20000.0;
-    const max_guess: fp = 20000.0;
+    const min_guess: fp = -2000.0;
+    const max_guess: fp = 2000.0;
     let guess_range = max_guess - min_guess;
 
     let mut best_abcdef = Arc::new(Mutex::new( (0.0, 0.0, 0.0, 0.0, 0.0, 0.0) ));
@@ -339,8 +339,16 @@ pub fn solve_for_6pts(
                         // Reduce range of random guesses and go back to initial state
                         loop_i = 0;
                         guess_divisor *= 10.0;
-                        if (guess_range / guess_divisor) < 0.25 {
-                            break; // ran out of guessing space!
+                        if (guess_range / guess_divisor) < 0.04 {
+                            if local_smallest_error < long_iter_error_exit_target {
+                                break; // ran out of guessing space but we hit our goal!
+                            }
+                            else {
+                                // Ran out of guessing space, did not hit goal, reset search parameters
+                                println!("Ran out of guessing space, did not hit goal, reset search parameters");
+                                println!("local_smallest_error = {}, want better than {}", local_smallest_error, long_iter_error_exit_target);
+                                guess_divisor = 1.0;
+                            }
                         }
                     }
 
