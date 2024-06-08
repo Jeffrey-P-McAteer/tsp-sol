@@ -63,7 +63,7 @@ pub fn solve_for_6pts(
 
     const squeese_amount: fp = 4.0;
 
-    const max_search_seconds: u64 = 120;
+    const max_search_seconds: u64 = 180;
 
     let solve_begin_t = std::time::SystemTime::now();
 
@@ -310,6 +310,7 @@ pub fn solve_for_6pts(
 
                     if this_error < local_smallest_error {
                         // tighten the most-modified 3 variables this iteration
+                        /*
                         let avg_modification_amnt: fp = (
                             (a - local_best_abcdef.0).abs() +
                             (b - local_best_abcdef.1).abs() +
@@ -377,7 +378,8 @@ pub fn solve_for_6pts(
                                 guess_divisor.4,
                                 guess_divisor.5 * (2.0 * squeese_amount)
                             );
-                        }
+                        }*/
+
                         local_best_abcdef = this_coefs;
                         local_smallest_error = this_error;
                         println!("a thread on loop_i={} guess_divisor={},{},{},{},{},{} lowered error to {}", loop_i,
