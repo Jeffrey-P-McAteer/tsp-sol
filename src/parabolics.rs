@@ -63,7 +63,9 @@ pub fn solve_for_6pts(
 
     const squeese_amount: fp = 4.0;
 
-    const max_search_seconds: u64 = 180;
+    let max_parabolic_search_seconds = std::env::var("MAX_PARABOLIC_SEARCH_SECONDS").unwrap_or("120".to_string());
+    let max_search_seconds: u64 = max_parabolic_search_seconds.parse().unwrap();
+    println!("MAX_PARABOLIC_SEARCH_SECONDS = {}", max_search_seconds);
 
     let solve_begin_t = std::time::SystemTime::now();
 
