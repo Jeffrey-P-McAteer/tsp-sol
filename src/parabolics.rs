@@ -58,7 +58,7 @@ pub fn solve_for_6pts(
     // const long_iter_count: usize = 5_000_000_000;
 
     const error_exit_target: fp = 0.16; // randomly permute until we hit < this error
-    const long_iter_error_exit_target: fp = 0.46;
+    const long_iter_error_exit_target: fp = 0.86;
     const long_iter_count: usize = 5_000_000;
 
     if let Some(ref mut gpu_device) = gpu_device {
