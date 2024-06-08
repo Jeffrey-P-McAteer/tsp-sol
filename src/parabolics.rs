@@ -46,8 +46,8 @@ pub fn solve_for_6pts(
     -> (fp, fp, fp, fp, fp, fp)
 {
 
-    const min_guess: fp = -2000.0;
-    const max_guess: fp = 2000.0;
+    const min_guess: fp = -20000.0;
+    const max_guess: fp = 20000.0;
     let guess_range = max_guess - min_guess;
 
     let mut best_abcdef = Arc::new(Mutex::new( (0.0, 0.0, 0.0, 0.0, 0.0, 0.0) ));
@@ -57,9 +57,9 @@ pub fn solve_for_6pts(
     // const long_iter_error_exit_target: fp = 0.95;
     // const long_iter_count: usize = 5_000_000_000;
 
-    const error_exit_target: fp = 0.11; // randomly permute until we hit < this error
-    const long_iter_error_exit_target: fp = 0.18;
-    const long_iter_count: usize = 9_000_000_000;
+    const error_exit_target: fp = 0.16; // randomly permute until we hit < this error
+    const long_iter_error_exit_target: fp = 0.32;
+    const long_iter_count: usize = 6_000_000;
 
     if let Some(ref mut gpu_device) = gpu_device {
         let device_desc = wgpu::DeviceDescriptor {
@@ -236,12 +236,31 @@ pub fn solve_for_6pts(
                 loop {
                     loop_i += 1;
 
-                    let a = (fastrand::f32() * guess_range) + min_guess;
-                    let b = (fastrand::f32() * guess_range) + min_guess;
-                    let c = (fastrand::f32() * guess_range) + min_guess;
-                    let d = (fastrand::f32() * guess_range) + min_guess;
-                    let e = (fastrand::f32() * guess_range) + min_guess;
-                    let f = (fastrand::f32() * guess_range) + min_guess;
+                    // let a = (fastrand::f32() * guess_range) + min_guess;
+                    // let b = (fastrand::f32() * guess_range) + min_guess;
+                    // let c = (fastrand::f32() * guess_range) + min_guess;
+                    // let d = (fastrand::f32() * guess_range) + min_guess;
+                    // let e = (fastrand::f32() * guess_range) + min_guess;
+                    // let f = (fastrand::f32() * guess_range) + min_guess;
+
+                    let l_guess_range = f32::max(10.0, guess_range / (f32::max(1.0, loop_i as f32 / 10.0)));
+                    // Min guess is just average of all weights - 0.5 l_guess_range
+                    // let l_min_guess = ((local_best_abcdef.0+
+                    //                     local_best_abcdef.1+
+                    //                     local_best_abcdef.2+
+                    //                     local_best_abcdef.3+
+                    //                     local_best_abcdef.4+
+                    //                     local_best_abcdef.5) / 6.0) - (l_guess_range / 2.0);
+                    // The above calculations ensure the amount of random deltas get smaller and smaller,
+                    // and instead of looking up best(<a million wide guesses>) we get
+                    // a set of best(<a hundred wide guesses>) -> best(<a permutation of the previous best w/ smaller guess deltas>) -> ....
+
+                    let a = local_best_abcdef.0 + ((fastrand::f32() * l_guess_range) - (local_best_abcdef.0 - (l_guess_range / 2.0)) );
+                    let b = local_best_abcdef.1 + ((fastrand::f32() * l_guess_range) - (local_best_abcdef.1 - (l_guess_range / 2.0)) );
+                    let c = local_best_abcdef.2 + ((fastrand::f32() * l_guess_range) - (local_best_abcdef.2 - (l_guess_range / 2.0)) );
+                    let d = local_best_abcdef.3 + ((fastrand::f32() * l_guess_range) - (local_best_abcdef.3 - (l_guess_range / 2.0)) );
+                    let e = local_best_abcdef.4 + ((fastrand::f32() * l_guess_range) - (local_best_abcdef.4 - (l_guess_range / 2.0)) );
+                    let f = local_best_abcdef.5 + ((fastrand::f32() * l_guess_range) - (local_best_abcdef.5 - (l_guess_range / 2.0)) );
 
                     let shp_test = (b*b) - (4.0*a*c);
 
@@ -300,6 +319,10 @@ pub fn solve_for_6pts(
                         if local_smallest_error < long_iter_error_exit_target {
                             break; // we're done, other threads will check in 5,000 or so random checks and exit.
                         }
+                    }
+
+                    if loop_i > (long_iter_count*2) {
+                        break; // Give up
                     }
 
                 }
