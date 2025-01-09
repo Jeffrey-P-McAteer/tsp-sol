@@ -20,6 +20,7 @@ if __name__ == '__main__':
     maybeset('TSP_ENDING_COORDS', '3.0,11.0 12.0,11.0 7.0,9.0')
     #maybeset('PREF_GPU', 'print')
     maybeset('PREF_GPU', 'none')
+    maybeset('USE_BRUTE_CACHE', 't')
 
     try:
       subprocess.run('cargo run --release -- multi-pattern-scan 3 0.027 4'.split())
