@@ -375,19 +375,7 @@ fn cached_solution_file(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoor
 }
 
 fn get_cached_solution(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>) -> Option<Vec<CityNum>> {
-  //let cache_file = cached_solution_file(node_coordinates);
-  //let mut f = File::open(&cache_file).ok()?;
-  //let mut buffer = Vec::new();
-  //f.read_to_end(&mut buffer).ok()?;
-  // buffer is full of bytes, decode to Vec<CityNum>
-  //let zero_vec = zerovec::ZeroVec::parse_byte_slice(&buffer).ok()?;
-  //let vec_u64: Vec<u64> = zero_vec.to_vec();
-
-  // I hereby declare all u64 == usize for the machines running this code
-  //Some( unsafe { std::mem::transmute::<Vec<u64>,Vec<usize>>(vec_u64) } )
-  
   PICKLE_DB.get_mut().get::<Vec<CityNum>>( &cached_solution_key(node_coordinates) )
-
 }
 
 fn get_cached_solutions(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>) -> Option<Vec<Vec<CityNum>>> {
