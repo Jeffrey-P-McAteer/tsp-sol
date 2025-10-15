@@ -15,6 +15,7 @@ if __name__ == '__main__':
 
     if os.path.exists('views'):
         shutil.rmtree('views')
+    os.makedirs('views', exist_ok=True)
 
     # maybeset('TSP_INITIAL_COORDS', '3.0,11.0 12.0,11.0 5.0,9.0')
     # maybeset('TSP_ENDING_COORDS', '3.0,11.0 12.0,11.0 7.0,9.0')
@@ -26,14 +27,14 @@ if __name__ == '__main__':
     maybeset('USE_BRUTE_CACHE', 't')
     #maybeset('USE_BRUTE_CACHE', 'f')
 
-    maybeset('TSP_INITIAL_COORDS', '3.15,5.86 8.09,7.39 10.18,5.37 4.70,6.81 8.09,8.35 11.11,11.05 10.71,11.85 4.80,6.96 9.89,11.42 5.81,6.90 10.26,11.59')
+    maybeset('TSP_INITIAL_COORDS', '3.71,8.47 4.66,7.90 7.05,9.73 6.63,9.37 6.54,11.88 3.93,8.23 3.35,3.37 8.73,9.86 ')
 
     try:
       #subprocess.run('cargo run --release -- multi-pattern-scan 3 0.027 4'.split())
 
-      #subprocess.run('cargo run --release -- selective 12 4'.split())
+      #subprocess.run('cargo run --release -- selective 9 4'.split())
 
-      subprocess.run('cargo run --release -- spray 11 0.25'.split())
+      subprocess.run('cargo run --release -- spray 8 0.05'.split())
 
     except:
       if not 'KeyboardInterrupt' in traceback.format_exc():
