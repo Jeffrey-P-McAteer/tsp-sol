@@ -24,13 +24,13 @@ pub fn solve(node_coordinates: &Vec<(CityNum, CityXYCoord, CityXYCoord)>, weight
   // let mut indicies_and_citynums_removed_so_far: Vec<(usize, CityNum)> = vec![];
 
   while ordered_visits.len() < weights.len() {
-    if ordered_visits.len() > 5 {
+    /*if ordered_visits.len() > 5 {
       ordered_visits = next_step_5_deep(&ordered_visits, &node_coordinates, &weights, &next_city_num_first_not_inserted);
     }
-    else if ordered_visits.len() > 4 {
+    else *//* if ordered_visits.len() > 4 {
       ordered_visits = next_step_4_deep(&ordered_visits, &node_coordinates, &weights, &next_city_num_first_not_inserted);
     }
-    else if ordered_visits.len() > 3 {
+    else */ if ordered_visits.len() > 3 {
       ordered_visits = next_step_3_deep(&ordered_visits, &node_coordinates, &weights, &next_city_num_first_not_inserted);
     }
     else {
