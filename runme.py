@@ -33,7 +33,7 @@ if __name__ == '__main__':
 
       #subprocess.run('cargo run --release -- selective 12 4'.split())
 
-      subprocess.run('cargo run --release -- spray 11 0.1'.split())
+      subprocess.run('cargo run --release -- spray 11 0.25'.split())
 
     except:
       if not 'KeyboardInterrupt' in traceback.format_exc():
