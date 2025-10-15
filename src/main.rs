@@ -55,8 +55,6 @@ use std::f64;
 mod brute_algo;
 mod jeff_algo;
 
-mod parabolics;
-
 #[allow(non_camel_case_types)]
 //pub type fp = f64;
 pub type fp = f32;
@@ -1410,7 +1408,6 @@ fn multi_pattern_scan(n: usize, bound_granularity: fp, num_multi_steps_to_scan: 
   println!("Initial node_coordinates_b={:?}", &node_coordinates_b);
 
   let mut output_scan_files = vec![];
-  let mut output_multiscan_parabola_file_paths = vec![];
 
   for multi_step_i in 0..=num_multi_steps_to_scan {
     let converged_cities = converge_coordinates(&node_coordinates_a, &node_coordinates_b, multi_step_i, num_multi_steps_to_scan);
@@ -1454,11 +1451,6 @@ fn multi_pattern_scan(n: usize, bound_granularity: fp, num_multi_steps_to_scan: 
 
     });
 
-    let output_multiscan_parabola_file_path = format!("views/multi-pattern-scan-{:03}-parabola.png", multi_step_i);
-    let output_multiscan_parabola_txt_file_path = format!("views/multi-pattern-scan-{:03}-parabola.txt", multi_step_i);
-    // Edge detection w/ tsp_points_colors
-    let mut parabola_points: HashMap<usize, Vec<(fp, fp)>> = HashMap::new(); // RGB color string -> list of points on ... exterior.. hmm.
-
     // We know tsp_point_colors contains a square, so compute width & height so we can index into neighbors for edge detection
     let tsp_square_size: isize = (f64::sqrt(tsp_point_colors.len() as f64) as isize /*+ 1*/) as isize;
 
@@ -1494,296 +1486,8 @@ fn multi_pattern_scan(n: usize, bound_granularity: fp, num_multi_steps_to_scan: 
           continue;
         }
 
-        if !parabola_points.contains_key(&rgb_key) {
-          parabola_points.insert(rgb_key, vec![]);
-        }
-
-        if let Some(parabola_points_vec) = parabola_points.get_mut(&rgb_key) {
-          parabola_points_vec.push(
-            (tsp_point_x, tsp_point_y)
-          );
-        }
-
       }
     }
-
-    // now use each set of key, list of parabola_points to predict N polynominals
-
-    // Iterate all TSP edge points + store lists of continuous strings w/ different (a color, b color) sides;
-    // these will be our parabolic edges which we can algebra functions out of?
-
-    // List of A -> B MIDPOINTS; average x,y of two most-nearby points as we iterate forwards along both.
-    // We expect each pair of lines to have within 1-2 number of the same points.
-    // keys are (std::cmp::min(A, B), std::cmp::max(A, B)) so we keep both color data and collection order does not matter.
-    let mut functions_edge_points: HashMap<(usize, usize), Vec<(fp, fp)>> = HashMap::new();
-
-    let matching_radius = (bound_granularity.powf(2.0) + bound_granularity.powf(2.0)).sqrt() * 1.02; // sqrt(A**2 + B**2) plus 2% error to fetch points on diagonals
-
-    for (rgb_key_a, edge_tsp_points_a) in &parabola_points {
-      // for all points within bound_granularity of a point in edge_tsp_points_a,
-      // take average and add to vec. If vec len > /*0*/ 2, add to functions_edge_points.
-      let mut nearby_pts_colors: Vec<(fp, fp, usize)> = vec![];
-      for (a_tsp_pt_x, a_tsp_pt_y) in edge_tsp_points_a {
-        nearby_pts_colors.push(
-          (*a_tsp_pt_x, *a_tsp_pt_y, *rgb_key_a) // include a data
-        );
-        for (rgb_key_b, edge_tsp_points_b) in &parabola_points {
-          if *rgb_key_b == *rgb_key_a {
-            continue;
-          }
-          for (b_tsp_pt_x, b_tsp_pt_y) in edge_tsp_points_b {
-            let ab_pt_dist = ((a_tsp_pt_x - b_tsp_pt_x).powf(2.0) + (a_tsp_pt_y - b_tsp_pt_y).powf(2.0)).sqrt();
-            if ab_pt_dist < matching_radius {
-              // points are co-located, add b data!
-              nearby_pts_colors.push(
-                (*b_tsp_pt_x, *b_tsp_pt_y, *rgb_key_b)
-              );
-            }
-          }
-        }
-      }
-
-      let nearby_pts_colors = nearby_pts_colors;
-      // Now we have all nearby_pts_colors for this edge_tsp_points_a;
-      // Walk the original line again and insert nearby points to functions_edge_points
-      // along their A-B vectors by taking the average of all nearby points.
-      for (a_tsp_pt_x, a_tsp_pt_y) in edge_tsp_points_a {
-        let mut other_rgb_key_b_val = rgb_key_a;
-        let mut rgb_key_b_nearby_positions : Vec<(fp, fp)> = vec![];
-        for (b_tsp_pt_x, b_tsp_pt_y, rgb_key_b) in &nearby_pts_colors {
-          if rgb_key_b == rgb_key_a || (other_rgb_key_b_val != rgb_key_a && rgb_key_b != other_rgb_key_b_val ) {
-            continue; // Skip our own x,y points AND not-the-first-value-of-rgb_key_b points.
-          }
-          // Are we within matching_radius of a_tsp_pt_x, a_tsp_pt_y?
-          let ab_pt_dist = ((a_tsp_pt_x - b_tsp_pt_x).powf(2.0) + (a_tsp_pt_y - b_tsp_pt_y).powf(2.0)).sqrt();
-          if ab_pt_dist < matching_radius {
-            other_rgb_key_b_val = rgb_key_b; // First rgb_key_b wins, but we expect only 1 in 99% of cases so that's fine.
-            rgb_key_b_nearby_positions.push(
-              (*b_tsp_pt_x, *b_tsp_pt_y)
-            );
-          }
-        }
-        if other_rgb_key_b_val == rgb_key_a {
-          continue; // apparently nearby_pts_colors.len() == 0, don't store empty data.
-        }
-        // We now guarantee that other_rgb_key_b_val is not rgb_key_a
-        // Now average all points in rgb_key_b_nearby_positions and store in a->b the key
-        let mut total_pt_x: fp = *a_tsp_pt_x;
-        let mut total_pt_y: fp = *a_tsp_pt_y;
-        for (b_tsp_pt_x, b_tsp_pt_y) in &rgb_key_b_nearby_positions {
-          total_pt_x += *b_tsp_pt_x;
-          total_pt_y += *b_tsp_pt_y;
-        }
-
-        let avg_pt_x: fp = total_pt_x / ((rgb_key_b_nearby_positions.len()+1) as fp);
-        let avg_pt_y: fp = total_pt_y / ((rgb_key_b_nearby_positions.len()+1) as fp);
-
-        let functions_edge_points_key: (usize, usize) = (
-          std::cmp::min(*rgb_key_a, *other_rgb_key_b_val),
-          std::cmp::max(*rgb_key_a, *other_rgb_key_b_val)
-        );
-
-        if ! functions_edge_points.contains_key(&functions_edge_points_key) {
-          functions_edge_points.insert(functions_edge_points_key, vec![] );
-        }
-
-        if let Some(functions_edge_points_vec) = functions_edge_points.get_mut(&functions_edge_points_key) {
-          functions_edge_points_vec.push(
-            (avg_pt_x, avg_pt_y)
-          );
-        }
-
-      }
-
-    }
-
-    // Now we can assume functions_edge_points is full;
-    // compute Ax^2 + Bxy + Cy^2 + Dx + Ey + F == 0 coefficients and store in the map.
-    let mut functions_edge_xy_abcdef_coef: HashMap<(usize, usize), (fp, fp, fp, fp, fp, fp /*A,B,C,D,E,F*/)> = HashMap::new();
-
-    for (edge_keys, edge_points_vec) in &functions_edge_points {
-      if edge_points_vec.len() < /*3*/ 6 {
-        continue; // not enough data!
-      }
-
-      // Grab 6 equi-distant points to use in gomez to solve the general conics equations
-      // to find A, B, C, D, E, and F for
-      // Ax^2 + Bxy + Cy^2 + Dx + Ey + F == 0
-
-      let one_sixth_dist = edge_points_vec.len() / 6;
-
-      /*let (x1, y1) = edge_points_vec[0];
-      let (x2, y2) = edge_points_vec[1 * one_sixth_dist];
-      let (x3, y3) = edge_points_vec[2 * one_sixth_dist];
-      let (x4, y4) = edge_points_vec[3 * one_sixth_dist];
-      let (x5, y5) = edge_points_vec[4 * one_sixth_dist];
-      let (x6, y6) = edge_points_vec[edge_points_vec.len() - 1];*/
-
-      let fit_pts_json_file = format!("{}-{:x}-{:x}-edge-points.json", output_multiscan_parabola_txt_file_path, edge_keys.0, edge_keys.1);
-      let mut fit_pts_json_txt = String::new(); //format!("{:?}", edge_points_vec);
-      fit_pts_json_txt += "[";
-      for (point_x, point_y) in edge_points_vec {
-        fit_pts_json_txt += format!("[{point_x}, {point_y}], ").as_str();
-      }
-      fit_pts_json_txt.pop();
-      fit_pts_json_txt.pop(); // Remove last ", " chars
-      fit_pts_json_txt += "]";
-      let mut f = File::create(&fit_pts_json_file).expect("Unable to create file");
-      f.write_all(fit_pts_json_txt.as_bytes()).expect("Unable to write data");
-
-      let (a, b, c, d, e, f) = parabolics::solve_for_6pts(
-        thread_pool, gpu_adapter,
-        edge_points_vec[0],
-        edge_points_vec[1 * one_sixth_dist],
-        edge_points_vec[2 * one_sixth_dist],
-        edge_points_vec[3 * one_sixth_dist],
-        edge_points_vec[4 * one_sixth_dist],
-        edge_points_vec[edge_points_vec.len() - 1]
-      );
-
-      functions_edge_xy_abcdef_coef.insert(*edge_keys, (a, b, c, d, e, f));
-
-    }
-
-
-    { // text out
-      let mut parabola_txt = String::new();
-      for (rgb_key, edge_tsp_points) in &parabola_points {
-        let num_points = edge_tsp_points.len();
-        parabola_txt += format!("=== {rgb_key:x} ({num_points} points) ===\n").as_str();
-        for (edge_pt_x, edge_pt_y) in edge_tsp_points {
-          parabola_txt += format!("  {edge_pt_x}, {edge_pt_y}\n").as_str();
-        }
-        parabola_txt += "\n";
-      }
-
-      parabola_txt += "=== === === ===\n";
-      parabola_txt += "===  EDGES  ===\n";
-      parabola_txt += "=== === === ===\n";
-
-      for (edge_keys, edge_points_vec) in &functions_edge_points {
-        let (a,b,c,d,e,f) = functions_edge_xy_abcdef_coef.get(edge_keys).unwrap_or(&(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)); // we know it exists
-
-        parabola_txt += format!("Edge {:06x} - {:06x} has {} points,  ({} * x**2) + ({} * xy) + ({} * y**2) + ({} * x) + ({} * y) + {} = 0 \n",
-          edge_keys.0, edge_keys.1, edge_points_vec.len(), a,b,c,d,e,f
-        ).as_str();
-
-        for (edge_tsp_x, edge_tsp_y) in edge_points_vec {
-          parabola_txt += format!("  {}, {}\n", edge_tsp_x, edge_tsp_y).as_str();
-        }
-        parabola_txt += "\n";
-      }
-      parabola_txt += "\n";
-
-      let mut f = File::create(&output_multiscan_parabola_txt_file_path).expect("Unable to create file");
-      f.write_all(parabola_txt.as_bytes()).expect("Unable to write data");
-    }
-
-
-    { // image out
-      let (width, height) = (900, 900);
-      let mut image = RgbImage::new(width + 15, height + 15); // width, height
-      let font = Font::try_from_bytes(include_bytes!("../resources/NotoSans-Bold.ttf")).unwrap();
-
-      let (smallest_x, largest_y, largest_x, smallest_y) = (x_min_bound, y_max_bound, x_max_bound, y_min_bound);
-      let x_range: fp = largest_x - smallest_x;
-      let y_range: fp = largest_y - smallest_y;
-
-      let mut skip_nonce: usize = 0;
-      for (rgb_key, edge_tsp_points) in &parabola_points {
-        for (tsp_edge_point_x, tsp_edge_point_y) in edge_tsp_points {
-          // todo draw an image into output_multiscan_parabola_file_path
-
-          skip_nonce += 1;
-
-          if skip_nonce % 6 != 0 { // 1/6 of the time put a pixel down - we want spaces to differentiate lines with
-            continue;
-          }
-
-          let r: u8 = ((rgb_key >> 16) & 0xff) as u8;
-          let g: u8 = ((rgb_key >>  8) & 0xff) as u8;
-          let b: u8 = ((rgb_key >>  0) & 0xff) as u8;
-          let (loc_x,loc_y) = scale_xy(width, height, x_range as u32, y_range as u32, smallest_x, smallest_y, *tsp_edge_point_x, *tsp_edge_point_y);
-
-          *image.get_pixel_mut(loc_x, loc_y) = Rgb([r, g, b]);
-          {
-            *image.get_pixel_mut(loc_x+1, loc_y) = Rgb([r, g, b]);
-            *image.get_pixel_mut(loc_x+1, loc_y+1) = Rgb([r, g, b]);
-            *image.get_pixel_mut(loc_x, loc_y+1) = Rgb([r, g, b]);
-          }
-
-        }
-      }
-
-      let x_midpt = (smallest_x+largest_x)/2.0;
-      let y_midpt = (smallest_y+largest_y)/2.0;
-
-      // Also draw parabolas in white using functions_edge_xy_abcdef_coef
-      for ((rgb_key_1, rgb_key_2), (a, b, c, d, e, f)) in &functions_edge_xy_abcdef_coef {
-
-        // Edge colors is straight-up combo of the 2 component colors
-        let col_r: u8 = ( (((rgb_key_1 >> 16) & 0xff)+((rgb_key_2 >> 16) & 0xff)) /2) as u8;
-        let col_g: u8 = ( (((rgb_key_1 >> 8) & 0xff)+((rgb_key_2 >> 8) & 0xff)) /2) as u8;
-        let col_b: u8 = ( (((rgb_key_1 >> 0) & 0xff)+((rgb_key_2 >> 0) & 0xff)) /2) as u8;
-
-        // Draw in steps from smallest_x -> largest_x, keeping where Y falls into range.
-        let mut x = smallest_x;
-        let mut curve_total_x: fp = 0.0;
-        let mut curve_total_y: fp = 0.0;
-        let mut curve_num_pts: usize = 0;
-        loop {
-          if x >= largest_x {
-            break;
-          }
-
-          for y in parabolics::evaluate_parabolic_for_x(x, (*a, *b, *c, *d, *e, *f)) {
-            if y > smallest_y && y < largest_y {
-              // Transform TSP x and y to image x and y and drop some ink on it!
-
-              curve_total_x += x;
-              curve_total_y += y;
-              curve_num_pts += 1;
-
-              //let r: u8 = 255;
-              //let g: u8 = 255;
-              //let b: u8 = 255;
-              let (loc_x,loc_y) = scale_xy(width, height, x_range as u32, y_range as u32, smallest_x, smallest_y, x, y);
-
-              *image.get_pixel_mut(loc_x, loc_y) = Rgb([col_r, col_g, col_b]);
-
-            }
-          }
-
-          x += bound_granularity * 0.025; // 40x precision
-        }
-
-        let curve_avg_x = curve_total_x / curve_num_pts as fp;
-        let curve_avg_y = curve_total_y / curve_num_pts as fp;
-        let (loc_x,loc_y) = scale_xy(width, height, x_range as u32, y_range as u32, smallest_x, smallest_y, curve_avg_x, curve_avg_y);
-        // Drop a label at average x,y for curve
-
-        let label_txt = format!("{:06x} - {:06x}", rgb_key_1, rgb_key_2);
-
-        let font_height = 18.0;
-        let font_scale = Scale { x: font_height, y: font_height };
-        draw_text_mut(&mut image, Rgb([col_r, col_g, col_b]), loc_x as u32, loc_y as u32, font_scale, &font, label_txt.as_str());
-
-        let eq_txt = format!(
-          "{}x^2 + {}xy + {}y^2 + {}x + {}y + {} = 0",
-          a, b, c, d, e, f
-        );
-        draw_text_mut(&mut image, Rgb([col_r, col_g, col_b]), loc_x as u32, (loc_y-24) as u32, font_scale, &font, eq_txt.as_str());
-
-
-      }
-
-      image.save(output_multiscan_parabola_file_path.clone()).unwrap();
-
-      output_multiscan_parabola_file_paths.push(output_multiscan_parabola_file_path.clone());
-    }
-
-
-
 
 
 
@@ -1822,19 +1526,6 @@ fn multi_pattern_scan(n: usize, bound_granularity: fp, num_multi_steps_to_scan: 
     }
   }
   println!("See {}", gif_output_file);
-
-
-  // Parabola gif as well
-  let gif_output_file = "views/multi-pattern-scan-parabola.gif";
-
-  let images = engiffen::load_images(&output_multiscan_parabola_file_paths);
-  if let Ok(gif_data) = engiffen::engiffen(&images, 5 /*fps*/, engiffen::Quantizer::Naive ) {
-    if let Ok(mut output_f) = File::create(gif_output_file) {
-      if let Err(e) = gif_data.write(&mut output_f) {
-        eprintln!("Error writing to {}: {:?}", gif_output_file, e);
-      }
-    }
-  }
 
 
 }

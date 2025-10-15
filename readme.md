@@ -178,20 +178,6 @@ INCREMENT_NONCE_ON_ROW=f \
   cargo run --release -- multi-pattern-scan 4 0.049 32
 
 
-# 2023-10-14 research, following/modeling 3d conics to
-# match 2d parabolic shapes/area regions
-TSP_INITIAL_COORDS='3.0,11.0 12.0,11.0 3.0,9.0 ' TSP_ENDING_COORDS='3.0,11.0 12.0,11.0 12.0,9.0 ' cargo run --release -- multi-pattern-scan 3 0.027 16
-
-# Support fns
-python -c "print(', '.join([ f'{x*0.5}' for x in range(-20, 20) ]))"
-feh -d $( find views -iname '*-parabola.png' )
-
-
-
-# 2023-10-19 research, exploring the 6 conic coefficients & attempting to fit the equation to perimiters of our solution region spaces
-INITIAL_FORMULA="(-2279.5137 * x**2) + (2301.4355 * xy) + (-519.5718 * y**2) + (1271.6567 * x) + (-1471.1874 * y) + 2721.0815 = 0" COEFICIENT_MIN=-4000.0 COEFICIENT_MAX=4000.0 python scripts/conic_playground.py ./views/multi-pattern-scan-002-parabola.txt-6073b6-8c7a38-edge-points.json COEFICIENT_MIN=-4000.0 COEFICIENT_MAX=4000.0 graph_edge_points_file=./views/multi-pattern-scan-002-parabola.txt-6073b6-8c7a38-edge-points.json
-
-
 # 2024-02-03 stuff
 TSP_INITIAL_COORDS='3.0,11.0 12.0,11.0 5.0,9.0 ' TSP_ENDING_COORDS='3.0,11.0 12.0,11.0 7.0,9.0 ' cargo run --release -- multi-pattern-scan 3 0.027 4
 
