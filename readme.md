@@ -24,6 +24,17 @@ This approach decomposes finding an ideal Hamiltonian cycle into:
 
 yields complexity of `O(N*N) = O(N^2)`
 
+# Analysis Graphs
+
+Analysis sub-commands such as `pattern-scan` and `multi-pattern-scan` can be used to measure what types of graphs are not correctly solved by the insertion algorithm.
+These also shed light on the behavior of euclidian TSP solution-space, such as the following recordings which show regions which all correspond to the same solution:
+
+![showcase-views/multi-pattern-scan.GIF](showcase-views/multi-pattern-scan.GIF)
+
+![showcase-views/multi-pattern-scan-triangle.GIF](showcase-views/multi-pattern-scan-triangle.GIF)
+
+![showcase-views/multi-pattern-scan-055-edited.jpg](showcase-views/multi-pattern-scan-055-edited.jpg)
+
 # Testing
 
 You will need rust installed. Root access is _not_ required, you can install the toolchain under `~/.local/` by running
